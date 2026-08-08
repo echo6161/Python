@@ -4,11 +4,13 @@ import type Database from 'better-sqlite3';
 
 import { initialMigration } from './0001-initial';
 import { readerAnnotationsMigration } from './0002-reader-annotations';
+import { metadataOrganizationMigration } from './0003-metadata-organization';
 import type { DatabaseMigration } from './types';
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   initialMigration,
   readerAnnotationsMigration,
+  metadataOrganizationMigration,
 ];
 
 interface AppliedMigration {

@@ -14,7 +14,15 @@ describe('IPC contract', () => {
       importDroppedPdfs: 'papers:import-dropped',
       listPapers: 'papers:list',
       getPaper: 'papers:get',
+      updatePaperDetails: 'papers:update-details',
       updatePaperMetadata: 'papers:update-metadata',
+      updatePaperOrganization: 'papers:update-organization',
+      batchUpdatePapers: 'papers:batch-update',
+      listOrganization: 'library:list-organization',
+      createTag: 'tags:create',
+      deleteTag: 'tags:delete',
+      createCollection: 'collections:create',
+      deleteCollection: 'collections:delete',
       removePaper: 'papers:remove',
     });
     expect(Object.isFrozen(IPC_CHANNELS)).toBe(true);

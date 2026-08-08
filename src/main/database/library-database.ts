@@ -5,10 +5,19 @@ import path from 'node:path';
 import BetterSqlite3 from 'better-sqlite3';
 
 import type {
+  BatchPaperUpdate,
+  BatchPaperUpdateResult,
+  Collection,
+  CreateCollectionInput,
+  CreateTagInput,
+  LibraryOrganization,
   PaperDetails,
+  PaperDetailsUpdate,
   PaperListQuery,
   PaperListResult,
   PaperMetadataUpdate,
+  PaperOrganizationUpdate,
+  Tag,
 } from '../../shared/contracts/library';
 import type {
   Annotation,
@@ -21,6 +30,8 @@ import { LibraryError } from '../library/errors';
 import type {
   CreateImportedPaperResult,
   ImportedPaperRecord,
+  PaperTextExtractionRecord,
+  PendingPaperTextExtraction,
   PaperDataGateway,
 } from '../library/paper-data-gateway';
 import { applyMigrations } from './migrations';
@@ -39,56 +50,95 @@ export class LibraryDatabase implements PaperDataGateway {
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
-    return Promise.resolve(this.repository.list(query));
+    return this.run(() => this.repository.list(query));
   }
 
   public getPaper(id: string): Promise<PaperDetails | null> {
-    return Promise.resolve(this.repository.getById(id));
+    return this.run(() => this.repository.getById(id));
   }
 
   public findPaperByHash(sha256: string): Promise<PaperDetails | null> {
-    return Promise.resolve(this.repository.findByHash(sha256));
+    return this.run(() => this.repository.findByHash(sha256));
   }
 
   public createImportedPaper(input: ImportedPaperRecord): Promise<CreateImportedPaperResult> {
-    return Promise.resolve(this.repository.createImported(input));
+    return this.run(() => this.repository.createImported(input));
+  }
+
+  public updatePaperDetails(input: PaperDetailsUpdate): Promise<PaperDetails> {
+    return this.run(() => this.repository.updateDetails(input));
   }
 
   public updatePaperMetadata(input: PaperMetadataUpdate): Promise<PaperDetails> {
-    return Promise.resolve(this.repository.updateMetadata(input));
+    return this.run(() => this.repository.updateMetadata(input));
+  }
+
+  public updatePaperOrganization(input: PaperOrganizationUpdate): Promise<PaperDetails> {
+    return this.run(() => this.repository.updateOrganization(input));
+  }
+
+  public batchUpdatePapers(input: BatchPaperUpdate): Promise<BatchPaperUpdateResult> {
+    return this.run(() => this.repository.batchUpdate(input));
+  }
+
+  public listOrganization(): Promise<LibraryOrganization> {
+    return this.run(() => this.repository.listOrganization());
+  }
+
+  public createTag(input: CreateTagInput): Promise<Tag> {
+    return this.run(() => this.repository.createTag(input));
+  }
+
+  public deleteTag(id: string): Promise<void> {
+    return this.run(() => this.repository.deleteTag(id));
+  }
+
+  public createCollection(input: CreateCollectionInput): Promise<Collection> {
+    return this.run(() => this.repository.createCollection(input));
+  }
+
+  public deleteCollection(id: string): Promise<void> {
+    return this.run(() => this.repository.deleteCollection(id));
+  }
+
+  public listPendingPaperTextExtractions(): Promise<readonly PendingPaperTextExtraction[]> {
+    return this.run(() => this.repository.listPendingTextExtractions());
+  }
+
+  public savePaperTextExtraction(input: PaperTextExtractionRecord): Promise<void> {
+    return this.run(() => this.repository.saveTextExtraction(input));
   }
 
   public removePaperRecord(id: string): Promise<PaperDetails> {
-    return Promise.resolve(this.repository.remove(id));
+    return this.run(() => this.repository.remove(id));
   }
 
   public getManagedPaperFile(paperId: string) {
-    return Promise.resolve(this.readerRepository.getManagedPaperFile(paperId));
+    return this.run(() => this.readerRepository.getManagedPaperFile(paperId));
   }
 
   public listAnnotations(paperId: string): Promise<readonly Annotation[]> {
-    return Promise.resolve(this.readerRepository.listAnnotations(paperId));
+    return this.run(() => this.readerRepository.listAnnotations(paperId));
   }
 
   public createAnnotation(input: CreateAnnotationInput): Promise<Annotation> {
-    return Promise.resolve(this.readerRepository.createAnnotation(input));
+    return this.run(() => this.readerRepository.createAnnotation(input));
   }
 
   public updateAnnotation(input: UpdateAnnotationInput): Promise<Annotation> {
-    return Promise.resolve(this.readerRepository.updateAnnotation(input));
+    return this.run(() => this.readerRepository.updateAnnotation(input));
   }
 
   public deleteAnnotation(id: string, rowVersion: number): Promise<void> {
-    this.readerRepository.deleteAnnotation(id, rowVersion);
-    return Promise.resolve();
+    return this.run(() => this.readerRepository.deleteAnnotation(id, rowVersion));
   }
 
   public getReadingState(paperId: string): Promise<ReadingState | null> {
-    return Promise.resolve(this.readerRepository.getReadingState(paperId));
+    return this.run(() => this.readerRepository.getReadingState(paperId));
   }
 
   public saveReadingState(input: SaveReadingStateInput): Promise<ReadingState> {
-    return Promise.resolve(this.readerRepository.saveReadingState(input));
+    return this.run(() => this.readerRepository.saveReadingState(input));
   }
 
   public async backupTo(destinationPath: string): Promise<void> {
@@ -145,19 +195,19 @@ export class LibraryDatabase implements PaperDataGateway {
   }
 
   public getMigrationVersions(): Promise<readonly number[]> {
-    const versions = (
-      this.database.prepare('SELECT version FROM schema_migrations ORDER BY version').all() as {
-        readonly version: number;
-      }[]
-    ).map(({ version }) => version);
-    return Promise.resolve(versions);
+    return this.run(() =>
+      (
+        this.database.prepare('SELECT version FROM schema_migrations ORDER BY version').all() as {
+          readonly version: number;
+        }[]
+      ).map(({ version }) => version),
+    );
   }
 
   public close(): Promise<void> {
-    if (this.database.open) {
-      this.database.close();
-    }
-    return Promise.resolve();
+    return this.run(() => {
+      if (this.database.open) this.database.close();
+    });
   }
 
   private openDatabase(databasePath: string): BetterSqlite3.Database {
@@ -168,5 +218,9 @@ export class LibraryDatabase implements PaperDataGateway {
     database.pragma('synchronous = NORMAL');
     applyMigrations(database);
     return database;
+  }
+
+  private run<T>(operation: () => T): Promise<T> {
+    return Promise.resolve().then(operation);
   }
 }

@@ -2,10 +2,19 @@ import { Worker } from 'node:worker_threads';
 
 import type {
   ApiErrorCode,
+  BatchPaperUpdate,
+  BatchPaperUpdateResult,
+  Collection,
+  CreateCollectionInput,
+  CreateTagInput,
+  LibraryOrganization,
   PaperDetails,
+  PaperDetailsUpdate,
   PaperListQuery,
   PaperListResult,
   PaperMetadataUpdate,
+  PaperOrganizationUpdate,
+  Tag,
 } from '../../shared/contracts/library';
 import type {
   Annotation,
@@ -19,6 +28,8 @@ import type {
   CreateImportedPaperResult,
   ImportedPaperRecord,
   ManagedPaperFileRecord,
+  PaperTextExtractionRecord,
+  PendingPaperTextExtraction,
   PaperDataGateway,
 } from '../library/paper-data-gateway';
 import type {
@@ -84,8 +95,48 @@ export class DatabaseWorkerClient implements PaperDataGateway {
     return this.call('createImportedPaper', input);
   }
 
+  public updatePaperDetails(input: PaperDetailsUpdate): Promise<PaperDetails> {
+    return this.call('updatePaperDetails', input);
+  }
+
   public updatePaperMetadata(input: PaperMetadataUpdate): Promise<PaperDetails> {
     return this.call('updatePaperMetadata', input);
+  }
+
+  public updatePaperOrganization(input: PaperOrganizationUpdate): Promise<PaperDetails> {
+    return this.call('updatePaperOrganization', input);
+  }
+
+  public batchUpdatePapers(input: BatchPaperUpdate): Promise<BatchPaperUpdateResult> {
+    return this.call('batchUpdatePapers', input);
+  }
+
+  public listOrganization(): Promise<LibraryOrganization> {
+    return this.call('listOrganization', null);
+  }
+
+  public createTag(input: CreateTagInput): Promise<Tag> {
+    return this.call('createTag', input);
+  }
+
+  public async deleteTag(id: string): Promise<void> {
+    await this.call('deleteTag', { id });
+  }
+
+  public createCollection(input: CreateCollectionInput): Promise<Collection> {
+    return this.call('createCollection', input);
+  }
+
+  public async deleteCollection(id: string): Promise<void> {
+    await this.call('deleteCollection', { id });
+  }
+
+  public listPendingPaperTextExtractions(): Promise<readonly PendingPaperTextExtraction[]> {
+    return this.call('listPendingPaperTextExtractions', null);
+  }
+
+  public async savePaperTextExtraction(input: PaperTextExtractionRecord): Promise<void> {
+    await this.call('savePaperTextExtraction', input);
   }
 
   public removePaperRecord(id: string): Promise<PaperDetails> {

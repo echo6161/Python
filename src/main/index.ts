@@ -10,6 +10,7 @@ import { registerReaderIpcHandlers } from './ipc/reader-ipc';
 import { PaperFileStorage } from './library/file-storage';
 import { getDefaultLibraryRoot, initializeLibraryPaths } from './library/library-paths';
 import { PaperLibraryService } from './library/paper-library-service';
+import { PdfMetadataExtractionClient } from './metadata/pdf-metadata-extraction-client';
 import { PaperReaderService } from './reader/paper-reader-service';
 import { registerPdfProtocol } from './reader/pdf-protocol';
 import { configureSessionSecurity, restrictWindowNavigation } from './security';
@@ -18,6 +19,8 @@ import { createWindowOptions } from './window-options';
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
 let databaseClient: DatabaseWorkerClient | null = null;
+let metadataExtractionClient: PdfMetadataExtractionClient | null = null;
+let metadataBackfillPromise: Promise<void> | null = null;
 let shutdownPromise: Promise<void> | null = null;
 
 protocol.registerSchemesAsPrivileged([
@@ -51,12 +54,24 @@ async function initializeLibrary(): Promise<void> {
   const libraryPaths = await initializeLibraryPaths(libraryRoot);
   const workerPath = path.join(__dirname, 'database/worker.js');
   databaseClient = new DatabaseWorkerClient(workerPath, libraryPaths.database);
+  const metadataWorkerPath = path.join(__dirname, 'metadata/pdf-metadata-extraction-worker.js');
+  metadataExtractionClient = new PdfMetadataExtractionClient(metadataWorkerPath);
   const storage = new PaperFileStorage(libraryPaths);
-  const library = new PaperLibraryService(databaseClient, storage, libraryPaths);
+  const library = new PaperLibraryService(
+    databaseClient,
+    storage,
+    libraryPaths,
+    metadataExtractionClient,
+  );
   const reader = new PaperReaderService(databaseClient, storage);
   registerLibraryIpcHandlers(library, () => mainWindow);
   registerReaderIpcHandlers(reader, () => mainWindow);
   registerPdfProtocol(session.defaultSession, reader);
+  metadataBackfillPromise = library
+    .backfillPendingPaperTextExtractions()
+    .catch((error: unknown) => {
+      logger.error('Pending PDF text extraction backfill failed', error);
+    });
 }
 
 function getDesktopPlatform(): DesktopPlatform {
@@ -138,20 +153,28 @@ app.on('second-instance', () => {
 });
 
 app.on('before-quit', (event) => {
-  if (!databaseClient) {
+  if (!databaseClient && !metadataExtractionClient) {
     return;
   }
 
   event.preventDefault();
   if (!shutdownPromise) {
-    const client = databaseClient;
-    shutdownPromise = client
-      .close()
+    const database = databaseClient;
+    const metadata = metadataExtractionClient;
+    const backfill = metadataBackfillPromise;
+    shutdownPromise = Promise.resolve()
+      .then(async () => {
+        await metadata?.close();
+        await backfill;
+        await database?.close();
+      })
       .catch((error: unknown) => {
-        logger.error('Database shutdown failed', error);
+        logger.error('Application services could not shut down cleanly', error);
       })
       .finally(() => {
         databaseClient = null;
+        metadataExtractionClient = null;
+        metadataBackfillPromise = null;
         app.quit();
       });
   }

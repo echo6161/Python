@@ -29,9 +29,9 @@ Phase 1 安全桌面骨架 + 三平台打包/SQLite 风险验证
   ↓
 Phase 2 本地论文库、数据库和文件导入
   ↓
-Phase 3 PDF 阅读、文本提取和全文搜索
+Phase 3 PDF 阅读、搜索、高亮和持久化批注
   ↓
-Phase 4 高亮、批注和引用定位
+Phase 4 本地元数据、分类、检索和文献组织
   ↓
 Phase 5 AI Provider、密钥和选中文本翻译/解释
   ↓
@@ -90,7 +90,7 @@ Phase 9 MVP 加固、三平台签名与发布候选
 
 测试重点：迁移、事务中断、重复导入、损坏/加密/超大 PDF、路径边界、Windows/macOS/Linux 路径差异。
 
-### Phase 3：PDF 阅读与全文搜索
+### Phase 3：PDF 阅读、搜索与批注
 
 依赖：Phase 2 可稳定打开受管 PDF。
 
@@ -98,23 +98,26 @@ Phase 9 MVP 加固、三平台签名与发布候选
 
 - 安全自定义 PDF 协议和 Range 读取。
 - PDF.js 虚拟化阅读器、页码、缩放、布局和进度恢复。
-- 沙箱文本提取、document_pages/text_chunks、版本化切片。
-- FTS5 索引、论文内搜索和跳转。
+- PDF.js 文本提取、论文内搜索和结果跳转。
+- 文本选择、quote/text-position/rect 锚点、高亮、下划线和评论。
+- 批注编辑、软删除、列表跳转和 Markdown/JSON 导出。
 - 无文本层、损坏和加密状态；不实现 OCR。
 
 测试重点：标准 PDF fixtures、跨页文本、不同旋转/页面尺寸、搜索定位、内存上限、恶意链接和 Worker 失败。
 
-### Phase 4：高亮与批注
+### Phase 4：本地元数据与文献组织
 
-依赖：Phase 3 文本层和页内规范文本稳定。
+依赖：Phase 2 导入事务与 Phase 3 PDF.js 文本提取稳定。
 
 范围：
 
-- 文本选择、quote/text-position/rect 锚点创建。
-- 高亮颜色、Markdown 批注、编辑、软删除和列表跳转。
-- PDF 文件/提取版本变化后的重定位和 orphaned 状态。
+- 标准 PDF Metadata 与首页标题、作者、摘要、DOI 候选提取。
+- 字段级来源、置信度、待确认状态和人工覆盖保护；不联网补全 DOI。
+- 作者、标签、单层 Collection、收藏和阅读状态管理。
+- 标题、作者、年份、标签、Collection、阅读状态和本地全文过滤。
+- 白名单排序，以及批量添加标签和修改阅读状态。
 
-测试重点：单页/跨页、旋转页、缩放无关性、重复文本重定位、无法定位时不误配、乐观并发。
+测试重点：有/无标准 Metadata、低置信候选、识别失败、人工确认、迁移、组合筛选、FTS、批量事务和重启持久化。
 
 ### Phase 5：AI Provider 与选择文本工具
 
@@ -146,7 +149,7 @@ Phase 9 MVP 加固、三平台签名与发布候选
 
 ### Phase 7：结构化笔记与 Obsidian 导出
 
-依赖：Phase 4 annotations；Phase 5 AI；Phase 6 citations。
+依赖：Phase 3 annotations；Phase 5 AI；Phase 6 citations。
 
 范围：
 

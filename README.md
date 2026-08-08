@@ -1,6 +1,6 @@
 # PaperMind
 
-PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 3 provides a local SQLite paper library, managed PDF copies, a virtualized PDF.js reader, full-document search, persistent highlights and underlines, comments, reading progress, and Markdown/JSON annotation export. AI, Obsidian, and Git synchronization are not implemented yet.
+PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 4 adds offline PDF metadata and first-page extraction, explicit source/confidence labels, user confirmation, authors, tags, flat collections, favorites, reading status, field filters, local full-text filtering, sorting, and bounded batch updates. The virtualized PDF.js reader and persistent annotations remain available. AI, online DOI lookup, Obsidian, and Git synchronization are not implemented yet.
 
 ## Prerequisites
 
@@ -65,6 +65,7 @@ Production Windows and macOS releases require code-signing credentials supplied 
 ## Process Boundaries
 
 - **Main** (`src/main`): Electron lifecycle, controlled PDF protocol, exports, navigation policy, permissions, and the IPC handler whitelist.
+- **Metadata Worker** (`src/main/metadata`): bounded, timeout-controlled local PDF metadata and text extraction; it cannot access renderer state.
 - **Database Worker** (`src/main/database`): owns the only SQLite connection, migrations, and repositories.
 - **Preload** (`src/preload`): exposes fixed library and reader methods through `contextBridge`.
 - **Renderer** (`src/renderer`): React UI without Node.js, file-system, child-process, database, or provider access.
@@ -76,9 +77,9 @@ The BrowserWindow baseline is `contextIsolation: true`, `nodeIntegration: false`
 
 ```text
 src/
-  main/       Electron Main process and security policy
+  main/       Electron Main process, local metadata extraction, and security policy
   preload/    Minimal contextBridge API
-  renderer/   React application, virtualized PDF reader, search, and annotations
+  renderer/   React library management, virtualized PDF reader, search, and annotations
   shared/     Cross-process contracts and logging types
 tests/
   unit/       Vitest component and security tests

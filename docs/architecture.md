@@ -123,8 +123,14 @@ allowRunningInsecureContent = false
 | `dialog:choose-library` | R → M | 选择论文库根目录 | 规范化路径并阻止危险系统目录 |
 | `papers:list` | R → M | 分页、过滤论文 | 查询长度和页大小有上限 |
 | `papers:get` | R → M | 获取论文详情 | 仅接受 UUID |
+| `papers:update-details` | R → M | 原子保存元数据与组织信息 | 单一乐观版本；任一步失败则整体回滚 |
 | `papers:update-metadata` | R → M | 修改允许的元数据字段 | 字段白名单、长度限制、乐观并发 |
+| `papers:update-organization` | R → M | 修改阅读状态、收藏、标签和 Collection | UUID 白名单、关系存在性检查、乐观并发 |
+| `papers:batch-update` | R → M | 批量添加标签或修改阅读状态 | 最多 200 篇；整批验证并在单事务中写入 |
 | `papers:remove` | R → M | 从库移除/进入回收 | 需要显式确认令牌，不直接任意删除路径 |
+| `library:list-organization` | R → M | 获取标签和单层 Collection | 无路径或数据库细节返回 Renderer |
+| `tags:create` / `tags:delete` | R → M | 管理标签 | 名称规范化、长度/颜色校验；删除需要确认令牌 |
+| `collections:create` / `collections:delete` | R → M | 管理单层 Collection | 名称限制、重复检查；删除需要确认令牌 |
 | `papers:get-pdf-access` | R → M | 获取当前会话的协议 URL | 按 paper ID 授权，短期会话令牌；不返回文件路径 |
 | `reader:get-state` | R → M | 获取阅读进度 | 仅 paper ID |
 | `reader:save-state` | R → M | 保存页码、缩放和模式 | 节流、值域校验 |

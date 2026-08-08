@@ -104,6 +104,7 @@ describe('local paper library integration', () => {
       id: paper.id,
       rowVersion: paper.rowVersion,
       title: 'Updated paper title',
+      authors: ['Ada Lovelace', 'Alan Turing'],
       abstract: 'Local abstract',
       year: 2026,
       doi: '10.1000/papermind',
@@ -141,11 +142,11 @@ describe('local paper library integration', () => {
 
   it('applies migrations repeatedly and creates every Phase 2 entity table', async () => {
     const harness = await createHarness();
-    expect(await harness.database.getMigrationVersions()).toEqual([1, 2]);
+    expect(await harness.database.getMigrationVersions()).toEqual([1, 2, 3]);
     await harness.database.close();
 
     const reopened = new LibraryDatabase(harness.paths.database);
-    expect(await reopened.getMigrationVersions()).toEqual([1, 2]);
+    expect(await reopened.getMigrationVersions()).toEqual([1, 2, 3]);
     await reopened.close();
 
     const database = new BetterSqlite3(harness.paths.database, { readonly: true });
@@ -167,6 +168,8 @@ describe('local paper library integration', () => {
         'paper_tags',
         'annotations',
         'reading_states',
+        'paper_metadata_fields',
+        'document_pages',
         'notes',
         'settings',
         'ai_conversations',
@@ -199,10 +202,138 @@ describe('local paper library integration', () => {
         new Date().toISOString(),
         createHash('sha256').update(initialMigration.sql, 'utf8').digest('hex'),
       );
+    const legacyPaperId = '550e8400-e29b-41d4-a716-446655440020';
+    const legacyFileId = '550e8400-e29b-41d4-a716-446655440021';
+    const legacyAuthorId = '550e8400-e29b-41d4-a716-446655440022';
+    const unreviewedPaperId = '550e8400-e29b-41d4-a716-446655440030';
+    const unreviewedFileId = '550e8400-e29b-41d4-a716-446655440031';
+    const now = new Date().toISOString();
+    phaseTwoDatabase
+      .prepare(
+        `INSERT INTO papers (
+          id, title, abstract, year, doi, venue, language, status, metadata_source,
+          created_at, updated_at, row_version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ready', 'manual', ?, ?, 4)`,
+      )
+      .run(
+        legacyPaperId,
+        'User corrected legacy title',
+        'User abstract',
+        2024,
+        '10.5555/legacy',
+        'Local venue',
+        'en',
+        now,
+        now,
+      );
+    phaseTwoDatabase
+      .prepare(
+        `INSERT INTO paper_files (
+          id, paper_id, sha256, relative_path, internal_filename, original_filename,
+          byte_size, mime_type, page_count, is_encrypted, imported_at, verified_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'application/pdf', 1, 0, ?, ?)`,
+      )
+      .run(
+        legacyFileId,
+        legacyPaperId,
+        'c'.repeat(64),
+        `papers/cc/${'c'.repeat(64)}.pdf`,
+        `${'c'.repeat(64)}.pdf`,
+        'legacy.pdf',
+        1024,
+        now,
+        now,
+      );
+    phaseTwoDatabase
+      .prepare('UPDATE papers SET active_file_id = ? WHERE id = ?')
+      .run(legacyFileId, legacyPaperId);
+    phaseTwoDatabase
+      .prepare(
+        `INSERT INTO authors (id, display_name, normalized_name, created_at)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .run(legacyAuthorId, 'Legacy Linked Author', 'legacy linked author', now);
+    phaseTwoDatabase
+      .prepare(
+        `INSERT INTO paper_authors (paper_id, author_id, position, role)
+         VALUES (?, ?, 0, NULL)`,
+      )
+      .run(legacyPaperId, legacyAuthorId);
+    phaseTwoDatabase
+      .prepare(
+        `INSERT INTO papers (
+          id, title, abstract, year, doi, venue, language, status, metadata_source,
+          created_at, updated_at, row_version
+        ) VALUES (?, ?, NULL, NULL, NULL, NULL, NULL, 'ready', 'manual', ?, ?, 1)`,
+      )
+      .run(unreviewedPaperId, 'unreviewed-filename-title', now, now);
+    phaseTwoDatabase
+      .prepare(
+        `INSERT INTO paper_files (
+          id, paper_id, sha256, relative_path, internal_filename, original_filename,
+          byte_size, mime_type, page_count, is_encrypted, imported_at, verified_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'application/pdf', 1, 0, ?, ?)`,
+      )
+      .run(
+        unreviewedFileId,
+        unreviewedPaperId,
+        'd'.repeat(64),
+        `papers/dd/${'d'.repeat(64)}.pdf`,
+        `${'d'.repeat(64)}.pdf`,
+        'unreviewed-filename-title.pdf',
+        2048,
+        now,
+        now,
+      );
+    phaseTwoDatabase
+      .prepare('UPDATE papers SET active_file_id = ? WHERE id = ?')
+      .run(unreviewedFileId, unreviewedPaperId);
     phaseTwoDatabase.close();
 
     const upgraded = new LibraryDatabase(databasePath);
-    expect(await upgraded.getMigrationVersions()).toEqual([1, 2]);
+    expect(await upgraded.getMigrationVersions()).toEqual([1, 2, 3]);
+    const upgradedLegacy = await upgraded.getPaper(legacyPaperId);
+    expect(upgradedLegacy).toMatchObject({
+      title: 'User corrected legacy title',
+      authors: ['Legacy Linked Author'],
+      metadataReviewStatus: 'confirmed',
+      file: { textExtractionStatus: 'pending' },
+    });
+    expect(
+      upgradedLegacy?.metadataEvidence
+        .filter(({ field }) => field !== 'authors')
+        .every(
+          ({ source, confidence, userEdited }) =>
+            source === 'manual' && confidence === 'confirmed' && userEdited,
+        ),
+    ).toBe(true);
+    expect(upgradedLegacy?.metadataEvidence.find(({ field }) => field === 'authors')).toMatchObject(
+      {
+        source: 'legacy',
+        confidence: 'unconfirmed',
+        userEdited: false,
+      },
+    );
+    const unreviewed = await upgraded.getPaper(unreviewedPaperId);
+    expect(unreviewed).toMatchObject({
+      title: 'unreviewed-filename-title',
+      authors: [],
+      abstract: null,
+      year: null,
+      doi: null,
+      metadataReviewStatus: 'pending',
+      file: { textExtractionStatus: 'pending' },
+    });
+    expect(unreviewed?.metadataEvidence.find(({ field }) => field === 'title')).toMatchObject({
+      source: 'filename',
+      confidence: 'unconfirmed',
+      userEdited: false,
+    });
+    expect(unreviewed?.metadataEvidence.find(({ field }) => field === 'authors')).toMatchObject({
+      source: 'none',
+      confidence: 'unconfirmed',
+      userEdited: false,
+    });
     await upgraded.close();
   });
 
@@ -261,7 +392,17 @@ describe('local paper library integration', () => {
       getPaper: (id) => harness.database.getPaper(id),
       findPaperByHash: (hash) => harness.database.findPaperByHash(hash),
       createImportedPaper: () => Promise.reject(new Error('simulated database failure')),
+      updatePaperDetails: (input) => harness.database.updatePaperDetails(input),
       updatePaperMetadata: (input) => harness.database.updatePaperMetadata(input),
+      updatePaperOrganization: (input) => harness.database.updatePaperOrganization(input),
+      batchUpdatePapers: (input) => harness.database.batchUpdatePapers(input),
+      listOrganization: () => harness.database.listOrganization(),
+      createTag: (input) => harness.database.createTag(input),
+      deleteTag: (id) => harness.database.deleteTag(id),
+      createCollection: (input) => harness.database.createCollection(input),
+      deleteCollection: (id) => harness.database.deleteCollection(id),
+      listPendingPaperTextExtractions: () => harness.database.listPendingPaperTextExtractions(),
+      savePaperTextExtraction: (input) => harness.database.savePaperTextExtraction(input),
       removePaperRecord: (id) => harness.database.removePaperRecord(id),
       getManagedPaperFile: (paperId) => harness.database.getManagedPaperFile(paperId),
       listAnnotations: (paperId) => harness.database.listAnnotations(paperId),

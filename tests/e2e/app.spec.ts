@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 
-import { writePdfFixture } from '../helpers/pdf-fixture';
+import { writePdfFixture, writeStructuredPdfFixture } from '../helpers/pdf-fixture';
 
 function electronEnvironment(libraryRoot: string): Record<string, string> {
   const environment: Record<string, string> = {};
@@ -21,7 +21,11 @@ function electronEnvironment(libraryRoot: string): Record<string, string> {
 }
 
 async function launch(libraryRoot: string): Promise<ElectronApplication> {
-  return electron.launch({ args: ['.'], env: electronEnvironment(libraryRoot) });
+  // The managed test host cannot initialize Chromium's Windows process sandbox.
+  return electron.launch({
+    args: ['.', '--disable-gpu', '--disable-gpu-sandbox', '--no-sandbox'],
+    env: electronEnvironment(libraryRoot),
+  });
 }
 
 async function selectFilesInDialog(
@@ -125,6 +129,7 @@ test('reads a short PDF and persists annotations, progress, deletion, and export
     await expect(window.getByText('2 papers')).toBeVisible();
     await expect(window.getByRole('button', { name: 'alpha-study alpha-study.pdf' })).toBeVisible();
     await expect(window.getByRole('button', { name: 'beta-study beta-study.pdf' })).toBeVisible();
+    await window.getByRole('button', { name: 'Reader' }).click();
     await expect(window.locator('[data-page-number="1"]')).toBeVisible();
 
     await window.getByRole('button', { name: 'Search PDF' }).click();
@@ -212,6 +217,7 @@ test('searches an 80-page PDF while only mounting visible pages', async ({
     await window.waitForLoadState('domcontentloaded');
     await selectFilesInDialog(electronApp, [source]);
     await window.getByRole('button', { name: 'Import' }).click();
+    await window.getByRole('button', { name: 'Reader' }).click();
     await expect(window.getByText('/ 80', { exact: true })).toBeVisible();
     await expect(window.locator('[data-page-number]')).not.toHaveCount(0);
     expect(await window.locator('[data-page-number]').count()).toBeLessThan(15);
@@ -227,4 +233,219 @@ test('searches an 80-page PDF while only mounting visible pages', async ({
     await electronApp.close();
   }
   expect(await hashFile(source)).toBe(originalHash);
+});
+
+test('confirms extracted metadata and persists library organization', async ({
+  browserName,
+}, testInfo) => {
+  expect(browserName).toBe('chromium');
+  const fixtureRoot = testInfo.outputPath('phase-4-fixtures');
+  const libraryRoot = testInfo.outputPath('PaperMind Metadata Library');
+  await mkdir(fixtureRoot, { recursive: true });
+  const metadataPdf = await writeStructuredPdfFixture(fixtureRoot, 'metadata-paper.pdf', {
+    metadata: {
+      title: 'Reliable Metadata Title',
+      author: 'Ada Lovelace; Alan Turing',
+    },
+    pages: [
+      [
+        { text: 'Visible Research Heading', fontSize: 24, y: 740 },
+        { text: 'Abstract', fontSize: 12, y: 680 },
+        {
+          text: 'This visible abstract is extracted locally from the first page.',
+          fontSize: 10,
+          y: 655,
+        },
+        { text: 'DOI: 10.4242/PAPERMIND.2026', fontSize: 10, y: 620 },
+        { text: 'Introduction', fontSize: 12, y: 590 },
+      ],
+      [{ text: 'Organization fulltext needle', fontSize: 12, y: 700 }],
+    ],
+  });
+  const plainPdf = await writePdfFixture(
+    fixtureRoot,
+    'no-standard-metadata.pdf',
+    'Plain unstructured content',
+  );
+  const originalHashes = await Promise.all([metadataPdf, plainPdf].map(hashFile));
+
+  let electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await selectFilesInDialog(electronApp, [metadataPdf, plainPdf]);
+    await window.getByRole('button', { name: 'Import' }).click();
+
+    await expect(window.getByText('Metadata review required.')).toBeVisible();
+    await expect(window.getByLabel(/^Title/)).toHaveValue('Reliable Metadata Title');
+    await expect(window.getByLabel(/^Authors/)).toHaveValue('Ada Lovelace; Alan Turing');
+    await expect(window.getByLabel(/^DOI/)).toHaveValue('10.4242/papermind.2026');
+    await expect(
+      window
+        .getByLabel(/^Title/)
+        .locator('..')
+        .getByText('PDF metadata: medium'),
+    ).toBeVisible();
+    await expect(
+      window.getByLabel(/^DOI/).locator('..').getByText('First page: medium'),
+    ).toBeVisible();
+
+    await window.getByLabel(/^Title/).fill('Manually Corrected Paper');
+    await window.getByLabel(/^Authors/).fill('Grace Hopper; Barbara Liskov');
+    await window.getByLabel(/^Year/).fill('2025');
+    await window.getByLabel(/^DOI/).fill('10.5555/MANUAL.42');
+
+    await window.getByLabel('New tag name').fill('Methods');
+    await window.getByRole('button', { name: 'Create tag' }).click();
+    await expect(window.getByRole('checkbox', { name: 'Methods', exact: true })).toBeChecked();
+
+    await window.getByLabel('New collection name').fill('Dissertation');
+    await window.getByRole('button', { name: 'Create collection' }).click();
+    await expect(window.getByRole('checkbox', { name: 'Dissertation', exact: true })).toBeChecked();
+    await window.getByLabel('Reading status').selectOption('reading');
+    await window.getByRole('button', { name: 'Add to favorites' }).click();
+    await window.getByRole('button', { name: 'Confirm metadata' }).click();
+
+    await expect(window.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
+    await expect(window.getByText('Metadata review required.')).not.toBeVisible();
+    await expect(window.getByText('Manual: confirmed').first()).toBeVisible();
+
+    await window.getByLabel('New tag name').fill('Temporary tag');
+    await window.getByRole('button', { name: 'Create tag' }).click();
+    await expect(
+      window.getByRole('checkbox', { name: 'Temporary tag', exact: true }),
+    ).toBeChecked();
+    await window.getByLabel('New collection name').fill('Temporary collection');
+    await window.getByRole('button', { name: 'Create collection' }).click();
+    await expect(
+      window.getByRole('checkbox', { name: 'Temporary collection', exact: true }),
+    ).toBeChecked();
+    await window.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(window.getByText('Paper metadata confirmed and saved.')).toBeVisible();
+    await window.getByRole('button', { name: 'Dismiss notification' }).click();
+
+    const tagDialogPromise = window.waitForEvent('dialog');
+    const deleteTagPromise = window
+      .getByRole('button', { name: 'Delete tag Temporary tag' })
+      .click();
+    const tagDialog = await tagDialogPromise;
+    expect(tagDialog.message()).toBe('Delete tag "Temporary tag" from every paper?');
+    await tagDialog.accept();
+    await deleteTagPromise;
+    await expect(
+      window.getByRole('button', { name: 'Delete tag Temporary tag' }),
+    ).not.toBeVisible();
+    await window.getByRole('button', { name: 'Dismiss notification' }).click();
+
+    const collectionDialogPromise = window.waitForEvent('dialog');
+    const deleteCollectionPromise = window
+      .getByRole('button', { name: 'Delete collection Temporary collection' })
+      .click();
+    const collectionDialog = await collectionDialogPromise;
+    expect(collectionDialog.message()).toBe(
+      'Delete collection "Temporary collection" from every paper?',
+    );
+    await collectionDialog.accept();
+    await deleteCollectionPromise;
+    await expect(
+      window.getByRole('button', { name: 'Delete collection Temporary collection' }),
+    ).not.toBeVisible();
+    await window.getByRole('button', { name: 'Dismiss notification' }).click();
+
+    await window.getByRole('button', { name: /no-standard-metadata/ }).click();
+    await expect(window.getByLabel(/^Title/)).toHaveValue('no-standard-metadata');
+    await expect(window.getByLabel(/^Authors/)).toHaveValue('');
+    await expect(window.getByLabel(/^DOI/)).toHaveValue('');
+    await expect(window.getByLabel(/^Abstract/)).toHaveValue('');
+    await expect(window.getByText('Metadata review required.')).toBeVisible();
+    await expect(
+      window
+        .getByLabel(/^Title/)
+        .locator('..')
+        .getByText('Filename fallback: unconfirmed'),
+    ).toBeVisible();
+    await expect(
+      window.getByLabel(/^DOI/).locator('..').getByText('Not found: unconfirmed'),
+    ).toBeVisible();
+
+    await window.getByLabel('Select no-standard-metadata').check();
+    const batchBar = window.getByRole('toolbar', { name: 'Batch actions' });
+    await batchBar.getByText('Tags', { exact: true }).click();
+    await batchBar.getByLabel('Methods').check();
+    await batchBar.getByLabel('Set reading status').selectOption('completed');
+    await batchBar.getByRole('button', { name: 'Apply' }).click();
+    await expect(window.getByText('1 papers updated.')).toBeVisible();
+
+    await window.getByRole('button', { name: /^Filters/ }).click();
+    const filterPanel = window.getByRole('region', { name: 'Library filters' });
+    await filterPanel.getByLabel('Methods').check();
+    await filterPanel.getByLabel('Completed').check();
+    await expect(window.getByRole('button', { name: /no-standard-metadata/ })).toBeVisible();
+    await expect(
+      window.getByRole('button', { name: /Manually Corrected Paper/ }),
+    ).not.toBeVisible();
+    await filterPanel.getByRole('button', { name: 'Clear filters' }).click();
+    await expect(window.getByRole('button', { name: /Manually Corrected Paper/ })).toBeVisible();
+
+    await filterPanel.getByLabel('Title', { exact: true }).fill('Manually Corrected');
+    await expect(window.getByRole('button', { name: /Manually Corrected Paper/ })).toBeVisible();
+    await expect(window.getByRole('button', { name: /no-standard-metadata/ })).not.toBeVisible();
+    await filterPanel.getByLabel('Title', { exact: true }).fill('');
+
+    await filterPanel.getByLabel('Author', { exact: true }).fill('Grace Hopper');
+    await expect(window.getByRole('button', { name: /Manually Corrected Paper/ })).toBeVisible();
+    await filterPanel.getByLabel('Author', { exact: true }).fill('');
+
+    await filterPanel.getByLabel('Year', { exact: true }).fill('2025');
+    await expect(window.getByRole('button', { name: /Manually Corrected Paper/ })).toBeVisible();
+    await filterPanel.getByLabel('Year', { exact: true }).fill('');
+
+    await filterPanel.getByLabel('Full text', { exact: true }).fill('Organization fulltext');
+    await expect(window.getByRole('button', { name: /Manually Corrected Paper/ })).toBeVisible();
+    await expect(window.getByRole('button', { name: /no-standard-metadata/ })).not.toBeVisible();
+    await filterPanel.getByLabel('Full text', { exact: true }).fill('');
+
+    await filterPanel.getByLabel('Sort by', { exact: true }).selectOption('title');
+    await filterPanel.getByLabel('Sort direction', { exact: true }).selectOption('asc');
+    await expect
+      .poll(async () => window.locator('ul[aria-label="Papers"] > li > button').allTextContents())
+      .toEqual([
+        expect.stringContaining('Manually Corrected Paper'),
+        expect.stringContaining('no-standard-metadata'),
+      ]);
+
+    await window.getByRole('button', { name: /Manually Corrected Paper/ }).click();
+    const detailsPanel = window.locator('section[aria-labelledby="details-heading"]');
+    await detailsPanel.getByLabel(/^Title/).fill('Unsaved temporary title');
+    const dialogPromise = window.waitForEvent('dialog');
+    const selectionPromise = window.getByRole('button', { name: /no-standard-metadata/ }).click();
+    const discardDialog = await dialogPromise;
+    expect(discardDialog.message()).toBe('Discard unsaved paper detail changes?');
+    await discardDialog.dismiss();
+    await selectionPromise;
+    await expect(detailsPanel.getByLabel(/^Title/)).toHaveValue('Unsaved temporary title');
+    await detailsPanel.getByLabel(/^Title/).fill('Manually Corrected Paper');
+    await window.screenshot({ path: testInfo.outputPath('papermind-metadata-organization.png') });
+  } finally {
+    await electronApp.close();
+  }
+
+  electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await window.getByRole('button', { name: /Manually Corrected Paper/ }).click();
+    await window.getByRole('button', { name: 'Details' }).click();
+    await expect(window.getByLabel(/^Title/)).toHaveValue('Manually Corrected Paper');
+    await expect(window.getByLabel(/^Authors/)).toHaveValue('Grace Hopper; Barbara Liskov');
+    await expect(window.getByLabel(/^DOI/)).toHaveValue('10.5555/manual.42');
+    await expect(window.getByLabel('Reading status')).toHaveValue('reading');
+    await expect(window.getByRole('button', { name: 'Remove from favorites' })).toBeVisible();
+    await expect(window.getByRole('checkbox', { name: 'Methods', exact: true })).toBeChecked();
+    await expect(window.getByRole('checkbox', { name: 'Dissertation', exact: true })).toBeChecked();
+  } finally {
+    await electronApp.close();
+  }
+
+  expect(await Promise.all([metadataPdf, plainPdf].map(hashFile))).toEqual(originalHashes);
 });

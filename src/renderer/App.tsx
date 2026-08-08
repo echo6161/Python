@@ -8,6 +8,7 @@ import { rendererLogger } from './logger';
 export function App() {
   const [activeView, setActiveView] = useState<AppView>('library');
   const [appVersion, setAppVersion] = useState('0.1.0');
+  const [hasUnsavedPaperDetails, setHasUnsavedPaperDetails] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -28,10 +29,26 @@ export function App() {
     };
   }, []);
 
+  const navigate = (view: AppView) => {
+    if (
+      view !== activeView &&
+      hasUnsavedPaperDetails &&
+      !window.confirm('Discard unsaved paper detail changes?')
+    ) {
+      return;
+    }
+    setHasUnsavedPaperDetails(false);
+    setActiveView(view);
+  };
+
   return (
     <div className="flex h-screen min-h-[680px] min-w-[1100px] overflow-hidden bg-zinc-100 text-zinc-900">
-      <Sidebar activeView={activeView} appVersion={appVersion} onNavigate={setActiveView} />
-      {activeView === 'library' ? <LibraryWorkspace /> : <SettingsWorkspace />}
+      <Sidebar activeView={activeView} appVersion={appVersion} onNavigate={navigate} />
+      {activeView === 'library' ? (
+        <LibraryWorkspace onDirtyChange={setHasUnsavedPaperDetails} />
+      ) : (
+        <SettingsWorkspace />
+      )}
     </div>
   );
 }

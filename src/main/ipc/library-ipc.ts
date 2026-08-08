@@ -10,24 +10,39 @@ import type { ZodType } from 'zod';
 import {
   LIBRARY_IPC_CHANNELS,
   type ApiResult,
+  type BatchPaperUpdateResult,
+  type Collection,
+  type LibraryOrganization,
   type PaperDetails,
   type PaperImportBatch,
   type PaperListResult,
   type PaperRemovalResult,
+  type Tag,
 } from '../../shared/contracts/library';
 import { createConsoleLogger } from '../../shared/logging';
 import { LibraryError, toApiError } from '../library/errors';
 import type { PaperLibraryService } from '../library/paper-library-service';
 import {
+  batchPaperUpdateResultSchema,
+  batchPaperUpdateSchema,
+  collectionSchema,
+  createCollectionSchema,
+  createTagSchema,
+  deletedOrganizationItemSchema,
+  deleteOrganizationItemSchema,
   droppedPdfPathsSchema,
+  libraryOrganizationSchema,
   paperDetailsSchema,
+  paperDetailsUpdateSchema,
   paperIdSchema,
   paperImportBatchSchema,
   paperListQuerySchema,
   paperListResultSchema,
   paperMetadataUpdateSchema,
+  paperOrganizationUpdateSchema,
   paperRemovalResultSchema,
   paperRemovalSchema,
+  tagSchema,
 } from './library-schemas';
 
 const logger = createConsoleLogger('library-ipc');
@@ -75,9 +90,101 @@ export function registerLibraryIpcHandlers(
         const query = paperListQuerySchema.parse(input);
         return library.listPapers({
           ...(query.search === undefined ? {} : { search: query.search }),
+          ...(query.title === undefined ? {} : { title: query.title }),
+          ...(query.author === undefined ? {} : { author: query.author }),
+          ...(query.year === undefined ? {} : { year: query.year }),
+          ...(query.tagIds === undefined ? {} : { tagIds: query.tagIds }),
+          ...(query.collectionId === undefined ? {} : { collectionId: query.collectionId }),
+          ...(query.readingStatuses === undefined
+            ? {}
+            : { readingStatuses: query.readingStatuses }),
+          ...(query.favorite === undefined ? {} : { favorite: query.favorite }),
+          ...(query.fullText === undefined ? {} : { fullText: query.fullText }),
+          ...(query.sortBy === undefined ? {} : { sortBy: query.sortBy }),
+          ...(query.sortDirection === undefined ? {} : { sortDirection: query.sortDirection }),
           ...(query.limit === undefined ? {} : { limit: query.limit }),
           ...(query.offset === undefined ? {} : { offset: query.offset }),
         });
+      });
+    },
+  );
+
+  ipcMain.handle(
+    LIBRARY_IPC_CHANNELS.updatePaperDetails,
+    async (event, input: unknown): Promise<ApiResult<PaperDetails>> => {
+      return invokeValidated(event, paperDetailsSchema, async () => {
+        const details = paperDetailsUpdateSchema.parse(input);
+        return library.updatePaperDetails(details);
+      });
+    },
+  );
+
+  ipcMain.handle(
+    LIBRARY_IPC_CHANNELS.updatePaperOrganization,
+    async (event, input: unknown): Promise<ApiResult<PaperDetails>> => {
+      return invokeValidated(event, paperDetailsSchema, async () => {
+        return library.updatePaperOrganization(paperOrganizationUpdateSchema.parse(input));
+      });
+    },
+  );
+
+  ipcMain.handle(
+    LIBRARY_IPC_CHANNELS.batchUpdatePapers,
+    async (event, input: unknown): Promise<ApiResult<BatchPaperUpdateResult>> => {
+      return invokeValidated(event, batchPaperUpdateResultSchema, async () => {
+        const batch = batchPaperUpdateSchema.parse(input);
+        return library.batchUpdatePapers({
+          ids: batch.ids,
+          addTagIds: batch.addTagIds,
+          ...(batch.readingStatus === undefined ? {} : { readingStatus: batch.readingStatus }),
+        });
+      });
+    },
+  );
+
+  ipcMain.handle(
+    LIBRARY_IPC_CHANNELS.listOrganization,
+    async (event): Promise<ApiResult<LibraryOrganization>> => {
+      return invokeValidated(event, libraryOrganizationSchema, () => library.listOrganization());
+    },
+  );
+
+  ipcMain.handle(
+    LIBRARY_IPC_CHANNELS.createTag,
+    async (event, input: unknown): Promise<ApiResult<Tag>> => {
+      return invokeValidated(event, tagSchema, () =>
+        library.createTag(createTagSchema.parse(input)),
+      );
+    },
+  );
+
+  ipcMain.handle(
+    LIBRARY_IPC_CHANNELS.deleteTag,
+    async (event, input: unknown): Promise<ApiResult<{ readonly id: string }>> => {
+      return invokeValidated(event, deletedOrganizationItemSchema, async () => {
+        const { id } = deleteOrganizationItemSchema.parse(input);
+        await library.deleteTag(id);
+        return { id };
+      });
+    },
+  );
+
+  ipcMain.handle(
+    LIBRARY_IPC_CHANNELS.createCollection,
+    async (event, input: unknown): Promise<ApiResult<Collection>> => {
+      return invokeValidated(event, collectionSchema, () =>
+        library.createCollection(createCollectionSchema.parse(input)),
+      );
+    },
+  );
+
+  ipcMain.handle(
+    LIBRARY_IPC_CHANNELS.deleteCollection,
+    async (event, input: unknown): Promise<ApiResult<{ readonly id: string }>> => {
+      return invokeValidated(event, deletedOrganizationItemSchema, async () => {
+        const { id } = deleteOrganizationItemSchema.parse(input);
+        await library.deleteCollection(id);
+        return { id };
       });
     },
   );

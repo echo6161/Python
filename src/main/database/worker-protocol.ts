@@ -1,10 +1,18 @@
-import type { PaperListQuery, PaperMetadataUpdate } from '../../shared/contracts/library';
+import type {
+  BatchPaperUpdate,
+  CreateCollectionInput,
+  CreateTagInput,
+  PaperDetailsUpdate,
+  PaperListQuery,
+  PaperMetadataUpdate,
+  PaperOrganizationUpdate,
+} from '../../shared/contracts/library';
 import type {
   CreateAnnotationInput,
   SaveReadingStateInput,
   UpdateAnnotationInput,
 } from '../../shared/contracts/reader';
-import type { ImportedPaperRecord } from '../library/paper-data-gateway';
+import type { ImportedPaperRecord, PaperTextExtractionRecord } from '../library/paper-data-gateway';
 
 export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'listPapers'; readonly payload: PaperListQuery }
@@ -21,8 +29,46 @@ export type DatabaseWorkerRequest =
     }
   | {
       readonly id: number;
+      readonly method: 'updatePaperDetails';
+      readonly payload: PaperDetailsUpdate;
+    }
+  | {
+      readonly id: number;
       readonly method: 'updatePaperMetadata';
       readonly payload: PaperMetadataUpdate;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updatePaperOrganization';
+      readonly payload: PaperOrganizationUpdate;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'batchUpdatePapers';
+      readonly payload: BatchPaperUpdate;
+    }
+  | { readonly id: number; readonly method: 'listOrganization'; readonly payload: null }
+  | { readonly id: number; readonly method: 'createTag'; readonly payload: CreateTagInput }
+  | { readonly id: number; readonly method: 'deleteTag'; readonly payload: { readonly id: string } }
+  | {
+      readonly id: number;
+      readonly method: 'createCollection';
+      readonly payload: CreateCollectionInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'deleteCollection';
+      readonly payload: { readonly id: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listPendingPaperTextExtractions';
+      readonly payload: null;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'savePaperTextExtraction';
+      readonly payload: PaperTextExtractionRecord;
     }
   | {
       readonly id: number;

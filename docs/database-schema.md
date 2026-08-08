@@ -1,4 +1,4 @@
-# PaperMind Phase 3 Database Schema
+# PaperMind Phase 4 Database Schema
 
 ## Runtime location
 
@@ -62,14 +62,36 @@ Migration `0002-reader-annotations-and-state` evolves the Phase 2 annotation ske
 
 An annotation is bound to both `paper_id` and the immutable active `paper_file_id`. Triggers reject a file that does not belong to the same paper. Geometry is never the only anchor: `exact_text`, prefix/suffix context, and page character offsets remain available for validation and future re-anchoring. JSON validity and numeric/page constraints are enforced by SQLite, while IPC schemas impose tighter payload and rectangle limits.
 
+## Metadata and organization migration
+
+Migration `0003-metadata-organization.ts` (`paper-metadata-organization-and-search`) adds:
+
+| Entity or field | SQLite representation | Integrity notes |
+| --- | --- | --- |
+| Reading status | `papers.reading_status` | Independent from import lifecycle; unread/reading/completed/shelved |
+| Favorite | `papers.is_favorite` | Constrained boolean integer |
+| Review state | `papers.metadata_review_status` | Extracted values remain pending until an explicit user save |
+| Field provenance | `paper_metadata_fields` | One row per paper and title/authors/abstract/year/DOI field; JSON value, source, confidence, and user-edited flag |
+| Extracted pages | `document_pages` | Immutable file ID, 1-based page, normalized text, content hash, and extractor version |
+| Full-text filter | `paper_full_text` | Local SQLite FTS5 index with one bounded row per page; stores text only and has no embedding or RAG behavior |
+
+Standard PDF Metadata has priority over cautious first-page candidates. A filename may supply an internal display label only when no title evidence exists; its field source is `filename` with `unconfirmed` confidence, and the UI displays a pending-confirmation state. No author is inferred from a filename. DOI candidates are normalized syntactically and retain their source/confidence without any network lookup. A DOI reaches the canonical unique `papers.doi` field only after user confirmation.
+
+An explicit details save replaces the ordered author relationship, marks the five extracted fields `manual/confirmed/user_edited`, and updates organization links in one transaction. There is no background metadata refresh path in Phase 4, so confirmed user values cannot be silently overwritten. Phase 2/3 imports start at `row_version = 1`, while their explicit metadata editor increments that version. Migration therefore keeps untouched version-1 titles as `filename/unconfirmed/pending` with empty fields marked `none`, and conservatively preserves version-greater-than-1 fields supported by that editor as `manual/confirmed/user_edited`. The older editor did not support authors, so legacy author links remain `legacy/unconfirmed` and empty author lists remain `none/unconfirmed`. The application rebuilds only the pending page-text/FTS index and never replaces those values.
+
+Production extraction runs in a dedicated one-shot Worker with a 120-second timeout and a V8 heap limit. Output is bounded to 2,000 pages, 200,000 characters per page, and 20,000,000 characters per document. Reaching a limit produces `partial` status and a visible warning rather than silently claiming complete extraction. The existing 1 GB import limit remains unchanged; PDFs larger than 256 MB are still imported as managed copies but skip metadata/text extraction with an explicit warning to bound Worker memory.
+
+Tags and flat collections continue to use the Phase 2 join tables. Phase 4 adds transaction-backed create/delete, assignment, filtering, and bounded batch operations. Batch updates validate every paper and tag before writing, then either update the whole selection or roll back.
+
 ## Import transaction boundary
 
 1. Validate a regular `.pdf` file, size limit, and `%PDF-` header without modifying it.
 2. Copy it to `.tmp` while computing SHA-256, then flush and recheck source size and modification time.
 3. Return the existing paper when the hash is already recorded; no second managed copy is created.
-4. Atomically link the completed temporary file into its content-addressed destination without overwriting an existing file.
-5. Insert `papers` and `paper_files`, then activate the file in one SQLite transaction.
-6. Remove temporary or newly created managed files if a later step fails.
+4. Extract local PDF Metadata and bounded page text from the staged copy in the metadata Worker. Extraction failures produce an explicit warning rather than invented values.
+5. Atomically link the completed temporary file into its content-addressed destination without overwriting an existing file.
+6. Insert `papers`, `paper_files`, provenance, page text, and per-page FTS content, then activate the file in one SQLite transaction.
+7. Remove temporary or newly created managed files if a later step fails.
 
 Removing a paper uses separate `record-only` and `record-and-managed-file` operations. The latter moves the managed file into the library trash before deleting the database record, allowing the move to be reversed if the database operation fails. Neither option can address or delete the original imported PDF.
 

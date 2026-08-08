@@ -27,8 +27,28 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.findPaperByHash(request.payload.sha256);
     case 'createImportedPaper':
       return database.createImportedPaper(request.payload);
+    case 'updatePaperDetails':
+      return database.updatePaperDetails(request.payload);
     case 'updatePaperMetadata':
       return database.updatePaperMetadata(request.payload);
+    case 'updatePaperOrganization':
+      return database.updatePaperOrganization(request.payload);
+    case 'batchUpdatePapers':
+      return database.batchUpdatePapers(request.payload);
+    case 'listOrganization':
+      return database.listOrganization();
+    case 'createTag':
+      return database.createTag(request.payload);
+    case 'deleteTag':
+      return database.deleteTag(request.payload.id);
+    case 'createCollection':
+      return database.createCollection(request.payload);
+    case 'deleteCollection':
+      return database.deleteCollection(request.payload.id);
+    case 'listPendingPaperTextExtractions':
+      return database.listPendingPaperTextExtractions();
+    case 'savePaperTextExtraction':
+      return database.savePaperTextExtraction(request.payload);
     case 'removePaperRecord':
       return database.removePaperRecord(request.payload.id);
     case 'getManagedPaperFile':
