@@ -1,0 +1,14 @@
+node_modules/
+dist/
+release/
+coverage/
+test-results/
+playwright-report/
+.conda/
+agi_car/
+Software/
+.vscode/
+*.ipynb
+*.py
+*.png
+docs/
