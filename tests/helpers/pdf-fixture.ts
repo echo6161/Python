@@ -1,15 +1,25 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-export function createMinimalPdf(label: string): Buffer {
-  const safeLabel = label.replaceAll(/[()\\]/g, '');
+export function createMinimalPdf(label: string | readonly string[]): Buffer {
+  const labels = (typeof label === 'string' ? [label] : label).map((value) =>
+    value.replaceAll(/[()\\]/g, ''),
+  );
+  const kids = labels.map((_, index) => `${String(4 + index * 2)} 0 R`).join(' ');
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
-    `<< /Length ${String(34 + safeLabel.length)} >>\nstream\nBT /F1 12 Tf 30 100 Td (${safeLabel}) Tj ET\nendstream`,
+    `<< /Type /Pages /Kids [${kids}] /Count ${String(labels.length)} >>`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
   ];
+  for (const [index, safeLabel] of labels.entries()) {
+    const pageObject = 4 + index * 2;
+    const streamObject = pageObject + 1;
+    const commands = `BT /F1 12 Tf 30 100 Td (${safeLabel}) Tj ET\n`;
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Resources << /Font << /F1 3 0 R >> >> /Contents ${String(streamObject)} 0 R >>`,
+      `<< /Length ${String(Buffer.byteLength(commands, 'ascii'))} >>\nstream\n${commands}endstream`,
+    );
+  }
   let content = '%PDF-1.4\n';
   const offsets = [0];
   for (const [index, object] of objects.entries()) {
@@ -29,7 +39,7 @@ export function createMinimalPdf(label: string): Buffer {
 export async function writePdfFixture(
   directory: string,
   filename: string,
-  label: string,
+  label: string | readonly string[],
 ): Promise<string> {
   await mkdir(directory, { recursive: true });
   const filePath = path.join(directory, filename);

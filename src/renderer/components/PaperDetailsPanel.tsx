@@ -65,7 +65,10 @@ export function PaperDetailsPanel({ isBusy, paper, onDelete, onSave }: PaperDeta
   };
 
   return (
-    <section aria-labelledby="details-heading" className="flex min-w-0 flex-col bg-zinc-50">
+    <section
+      aria-labelledby="details-heading"
+      className="flex min-h-0 min-w-0 flex-1 flex-col bg-zinc-50"
+    >
       <header className="flex h-14 items-center justify-between border-b border-zinc-200 bg-white px-5">
         <div className="min-w-0">
           <h2 id="details-heading" className="text-sm font-semibold text-zinc-900">

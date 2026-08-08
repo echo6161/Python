@@ -10,6 +10,13 @@ import type {
   PaperListResult,
   PaperMetadataUpdate,
 } from '../../shared/contracts/library';
+import type {
+  Annotation,
+  CreateAnnotationInput,
+  ReadingState,
+  SaveReadingStateInput,
+  UpdateAnnotationInput,
+} from '../../shared/contracts/reader';
 import { LibraryError } from '../library/errors';
 import type {
   CreateImportedPaperResult,
@@ -18,14 +25,17 @@ import type {
 } from '../library/paper-data-gateway';
 import { applyMigrations } from './migrations';
 import { PaperRepository } from './paper-repository';
+import { ReaderRepository } from './reader-repository';
 
 export class LibraryDatabase implements PaperDataGateway {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
+  private readerRepository: ReaderRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
     this.repository = new PaperRepository(this.database);
+    this.readerRepository = new ReaderRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -50,6 +60,35 @@ export class LibraryDatabase implements PaperDataGateway {
 
   public removePaperRecord(id: string): Promise<PaperDetails> {
     return Promise.resolve(this.repository.remove(id));
+  }
+
+  public getManagedPaperFile(paperId: string) {
+    return Promise.resolve(this.readerRepository.getManagedPaperFile(paperId));
+  }
+
+  public listAnnotations(paperId: string): Promise<readonly Annotation[]> {
+    return Promise.resolve(this.readerRepository.listAnnotations(paperId));
+  }
+
+  public createAnnotation(input: CreateAnnotationInput): Promise<Annotation> {
+    return Promise.resolve(this.readerRepository.createAnnotation(input));
+  }
+
+  public updateAnnotation(input: UpdateAnnotationInput): Promise<Annotation> {
+    return Promise.resolve(this.readerRepository.updateAnnotation(input));
+  }
+
+  public deleteAnnotation(id: string, rowVersion: number): Promise<void> {
+    this.readerRepository.deleteAnnotation(id, rowVersion);
+    return Promise.resolve();
+  }
+
+  public getReadingState(paperId: string): Promise<ReadingState | null> {
+    return Promise.resolve(this.readerRepository.getReadingState(paperId));
+  }
+
+  public saveReadingState(input: SaveReadingStateInput): Promise<ReadingState> {
+    return Promise.resolve(this.readerRepository.saveReadingState(input));
   }
 
   public async backupTo(destinationPath: string): Promise<void> {
@@ -89,11 +128,13 @@ export class LibraryDatabase implements PaperDataGateway {
       try {
         this.database = this.openDatabase(this.databasePath);
         this.repository = new PaperRepository(this.database);
+        this.readerRepository = new ReaderRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
         this.database = this.openDatabase(this.databasePath);
         this.repository = new PaperRepository(this.database);
+        this.readerRepository = new ReaderRepository(this.database);
         throw error;
       }
 

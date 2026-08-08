@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type DragEvent } from 'react';
-import { Send, Sparkles } from 'lucide-react';
+import { BookOpen, FilePenLine } from 'lucide-react';
 
 import type {
   ApiResult,
@@ -9,9 +9,17 @@ import type {
   PaperMetadataUpdate,
   PaperRemovalMode,
 } from '../../shared/contracts/library';
+import type {
+  Annotation,
+  AnnotationExportFormat,
+  CreateAnnotationInput,
+  UpdateAnnotationInput,
+} from '../../shared/contracts/reader';
+import { AnnotationSidebar } from './AnnotationSidebar';
 import { DeletePaperDialog } from './DeletePaperDialog';
 import { PaperDetailsPanel } from './PaperDetailsPanel';
 import { PaperListPanel } from './PaperListPanel';
+import { PDFReader } from './PDFReader';
 
 function unwrap<T>(result: ApiResult<T>): T {
   if (!result.ok) {
@@ -30,6 +38,13 @@ export function LibraryWorkspace() {
   const [isBusy, setIsBusy] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [pendingDeletion, setPendingDeletion] = useState<PaperDetails | null>(null);
+  const [annotations, setAnnotations] = useState<readonly Annotation[]>([]);
+  const [workspaceMode, setWorkspaceMode] = useState<'reader' | 'details'>('reader');
+  const [jumpRequest, setJumpRequest] = useState<{ pageNumber: number; nonce: number } | null>(
+    null,
+  );
+
+  const reportError = useCallback((message: string) => setError(message), []);
 
   const loadPapers = useCallback(async (query: string, preferredId?: string) => {
     const result = unwrap(
@@ -58,12 +73,14 @@ export function LibraryWorkspace() {
       return;
     }
     let active = true;
-    void window.paperMind.library
-      .getPaper(selectedId)
-      .then(unwrap)
-      .then((paper) => {
+    void Promise.all([
+      window.paperMind.library.getPaper(selectedId).then(unwrap),
+      window.paperMind.reader.listAnnotations(selectedId).then(unwrap),
+    ])
+      .then(([paper, savedAnnotations]) => {
         if (active) {
           setSelectedPaper(paper);
+          setAnnotations(savedAnnotations);
         }
       })
       .catch((reason: unknown) => {
@@ -168,6 +185,7 @@ export function LibraryWorkspace() {
       );
       setPendingDeletion(null);
       setSelectedPaper(null);
+      setAnnotations([]);
       setNotice(
         mode === 'record-only' ? 'Paper record removed.' : 'Paper and managed copy removed.',
       );
@@ -181,9 +199,77 @@ export function LibraryWorkspace() {
 
   const visiblePaper = selectedPaper?.id === selectedId ? selectedPaper : null;
 
+  const createAnnotation = async (input: CreateAnnotationInput) => {
+    setIsBusy(true);
+    setError(null);
+    try {
+      const annotation = unwrap(await window.paperMind.reader.createAnnotation(input));
+      setAnnotations((current) =>
+        [...current, annotation].sort((a, b) => a.pageNumber - b.pageNumber),
+      );
+      setNotice('Annotation saved.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The annotation could not be saved.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const updateAnnotation = async (input: UpdateAnnotationInput) => {
+    setIsBusy(true);
+    setError(null);
+    try {
+      const updated = unwrap(await window.paperMind.reader.updateAnnotation(input));
+      setAnnotations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setNotice('Annotation updated.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The annotation could not be updated.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const deleteAnnotation = async (annotation: Annotation) => {
+    setIsBusy(true);
+    setError(null);
+    try {
+      unwrap(
+        await window.paperMind.reader.deleteAnnotation({
+          id: annotation.id,
+          rowVersion: annotation.rowVersion,
+        }),
+      );
+      setAnnotations((current) => current.filter(({ id }) => id !== annotation.id));
+      setNotice('Annotation deleted.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The annotation could not be deleted.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const exportAnnotations = async (format: AnnotationExportFormat) => {
+    if (!visiblePaper) return;
+    setIsBusy(true);
+    setError(null);
+    try {
+      const result = unwrap(
+        await window.paperMind.reader.exportAnnotations({ paperId: visiblePaper.id, format }),
+      );
+      if (!result.cancelled)
+        setNotice(
+          `${String(result.annotationCount)} annotations exported to ${result.filename ?? format}.`,
+        );
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Annotations could not be exported.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   return (
     <section
-      className="relative grid min-w-0 flex-1 grid-cols-[minmax(250px,310px)_minmax(440px,1fr)_minmax(280px,320px)] bg-white"
+      className="relative grid h-full min-h-0 min-w-0 flex-1 grid-cols-[minmax(250px,310px)_minmax(440px,1fr)_minmax(280px,320px)] grid-rows-[minmax(0,1fr)] overflow-hidden bg-white"
       data-testid="library-drop-zone"
       onDragEnter={(event) => {
         event.preventDefault();
@@ -208,51 +294,61 @@ export function LibraryWorkspace() {
         onSelect={setSelectedId}
       />
 
-      <PaperDetailsPanel
-        key={visiblePaper ? `${visiblePaper.id}:${String(visiblePaper.rowVersion)}` : 'empty'}
-        isBusy={isBusy}
-        paper={visiblePaper}
-        onDelete={() => visiblePaper && setPendingDeletion(visiblePaper)}
-        onSave={(input) => void saveMetadata(input)}
-      />
-
-      <aside
-        aria-labelledby="assistant-heading"
-        className="flex min-w-0 flex-col border-l border-zinc-200 bg-white"
-      >
-        <header className="flex h-14 items-center justify-between border-b border-zinc-200 px-5">
-          <div className="flex items-center gap-2">
-            <Sparkles aria-hidden="true" className="size-4 text-emerald-700" />
-            <h2 id="assistant-heading" className="text-sm font-semibold text-zinc-900">
-              Assistant
-            </h2>
-          </div>
-          <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
-            Offline
-          </span>
-        </header>
-        <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center">
-          <p className="text-sm text-zinc-500">
-            {visiblePaper ? 'Assistant unavailable' : 'No active paper'}
-          </p>
-        </div>
-        <div className="border-t border-zinc-200 p-4">
-          <div className="flex min-h-11 items-end gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-2">
-            <span className="min-w-0 flex-1 px-1 py-1 text-sm text-zinc-400">
-              Ask about this paper
-            </span>
+      <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-zinc-100">
+        <div className="flex h-10 shrink-0 items-center justify-center border-b border-zinc-200 bg-white">
+          <div className="flex rounded border border-zinc-200 p-0.5">
             <button
-              aria-label="Send message"
-              className="flex size-8 shrink-0 items-center justify-center rounded-md bg-zinc-200 text-zinc-400"
-              disabled
-              title="Send message"
+              className={`flex h-7 items-center gap-1.5 rounded-sm px-3 text-xs font-medium ${workspaceMode === 'reader' ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-50'}`}
               type="button"
+              onClick={() => setWorkspaceMode('reader')}
             >
-              <Send aria-hidden="true" className="size-4" />
+              <BookOpen aria-hidden="true" className="size-3.5" />
+              Reader
+            </button>
+            <button
+              className={`flex h-7 items-center gap-1.5 rounded-sm px-3 text-xs font-medium ${workspaceMode === 'details' ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-50'}`}
+              type="button"
+              onClick={() => setWorkspaceMode('details')}
+            >
+              <FilePenLine aria-hidden="true" className="size-3.5" />
+              Details
             </button>
           </div>
         </div>
-      </aside>
+        <div className="flex min-h-0 flex-1 flex-col">
+          {workspaceMode === 'reader' ? (
+            <PDFReader
+              paper={visiblePaper}
+              annotations={annotations}
+              jumpRequest={jumpRequest}
+              onCreateAnnotation={createAnnotation}
+              onError={reportError}
+            />
+          ) : (
+            <PaperDetailsPanel
+              key={visiblePaper ? `${visiblePaper.id}:${String(visiblePaper.rowVersion)}` : 'empty'}
+              isBusy={isBusy}
+              paper={visiblePaper}
+              onDelete={() => visiblePaper && setPendingDeletion(visiblePaper)}
+              onSave={(input) => void saveMetadata(input)}
+            />
+          )}
+        </div>
+      </div>
+
+      <AnnotationSidebar
+        key={visiblePaper?.id ?? 'no-paper'}
+        paperTitle={visiblePaper?.title ?? null}
+        annotations={annotations}
+        isBusy={isBusy}
+        onDelete={deleteAnnotation}
+        onExport={exportAnnotations}
+        onJump={(pageNumber) => {
+          setWorkspaceMode('reader');
+          setJumpRequest({ pageNumber, nonce: Date.now() });
+        }}
+        onUpdate={updateAnnotation}
+      />
 
       {isDragging ? (
         <div className="pointer-events-none absolute inset-3 z-20 flex items-center justify-center border-2 border-dashed border-emerald-600 bg-white/95 text-sm font-semibold text-emerald-800">

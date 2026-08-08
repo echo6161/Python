@@ -1,6 +1,6 @@
 # PaperMind
 
-PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 2 provides a local SQLite paper library, managed PDF copies, duplicate detection, metadata editing, and explicit removal controls. PDF rendering, AI, Obsidian, and Git synchronization are not implemented yet.
+PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 3 provides a local SQLite paper library, managed PDF copies, a virtualized PDF.js reader, full-document search, persistent highlights and underlines, comments, reading progress, and Markdown/JSON annotation export. AI, Obsidian, and Git synchronization are not implemented yet.
 
 ## Prerequisites
 
@@ -64,9 +64,9 @@ Production Windows and macOS releases require code-signing credentials supplied 
 
 ## Process Boundaries
 
-- **Main** (`src/main`): Electron lifecycle, window creation, navigation policy, permissions, and the IPC handler whitelist.
+- **Main** (`src/main`): Electron lifecycle, controlled PDF protocol, exports, navigation policy, permissions, and the IPC handler whitelist.
 - **Database Worker** (`src/main/database`): owns the only SQLite connection, migrations, and repositories.
-- **Preload** (`src/preload`): exposes fixed application and paper-library methods through `contextBridge`.
+- **Preload** (`src/preload`): exposes fixed library and reader methods through `contextBridge`.
 - **Renderer** (`src/renderer`): React UI without Node.js, file-system, child-process, database, or provider access.
 - **Shared** (`src/shared`): serializable contracts and the logging interface used across process boundaries.
 
@@ -78,7 +78,7 @@ The BrowserWindow baseline is `contextIsolation: true`, `nodeIntegration: false`
 src/
   main/       Electron Main process and security policy
   preload/    Minimal contextBridge API
-  renderer/   React application shell
+  renderer/   React application, virtualized PDF reader, search, and annotations
   shared/     Cross-process contracts and logging types
 tests/
   unit/       Vitest component and security tests
@@ -90,4 +90,4 @@ docs/         Product, architecture, data, security, and roadmap documents
 
 The default library is created automatically in the operating system Documents directory under `PaperMind Library`. It contains `library.sqlite3`, content-addressed managed PDF copies, backups, trash, and a non-secret library manifest. Import always copies a PDF; PaperMind never modifies or deletes the source file.
 
-For the implemented schema and rollback behavior, see `docs/database-schema.md`.
+PDF bytes are streamed from managed copies through a session-authorized `papermind-pdf://` URL with Range support. Renderer never receives a file path and never writes to a PDF. For the implemented schema and rollback behavior, see `docs/database-schema.md`.

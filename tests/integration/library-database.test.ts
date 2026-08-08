@@ -9,6 +9,7 @@ import BetterSqlite3 from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { LibraryDatabase } from '../../src/main/database/library-database';
+import { initialMigration } from '../../src/main/database/migrations/0001-initial';
 import { PaperFileStorage } from '../../src/main/library/file-storage';
 import { initializeLibraryPaths } from '../../src/main/library/library-paths';
 import type { PaperDataGateway } from '../../src/main/library/paper-data-gateway';
@@ -140,11 +141,11 @@ describe('local paper library integration', () => {
 
   it('applies migrations repeatedly and creates every Phase 2 entity table', async () => {
     const harness = await createHarness();
-    expect(await harness.database.getMigrationVersions()).toEqual([1]);
+    expect(await harness.database.getMigrationVersions()).toEqual([1, 2]);
     await harness.database.close();
 
     const reopened = new LibraryDatabase(harness.paths.database);
-    expect(await reopened.getMigrationVersions()).toEqual([1]);
+    expect(await reopened.getMigrationVersions()).toEqual([1, 2]);
     await reopened.close();
 
     const database = new BetterSqlite3(harness.paths.database, { readonly: true });
@@ -165,12 +166,90 @@ describe('local paper library integration', () => {
         'tags',
         'paper_tags',
         'annotations',
+        'reading_states',
         'notes',
         'settings',
         'ai_conversations',
         'ai_messages',
       ]),
     );
+  });
+
+  it('upgrades an existing Phase 2 database without rewriting migration 0001', async () => {
+    const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'papermind-migration-test-'));
+    temporaryRoots.push(temporaryRoot);
+    const databasePath = path.join(temporaryRoot, 'phase-2.sqlite3');
+    const phaseTwoDatabase = new BetterSqlite3(databasePath);
+    phaseTwoDatabase.exec(`
+      CREATE TABLE schema_migrations (
+        version INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        applied_at TEXT NOT NULL,
+        checksum TEXT NOT NULL
+      ) STRICT;
+      ${initialMigration.sql}
+    `);
+    phaseTwoDatabase
+      .prepare(
+        'INSERT INTO schema_migrations (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)',
+      )
+      .run(
+        initialMigration.version,
+        initialMigration.name,
+        new Date().toISOString(),
+        createHash('sha256').update(initialMigration.sql, 'utf8').digest('hex'),
+      );
+    phaseTwoDatabase.close();
+
+    const upgraded = new LibraryDatabase(databasePath);
+    expect(await upgraded.getMigrationVersions()).toEqual([1, 2]);
+    await upgraded.close();
+  });
+
+  it('persists reading state and annotation CRUD across database restarts', async () => {
+    const harness = await createHarness();
+    const source = await writePdfFixture(harness.sourceDirectory, 'annotated.pdf', 'Selected text');
+    const imported = await harness.service.importPdfPaths([source]);
+    const paper = imported.items[0]?.paper;
+    expect(paper).not.toBeNull();
+    if (!paper) return;
+
+    const created = await harness.database.createAnnotation({
+      paperId: paper.id,
+      pageNumber: 1,
+      selectedText: 'Selected text',
+      textQuotePrefix: 'Before ',
+      textQuoteSuffix: ' after',
+      textStart: 7,
+      textEnd: 20,
+      boundingRects: [{ x: 0.1, y: 0.2, width: 0.3, height: 0.04 }],
+      annotationType: 'highlight',
+      color: 'yellow',
+      comment: 'Important result',
+    });
+    await harness.database.saveReadingState({ paperId: paper.id, pageNumber: 1, scale: 1.35 });
+    const updated = await harness.database.updateAnnotation({
+      id: created.id,
+      rowVersion: created.rowVersion,
+      annotationType: 'underline',
+      color: 'blue',
+      comment: 'Revised comment',
+    });
+    expect(updated.rowVersion).toBe(2);
+    await harness.database.close();
+
+    const reopened = new LibraryDatabase(harness.paths.database);
+    expect(await reopened.getReadingState(paper.id)).toMatchObject({ pageNumber: 1, scale: 1.35 });
+    expect(await reopened.listAnnotations(paper.id)).toEqual([
+      expect.objectContaining({
+        id: created.id,
+        annotationType: 'underline',
+        comment: 'Revised comment',
+      }),
+    ]);
+    await reopened.deleteAnnotation(updated.id, updated.rowVersion);
+    expect(await reopened.listAnnotations(paper.id)).toEqual([]);
+    await reopened.close();
   });
 
   it('removes staged and managed files when an import transaction fails', async () => {
@@ -184,6 +263,13 @@ describe('local paper library integration', () => {
       createImportedPaper: () => Promise.reject(new Error('simulated database failure')),
       updatePaperMetadata: (input) => harness.database.updatePaperMetadata(input),
       removePaperRecord: (id) => harness.database.removePaperRecord(id),
+      getManagedPaperFile: (paperId) => harness.database.getManagedPaperFile(paperId),
+      listAnnotations: (paperId) => harness.database.listAnnotations(paperId),
+      createAnnotation: (input) => harness.database.createAnnotation(input),
+      updateAnnotation: (input) => harness.database.updateAnnotation(input),
+      deleteAnnotation: (id, rowVersion) => harness.database.deleteAnnotation(id, rowVersion),
+      getReadingState: (paperId) => harness.database.getReadingState(paperId),
+      saveReadingState: (input) => harness.database.saveReadingState(input),
       backupTo: (destinationPath) => harness.database.backupTo(destinationPath),
       restoreFrom: (sourcePath) => harness.database.restoreFrom(sourcePath),
       getMigrationVersions: () => harness.database.getMigrationVersions(),

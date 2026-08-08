@@ -3,9 +3,13 @@ import { createHash } from 'node:crypto';
 import type Database from 'better-sqlite3';
 
 import { initialMigration } from './0001-initial';
+import { readerAnnotationsMigration } from './0002-reader-annotations';
 import type { DatabaseMigration } from './types';
 
-export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [initialMigration];
+export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
+  initialMigration,
+  readerAnnotationsMigration,
+];
 
 interface AppliedMigration {
   readonly version: number;

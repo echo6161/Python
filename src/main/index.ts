@@ -1,14 +1,17 @@
 import path from 'node:path';
 
-import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron';
 
 import { IPC_CHANNELS, type AppInfo, type DesktopPlatform } from '../shared/contracts/app';
 import { createConsoleLogger } from '../shared/logging';
 import { DatabaseWorkerClient } from './database/database-worker-client';
 import { registerLibraryIpcHandlers } from './ipc/library-ipc';
+import { registerReaderIpcHandlers } from './ipc/reader-ipc';
 import { PaperFileStorage } from './library/file-storage';
 import { getDefaultLibraryRoot, initializeLibraryPaths } from './library/library-paths';
 import { PaperLibraryService } from './library/paper-library-service';
+import { PaperReaderService } from './reader/paper-reader-service';
+import { registerPdfProtocol } from './reader/pdf-protocol';
 import { configureSessionSecurity, restrictWindowNavigation } from './security';
 import { createWindowOptions } from './window-options';
 
@@ -16,6 +19,23 @@ const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
 let databaseClient: DatabaseWorkerClient | null = null;
 let shutdownPromise: Promise<void> | null = null;
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'papermind-pdf',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+]);
+
+if (process.env.NODE_ENV === 'test' && process.env.PAPERMIND_USER_DATA_ROOT) {
+  app.setPath('userData', path.resolve(process.env.PAPERMIND_USER_DATA_ROOT));
+}
 
 function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.appGetInfo, (): AppInfo => ({
@@ -31,12 +51,12 @@ async function initializeLibrary(): Promise<void> {
   const libraryPaths = await initializeLibraryPaths(libraryRoot);
   const workerPath = path.join(__dirname, 'database/worker.js');
   databaseClient = new DatabaseWorkerClient(workerPath, libraryPaths.database);
-  const library = new PaperLibraryService(
-    databaseClient,
-    new PaperFileStorage(libraryPaths),
-    libraryPaths,
-  );
+  const storage = new PaperFileStorage(libraryPaths);
+  const library = new PaperLibraryService(databaseClient, storage, libraryPaths);
+  const reader = new PaperReaderService(databaseClient, storage);
   registerLibraryIpcHandlers(library, () => mainWindow);
+  registerReaderIpcHandlers(reader, () => mainWindow);
+  registerPdfProtocol(session.defaultSession, reader);
 }
 
 function getDesktopPlatform(): DesktopPlatform {

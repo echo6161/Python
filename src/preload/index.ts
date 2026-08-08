@@ -12,6 +12,18 @@ import type {
   PaperRemovalRequest,
   PaperRemovalResult,
 } from '../shared/contracts/library';
+import type {
+  Annotation,
+  AnnotationExportRequest,
+  AnnotationExportResult,
+  CreateAnnotationInput,
+  DeleteAnnotationInput,
+  PdfAccess,
+  ReaderIpcChannels,
+  ReadingState,
+  SaveReadingStateInput,
+  UpdateAnnotationInput,
+} from '../shared/contracts/reader';
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
@@ -23,6 +35,16 @@ const LIBRARY_CHANNELS = {
   updatePaperMetadata: 'papers:update-metadata',
   removePaper: 'papers:remove',
 } satisfies LibraryIpcChannels;
+const READER_CHANNELS = {
+  getPdfAccess: 'papers:get-pdf-access',
+  getReadingState: 'reader:get-state',
+  saveReadingState: 'reader:save-state',
+  listAnnotations: 'annotations:list',
+  createAnnotation: 'annotations:create',
+  updateAnnotation: 'annotations:update',
+  deleteAnnotation: 'annotations:delete',
+  exportAnnotations: 'annotations:export',
+} satisfies ReaderIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
   app: Object.freeze({
@@ -50,6 +72,34 @@ const api: PaperMindApi = Object.freeze({
     removePaper: (input: PaperRemovalRequest) =>
       ipcRenderer.invoke(LIBRARY_CHANNELS.removePaper, input) as Promise<
         ApiResult<PaperRemovalResult>
+      >,
+  }),
+  reader: Object.freeze({
+    getPdfAccess: (paperId: string) =>
+      ipcRenderer.invoke(READER_CHANNELS.getPdfAccess, paperId) as Promise<ApiResult<PdfAccess>>,
+    getReadingState: (paperId: string) =>
+      ipcRenderer.invoke(READER_CHANNELS.getReadingState, paperId) as Promise<
+        ApiResult<ReadingState | null>
+      >,
+    saveReadingState: (input: SaveReadingStateInput) =>
+      ipcRenderer.invoke(READER_CHANNELS.saveReadingState, input) as Promise<
+        ApiResult<ReadingState>
+      >,
+    listAnnotations: (paperId: string) =>
+      ipcRenderer.invoke(READER_CHANNELS.listAnnotations, paperId) as Promise<
+        ApiResult<readonly Annotation[]>
+      >,
+    createAnnotation: (input: CreateAnnotationInput) =>
+      ipcRenderer.invoke(READER_CHANNELS.createAnnotation, input) as Promise<ApiResult<Annotation>>,
+    updateAnnotation: (input: UpdateAnnotationInput) =>
+      ipcRenderer.invoke(READER_CHANNELS.updateAnnotation, input) as Promise<ApiResult<Annotation>>,
+    deleteAnnotation: (input: DeleteAnnotationInput) =>
+      ipcRenderer.invoke(READER_CHANNELS.deleteAnnotation, input) as Promise<
+        ApiResult<{ readonly id: string }>
+      >,
+    exportAnnotations: (input: AnnotationExportRequest) =>
+      ipcRenderer.invoke(READER_CHANNELS.exportAnnotations, input) as Promise<
+        ApiResult<AnnotationExportResult>
       >,
   }),
 });

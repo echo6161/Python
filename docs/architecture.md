@@ -125,7 +125,7 @@ allowRunningInsecureContent = false
 | `papers:get` | R → M | 获取论文详情 | 仅接受 UUID |
 | `papers:update-metadata` | R → M | 修改允许的元数据字段 | 字段白名单、长度限制、乐观并发 |
 | `papers:remove` | R → M | 从库移除/进入回收 | 需要显式确认令牌，不直接任意删除路径 |
-| `papers:get-pdf-url` | R → M | 获取当前会话的协议 URL | 按 paper ID 授权，短期会话令牌 |
+| `papers:get-pdf-access` | R → M | 获取当前会话的协议 URL | 按 paper ID 授权，短期会话令牌；不返回文件路径 |
 | `reader:get-state` | R → M | 获取阅读进度 | 仅 paper ID |
 | `reader:save-state` | R → M | 保存页码、缩放和模式 | 节流、值域校验 |
 | `search:paper` | R → M | 当前论文全文搜索 | 查询和返回条数有上限 |
@@ -133,6 +133,7 @@ allowRunningInsecureContent = false
 | `annotations:create` | R → M | 创建高亮/批注 | 锚点 schema、文本和矩形上限 |
 | `annotations:update` | R → M | 修改颜色/正文/锚点 | 所有权、版本和字段校验 |
 | `annotations:delete` | R → M | 软删除批注 | 仅 annotation ID |
+| `annotations:export` | R → M | 导出 Markdown/JSON | 用户选择目标；Main 原子写入；不返回绝对路径 |
 | `notes:list` | R → M | 获取论文笔记 | 仅 paper ID |
 | `notes:save` | R → M | 保存用户编辑后的 Markdown | 大小限制、乐观并发 |
 | `ai:get-capabilities` | R → M | 获取已配置 Provider/模型能力 | 不返回 Key 或密文 |

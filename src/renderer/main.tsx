@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import 'pdfjs-dist/web/pdf_viewer.css';
 import './styles.css';
 
 const rootElement = document.getElementById('root');

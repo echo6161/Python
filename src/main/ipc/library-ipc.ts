@@ -113,7 +113,7 @@ export function registerLibraryIpcHandlers(
   );
 }
 
-function ensureTrustedSender(event: IpcMainInvokeEvent): void {
+export function ensureTrustedSender(event: IpcMainInvokeEvent): void {
   if (!event.senderFrame || event.senderFrame !== event.sender.mainFrame) {
     throw new LibraryError(
       'PERMISSION_DENIED',
@@ -122,7 +122,7 @@ function ensureTrustedSender(event: IpcMainInvokeEvent): void {
   }
 }
 
-async function invokeValidated<T>(
+export async function invokeValidated<T>(
   event: IpcMainInvokeEvent,
   outputSchema: ZodType<T>,
   operation: () => Promise<T>,

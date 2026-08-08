@@ -7,10 +7,18 @@ import type {
   PaperListResult,
   PaperMetadataUpdate,
 } from '../../shared/contracts/library';
+import type {
+  Annotation,
+  CreateAnnotationInput,
+  ReadingState,
+  SaveReadingStateInput,
+  UpdateAnnotationInput,
+} from '../../shared/contracts/reader';
 import { LibraryError } from '../library/errors';
 import type {
   CreateImportedPaperResult,
   ImportedPaperRecord,
+  ManagedPaperFileRecord,
   PaperDataGateway,
 } from '../library/paper-data-gateway';
 import type {
@@ -82,6 +90,34 @@ export class DatabaseWorkerClient implements PaperDataGateway {
 
   public removePaperRecord(id: string): Promise<PaperDetails> {
     return this.call('removePaperRecord', { id });
+  }
+
+  public getManagedPaperFile(paperId: string): Promise<ManagedPaperFileRecord | null> {
+    return this.call('getManagedPaperFile', { paperId });
+  }
+
+  public listAnnotations(paperId: string): Promise<readonly Annotation[]> {
+    return this.call('listAnnotations', { paperId });
+  }
+
+  public createAnnotation(input: CreateAnnotationInput): Promise<Annotation> {
+    return this.call('createAnnotation', input);
+  }
+
+  public updateAnnotation(input: UpdateAnnotationInput): Promise<Annotation> {
+    return this.call('updateAnnotation', input);
+  }
+
+  public async deleteAnnotation(id: string, rowVersion: number): Promise<void> {
+    await this.call('deleteAnnotation', { id, rowVersion });
+  }
+
+  public getReadingState(paperId: string): Promise<ReadingState | null> {
+    return this.call('getReadingState', { paperId });
+  }
+
+  public saveReadingState(input: SaveReadingStateInput): Promise<ReadingState> {
+    return this.call('saveReadingState', input);
   }
 
   public async backupTo(destinationPath: string): Promise<void> {

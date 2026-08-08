@@ -1,6 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('pdfjs-dist', () => ({
+  GlobalWorkerOptions: {},
+  getDocument: vi.fn(),
+  TextLayer: vi.fn(),
+}));
+vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({ default: 'pdf.worker.mjs' }));
+
 import { App } from '../../src/renderer/App';
 import type { PaperDetails } from '../../src/shared/contracts/library';
 
@@ -66,6 +73,16 @@ describe('App', () => {
           updatePaperMetadata: vi.fn(),
           removePaper: vi.fn(),
         },
+        reader: {
+          getPdfAccess: vi.fn(),
+          getReadingState: vi.fn().mockResolvedValue({ ok: true, value: null }),
+          saveReadingState: vi.fn(),
+          listAnnotations: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+          createAnnotation: vi.fn(),
+          updateAnnotation: vi.fn(),
+          deleteAnnotation: vi.fn(),
+          exportAnnotations: vi.fn(),
+        },
       },
     });
   });
@@ -75,8 +92,8 @@ describe('App', () => {
 
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'All papers' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Paper details' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Assistant' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'PDF reader' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Annotations' })).toBeDefined();
     expect(await screen.findByText('v0.1.0-test')).toBeDefined();
   });
 
@@ -99,6 +116,8 @@ describe('App', () => {
     getPaperMock.mockResolvedValue({ ok: true, value: paperDetails });
     render(<App />);
 
+    await screen.findByText('Confirmable paper', { selector: 'h2' });
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
     await screen.findByDisplayValue('Confirmable paper');
     fireEvent.click(screen.getByRole('button', { name: 'Remove paper' }));
 

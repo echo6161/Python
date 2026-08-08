@@ -6,7 +6,7 @@ const PRODUCTION_CSP = [
   "style-src 'self'",
   "img-src 'self' data:",
   "font-src 'self'",
-  "connect-src 'self'",
+  "connect-src 'self' papermind-pdf:",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'none'",

@@ -1,4 +1,5 @@
 import type { LibraryApi } from './library';
+import type { ReaderApi } from './reader';
 
 export const IPC_CHANNELS = Object.freeze({
   appGetInfo: 'app:get-info',
@@ -18,4 +19,5 @@ export interface PaperMindApi {
     getInfo(): Promise<AppInfo>;
   };
   readonly library: LibraryApi;
+  readonly reader: ReaderApi;
 }

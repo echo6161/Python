@@ -31,6 +31,20 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.updatePaperMetadata(request.payload);
     case 'removePaperRecord':
       return database.removePaperRecord(request.payload.id);
+    case 'getManagedPaperFile':
+      return database.getManagedPaperFile(request.payload.paperId);
+    case 'listAnnotations':
+      return database.listAnnotations(request.payload.paperId);
+    case 'createAnnotation':
+      return database.createAnnotation(request.payload);
+    case 'updateAnnotation':
+      return database.updateAnnotation(request.payload);
+    case 'deleteAnnotation':
+      return database.deleteAnnotation(request.payload.id, request.payload.rowVersion);
+    case 'getReadingState':
+      return database.getReadingState(request.payload.paperId);
+    case 'saveReadingState':
+      return database.saveReadingState(request.payload);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

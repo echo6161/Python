@@ -1,4 +1,4 @@
-# PaperMind Phase 2 Database Schema
+# PaperMind Phase 3 Database Schema
 
 ## Runtime location
 
@@ -50,6 +50,17 @@ Migration `0001-initial` creates:
 | AiMessage | `ai_messages` | Conversation messages and usage metadata; no raw provider response |
 
 Supporting triggers ensure a paper's active file belongs to that same paper. Foreign-key cascades remove dependent join rows, annotations, notes, and AI records when a paper record is explicitly removed.
+
+## Reader migration
+
+Migration `0002-reader-annotations-and-state` evolves the Phase 2 annotation skeleton and adds:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Annotation | `annotations` | Highlight/underline type, fixed color set, optional comment, exact/prefix/suffix quote anchor, 1-based page, character span JSON, normalized rectangle JSON, soft deletion, optimistic `row_version` |
+| Reading state | `reading_states` | One row per paper with 1-based current page, numeric scale, and update timestamp |
+
+An annotation is bound to both `paper_id` and the immutable active `paper_file_id`. Triggers reject a file that does not belong to the same paper. Geometry is never the only anchor: `exact_text`, prefix/suffix context, and page character offsets remain available for validation and future re-anchoring. JSON validity and numeric/page constraints are enforced by SQLite, while IPC schemas impose tighter payload and rectangle limits.
 
 ## Import transaction boundary
 

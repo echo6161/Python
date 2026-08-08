@@ -38,6 +38,69 @@ button:not(:disabled) {
   cursor: pointer;
 }
 
+.icon-button {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  color: #52525b;
+}
+
+.icon-button:not(:disabled):hover {
+  border-color: #e4e4e7;
+  background: #f4f4f5;
+  color: #18181b;
+}
+
+.icon-button:disabled {
+  color: #d4d4d8;
+}
+
+.command-button {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.375rem;
+  border: 0;
+  border-radius: 0.25rem;
+  padding: 0 0.625rem;
+  background: #18181b;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.command-button:not(:disabled):hover {
+  background: #27272a;
+}
+
+.command-button:disabled {
+  opacity: 0.5;
+}
+
+.text-button {
+  min-height: 2rem;
+  border: 0;
+  background: transparent;
+  padding: 0 0.5rem;
+  color: #52525b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.textLayer {
+  z-index: 2;
+}
+
+.textLayer span::selection {
+  color: transparent;
+  background: rgba(16, 185, 129, 0.32);
+}
+
 ::selection {
   color: #052e25;
   background: #a7f3d0;
