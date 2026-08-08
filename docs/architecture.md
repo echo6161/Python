@@ -119,6 +119,7 @@ allowRunningInsecureContent = false
 | --- | --- | --- | --- |
 | `app:get-info` | R → M | 获取版本、平台和能力状态 | 不返回环境变量或绝对敏感路径 |
 | `dialog:choose-pdfs` | R → M | 选择并导入 PDF | 只能由用户手势触发；扩展名和签名校验 |
+| `papers:import-dropped` | R → M | 导入拖入窗口的 PDF | Preload 用 `webUtils.getPathForFile` 解析；Renderer 不获得路径 |
 | `dialog:choose-library` | R → M | 选择论文库根目录 | 规范化路径并阻止危险系统目录 |
 | `papers:list` | R → M | 分页、过滤论文 | 查询长度和页大小有上限 |
 | `papers:get` | R → M | 获取论文详情 | 仅接受 UUID |
@@ -358,7 +359,7 @@ MVP 实际边界是“用系统 Git 把 PaperMind 导出文件推送到用户已
 
 - Vite 分别构建 main、preload 和 renderer；生产环境生成 source map 时不得公开发布含敏感路径的 map。
 - `electron-builder` 生成 Windows NSIS、macOS DMG/ZIP 和 Linux AppImage；是否增加 deb 由用户分布确认。
-- `better-sqlite3` 针对 Electron ABI 重建，CI 对实际安装包而非仅开发模式做启动和迁移测试。
+- `better-sqlite3` 使用锁定版本随包提供的 Node-API 平台二进制；CI 必须在实际 Electron 和安装包中加载驱动并执行迁移，不能只用系统 Node 验证。
 - 打包校验 ASAR 内容、CSP、原生模块解包清单、license 和产物 SHA-256。
 
 ### 14.2 发布

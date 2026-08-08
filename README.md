@@ -1,6 +1,6 @@
 # PaperMind
 
-PaperMind is a local-first desktop workspace for reading and managing research papers. The current repository contains the Phase 1 Electron application shell only; PDF, database, AI, Obsidian, and Git synchronization features are intentionally not implemented yet.
+PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 2 provides a local SQLite paper library, managed PDF copies, duplicate detection, metadata editing, and explicit removal controls. PDF rendering, AI, Obsidian, and Git synchronization are not implemented yet.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ PaperMind is a local-first desktop workspace for reading and managing research p
 npm install
 ```
 
-No API key is required for Phase 1. `.env.example` contains only a non-secret logging preference. Never commit `.env` files or credentials.
+The locked SQLite package includes platform-specific Node-API binaries and is validated in the real Electron runtime. No API key is required. `.env.example` contains only a non-secret logging preference. Never commit `.env` files or credentials.
 
 ## Development
 
@@ -65,7 +65,8 @@ Production Windows and macOS releases require code-signing credentials supplied 
 ## Process Boundaries
 
 - **Main** (`src/main`): Electron lifecycle, window creation, navigation policy, permissions, and the IPC handler whitelist.
-- **Preload** (`src/preload`): exposes only `window.paperMind.app.getInfo()` through `contextBridge`.
+- **Database Worker** (`src/main/database`): owns the only SQLite connection, migrations, and repositories.
+- **Preload** (`src/preload`): exposes fixed application and paper-library methods through `contextBridge`.
 - **Renderer** (`src/renderer`): React UI without Node.js, file-system, child-process, database, or provider access.
 - **Shared** (`src/shared`): serializable contracts and the logging interface used across process boundaries.
 
@@ -87,4 +88,6 @@ docs/         Product, architecture, data, security, and roadmap documents
 
 ## Local Data
 
-Phase 1 does not create a database or managed paper files. The future default library location is the operating system Documents directory under `PaperMind Library`, as defined in the Phase 0 architecture documents.
+The default library is created automatically in the operating system Documents directory under `PaperMind Library`. It contains `library.sqlite3`, content-addressed managed PDF copies, backups, trash, and a non-secret library manifest. Import always copies a PDF; PaperMind never modifies or deletes the source file.
+
+For the implemented schema and rollback behavior, see `docs/database-schema.md`.
