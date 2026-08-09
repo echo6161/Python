@@ -36,6 +36,7 @@ function installAiApi(overrides: Partial<AiApi> = {}) {
       value: { configured: false, persistence: 'secure', backend: 'dpapi' },
     }),
     getConversation: vi.fn(),
+    openChatGptBridge: vi.fn(),
     startTask: vi.fn(),
     cancelTask: vi.fn(),
     onStreamEvent: vi.fn(() => vi.fn()),

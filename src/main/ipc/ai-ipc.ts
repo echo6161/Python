@@ -1,9 +1,17 @@
-import { dialog, ipcMain, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
+import {
+  clipboard,
+  dialog,
+  ipcMain,
+  shell,
+  type BrowserWindow,
+  type IpcMainInvokeEvent,
+} from 'electron';
 import { z } from 'zod';
 
 import {
   AI_IPC_CHANNELS,
   type AiCapabilities,
+  type AiChatGptBridgeResult,
   type AiConversation,
   type AiCredentialState,
   type AiTaskInput,
@@ -12,9 +20,12 @@ import {
 import type { ApiResult } from '../../shared/contracts/library';
 import type { AiAssistantService } from '../ai/ai-assistant-service';
 import { isOfficialOpenAiBaseUrl, normalizeAiBaseUrl } from '../ai/base-url-policy';
+import { buildChatGptBridgePrompt, CHATGPT_BRIDGE_URL } from '../ai/prompts';
 import { LibraryError } from '../library/errors';
 import {
   aiApiKeySchema,
+  aiChatGptBridgeInputSchema,
+  aiChatGptBridgeResultSchema,
   aiCapabilitiesSchema,
   aiConversationSchema,
   aiCredentialStateSchema,
@@ -92,6 +103,29 @@ export function registerAiIpcHandlers(
       invokeValidated(event, aiConversationSchema.nullable(), () => {
         ensureMainWindowSender(event, getMainWindow);
         return assistant.getConversation(paperIdSchema.parse(input));
+      }),
+  );
+
+  ipcMain.handle(
+    AI_IPC_CHANNELS.openChatGptBridge,
+    (event, input: unknown): Promise<ApiResult<AiChatGptBridgeResult>> =>
+      invokeValidated(event, aiChatGptBridgeResultSchema, async () => {
+        ensureMainWindowSender(event, getMainWindow);
+        const task = aiChatGptBridgeInputSchema.parse(input);
+        const prompt = buildChatGptBridgePrompt(task);
+        clipboard.writeText(prompt);
+        let opened = true;
+        try {
+          await shell.openExternal(CHATGPT_BRIDGE_URL);
+        } catch {
+          opened = false;
+        }
+        return {
+          copied: true,
+          destinationUrl: CHATGPT_BRIDGE_URL,
+          opened,
+          promptCharacterCount: prompt.length,
+        };
       }),
   );
 

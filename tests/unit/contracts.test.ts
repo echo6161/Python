@@ -45,6 +45,7 @@ describe('IPC contract', () => {
       setApiKey: 'secrets:set-provider-key',
       deleteApiKey: 'secrets:delete-provider-key',
       getConversation: 'ai:get-conversation',
+      openChatGptBridge: 'ai:open-chatgpt-bridge',
       startTask: 'ai:start-task',
       cancelTask: 'ai:cancel-task',
       streamEvent: 'events:ai-stream',

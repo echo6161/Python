@@ -152,6 +152,7 @@ describe('App', () => {
           setApiKey: vi.fn(),
           deleteApiKey: vi.fn(),
           getConversation: vi.fn().mockResolvedValue({ ok: true, value: null }),
+          openChatGptBridge: vi.fn(),
           startTask: vi.fn(),
           cancelTask: vi.fn(),
           onStreamEvent: vi.fn().mockReturnValue(() => undefined),

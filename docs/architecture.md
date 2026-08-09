@@ -146,6 +146,7 @@ allowRunningInsecureContent = false
 | `ai:start-task` | R → M | 翻译、解释、问答、摘要 | 枚举任务类型；paper/selection 范围校验 |
 | `ai:cancel-task` | R → M | 取消当前 AI 请求 | request ID 绑定当前窗口 |
 | `ai:get-conversation` | R → M | 读取本地会话 | 仅 conversation ID |
+| `ai:open-chatgpt-bridge` | R → M | 复制受限提示词并打开 ChatGPT | Main 构造提示词；固定 `https://chatgpt.com/`；不接收 URL |
 | `settings:get` | R → M | 获取非秘密设置 | 设置键白名单 |
 | `settings:update` | R → M | 更新非秘密设置 | schema 和枚举校验 |
 | `secrets:set-provider-key` | R → M | 安全保存 Key | 值只在调用参数短暂存在，禁止日志 |
@@ -275,6 +276,8 @@ interface AIProvider {
 AI 请求只能从主进程 AI Service 发起。Phase 5 默认使用 OpenAI 官方 HTTPS endpoint，并按本阶段明确要求开放受限 Base URL：只允许标准 443 端口的公开 HTTPS 主机，拒绝 URL 凭据、查询、fragment、本机/私网地址和重定向；请求前重新做 DNS 公网地址检查。用户首次切换到每个新自定义 endpoint 时，Main 使用原生警告框说明 Key 和选中文本的接收主机并要求确认。Renderer CSP 仍不允许直接联网。
 
 Phase 5 实现 `streamChat` 路径；`embed` 保留为 Phase 6 的接口演进点，当前不创建向量、不上传全文。请求只重放最近 20 条已完成且非空的消息，并受 40,000 字符本地上限约束；确认对话框展示相同范围。OpenAI Responses 请求设置 `store: false`，同时保留取消、90 秒总超时、Provider 有界重试和 2,000,000 字符响应上限。
+
+无 API Key 时可使用手动 ChatGPT bridge。Renderer 只提交经过 schema 限制的任务类型、当前选区和问题；Main 重新构造提示词、写入系统剪贴板，并仅打开常量 `https://chatgpt.com/`。该路径不读取浏览器 Cookie、ChatGPT 登录态或页面内容，不自动粘贴、发送或导入回答，也不包含 PaperMind 对话历史。
 
 ### 9.3 Key 持久化
 

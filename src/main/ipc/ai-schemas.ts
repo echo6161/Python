@@ -75,6 +75,34 @@ export const aiTaskInputSchema = z
     }
   });
 
+export const aiChatGptBridgeInputSchema = z
+  .object({
+    kind: z.enum(['translate', 'explain', 'term', 'chat', 'follow_up']),
+    selection: aiSelectionScopeSchema.nullable(),
+    prompt: z.string().trim().min(1).max(4_000).nullable(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const needsSelection =
+      input.kind === 'translate' || input.kind === 'explain' || input.kind === 'term';
+    if (needsSelection && !input.selection) {
+      context.addIssue({ code: 'custom', path: ['selection'], message: 'Select text first.' });
+    }
+    const needsPrompt = input.kind === 'chat' || input.kind === 'follow_up';
+    if (needsPrompt && !input.prompt) {
+      context.addIssue({ code: 'custom', path: ['prompt'], message: 'Enter a question.' });
+    }
+  });
+
+export const aiChatGptBridgeResultSchema = z
+  .object({
+    copied: z.literal(true),
+    destinationUrl: z.literal('https://chatgpt.com/'),
+    opened: z.boolean(),
+    promptCharacterCount: z.number().int().min(1).max(30_000),
+  })
+  .strict();
+
 export const aiMessageSchema = z
   .object({
     id: paperIdSchema,

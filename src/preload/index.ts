@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { AppGetInfoChannel, AppInfo, PaperMindApi } from '../shared/contracts/app';
 import type {
   AiCapabilities,
+  AiChatGptBridgeInput,
+  AiChatGptBridgeResult,
   AiConversation,
   AiCredentialState,
   AiIpcChannels,
@@ -79,6 +81,7 @@ const AI_CHANNELS = {
   setApiKey: 'secrets:set-provider-key',
   deleteApiKey: 'secrets:delete-provider-key',
   getConversation: 'ai:get-conversation',
+  openChatGptBridge: 'ai:open-chatgpt-bridge',
   startTask: 'ai:start-task',
   cancelTask: 'ai:cancel-task',
   streamEvent: 'events:ai-stream',
@@ -184,6 +187,10 @@ const api: PaperMindApi = Object.freeze({
     getConversation: (paperId: string) =>
       ipcRenderer.invoke(AI_CHANNELS.getConversation, paperId) as Promise<
         ApiResult<AiConversation | null>
+      >,
+    openChatGptBridge: (input: AiChatGptBridgeInput) =>
+      ipcRenderer.invoke(AI_CHANNELS.openChatGptBridge, input) as Promise<
+        ApiResult<AiChatGptBridgeResult>
       >,
     startTask: (input: AiTaskInput) =>
       ipcRenderer.invoke(AI_CHANNELS.startTask, input) as Promise<ApiResult<AiTaskAccepted>>,

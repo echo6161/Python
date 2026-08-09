@@ -245,6 +245,11 @@ export function SettingsWorkspace() {
                 The saved key is never displayed again. Credential backend:{' '}
                 {capabilities?.credential.backend ?? 'checking'}.
               </p>
+              <p className="mt-2 text-xs text-zinc-500">
+                No API key is required for the manual ChatGPT handoff available from selected PDF
+                text. PaperMind copies a scoped prompt and you decide whether to paste and submit
+                it.
+              </p>
               {capabilities?.credential.persistence === 'session_only' ? (
                 <p className="mt-2 text-xs font-medium text-amber-700" role="status">
                   Secure storage is unavailable. The key will be forgotten when PaperMind closes.

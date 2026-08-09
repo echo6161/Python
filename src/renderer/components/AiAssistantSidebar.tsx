@@ -52,8 +52,10 @@ export function AiAssistantSidebar({
   const [prompt, setPrompt] = useState('');
   const [activeRequest, setActiveRequest] = useState<ActiveRequest | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [isManualBridgeBusy, setIsManualBridgeBusy] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const activeRequestRef = useRef<ActiveRequest | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
@@ -188,6 +190,7 @@ export function AiAssistantSidebar({
     setIsStarting(true);
     setIsCancelling(false);
     setError(null);
+    setNotice(null);
     try {
       const result = await window.paperMind.ai.startTask({
         kind: draft.kind,
@@ -222,6 +225,34 @@ export function AiAssistantSidebar({
       closeDraft();
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  const openChatGptBridge = async () => {
+    if (!draft) return;
+    setIsManualBridgeBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await window.paperMind.ai.openChatGptBridge({
+        kind: draft.kind,
+        selection: draft.selection,
+        prompt: draft.prompt,
+      });
+      if (!result.ok) {
+        setError(resultMessage(result.error));
+        return;
+      }
+      setNotice(
+        result.value.opened
+          ? 'Prompt copied. Paste it into ChatGPT and submit it when ready.'
+          : 'Prompt copied, but ChatGPT could not be opened. Open chatgpt.com manually and paste it.',
+      );
+      closeDraft();
+    } catch {
+      setError('The ChatGPT handoff could not be prepared.');
+    } finally {
+      setIsManualBridgeBusy(false);
     }
   };
 
@@ -296,6 +327,22 @@ export function AiAssistantSidebar({
             className="ml-2 font-semibold underline"
             type="button"
             onClick={() => setError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+
+      {notice ? (
+        <div
+          className="border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-900"
+          role="status"
+        >
+          {notice}
+          <button
+            className="ml-2 font-semibold underline"
+            type="button"
+            onClick={() => setNotice(null)}
           >
             Dismiss
           </button>
@@ -402,18 +449,21 @@ export function AiAssistantSidebar({
 
       {draft ? (
         <AiRequestDialog
+          apiConfigured={isConfigured}
           defaultSaveHistory={capabilities?.settings.saveHistoryByDefault ?? true}
           destinationHost={
             capabilities ? new URL(capabilities.settings.baseUrl).hostname : 'AI provider'
           }
           history={messages}
           historyPersisted={conversation?.persisted ?? true}
-          isBusy={isStarting}
+          isBusy={isStarting || isManualBridgeBusy}
+          isManualBridgeBusy={isManualBridgeBusy}
           kind={draft.kind}
           prompt={draft.prompt}
           selection={draft.selection}
           onCancel={closeDraft}
           onConfirm={(saveHistory) => void startDraft(saveHistory)}
+          onOpenChatGpt={() => void openChatGptBridge()}
         />
       ) : null}
     </section>

@@ -1,6 +1,6 @@
 # PaperMind
 
-PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 5 adds a Main-process OpenAI Provider, operating-system-backed credential storage, selected-text translation and explanation, scoped follow-up chat, streaming, cancellation, and local conversation history. Every request has an outgoing-content review step, and full PDFs are never uploaded in this phase. Vector retrieval, online DOI lookup, Obsidian export, and Git synchronization are not implemented yet.
+PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 5 adds a Main-process OpenAI Provider, operating-system-backed credential storage, selected-text translation and explanation, scoped follow-up chat, streaming, cancellation, and local conversation history. A manual ChatGPT handoff also works without an API key by copying a scoped prompt and opening the official ChatGPT page; the user must paste and submit it. Every request has an outgoing-content review step, and full PDFs are never uploaded in this phase. Vector retrieval, online DOI lookup, Obsidian export, and Git synchronization are not implemented yet.
 
 ## Prerequisites
 
@@ -98,3 +98,5 @@ PDF bytes are streamed from managed copies through a session-authorized `papermi
 Configure the OpenAI API key and non-secret provider settings in the application Settings view. On Windows and macOS, the key is encrypted through Electron `safeStorage` and stored outside the paper library; on Linux, PaperMind uses a secure desktop backend when available and otherwise keeps the key in memory for the current session only. The key is never returned to the Renderer or stored in SQLite.
 
 The official `https://api.openai.com/v1` endpoint is the default. A different Base URL requires a native warning confirmation and must use public HTTPS on the standard port; local-network targets and redirects are rejected. Requests use the OpenAI Responses API with server-side response storage disabled. Automated tests use the deterministic Mock Provider and never call a paid API. A real API request must be separately and explicitly authorized.
+
+Without an API key, review any selected-text AI task and choose **Copy & open ChatGPT**. Main copies only the selected excerpt, optional question, and fixed task instructions, then opens the fixed `https://chatgpt.com/` URL. No conversation history, PDF file, file path, annotation, note, cookie, or ChatGPT session token is exposed to PaperMind. Nothing is uploaded until the user manually pastes and submits the prompt in ChatGPT.

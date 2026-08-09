@@ -6,6 +6,7 @@ export const AI_IPC_CHANNELS = Object.freeze({
   setApiKey: 'secrets:set-provider-key',
   deleteApiKey: 'secrets:delete-provider-key',
   getConversation: 'ai:get-conversation',
+  openChatGptBridge: 'ai:open-chatgpt-bridge',
   startTask: 'ai:start-task',
   cancelTask: 'ai:cancel-task',
   streamEvent: 'events:ai-stream',
@@ -68,6 +69,19 @@ export interface AiTaskInput {
   readonly prompt: string | null;
   readonly conversationId: string | null;
   readonly saveHistory: boolean;
+}
+
+export interface AiChatGptBridgeInput {
+  readonly kind: AiTaskKind;
+  readonly selection: AiSelectionScope | null;
+  readonly prompt: string | null;
+}
+
+export interface AiChatGptBridgeResult {
+  readonly copied: true;
+  readonly destinationUrl: 'https://chatgpt.com/';
+  readonly opened: boolean;
+  readonly promptCharacterCount: number;
 }
 
 export interface AiMessage {
@@ -149,6 +163,7 @@ export interface AiApi {
   setApiKey(apiKey: string): Promise<ApiResult<AiCredentialState>>;
   deleteApiKey(): Promise<ApiResult<AiCredentialState>>;
   getConversation(paperId: string): Promise<ApiResult<AiConversation | null>>;
+  openChatGptBridge(input: AiChatGptBridgeInput): Promise<ApiResult<AiChatGptBridgeResult>>;
   startTask(input: AiTaskInput): Promise<ApiResult<AiTaskAccepted>>;
   cancelTask(requestId: string): Promise<ApiResult<{ readonly requestId: string }>>;
   onStreamEvent(listener: (event: AiStreamEvent) => void): () => void;

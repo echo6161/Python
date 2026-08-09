@@ -93,6 +93,19 @@ async function approveNativeAiRequests(electronApp: ElectronApplication): Promis
   });
 }
 
+async function stubChatGptOpen(electronApp: ElectronApplication): Promise<void> {
+  await electronApp.evaluate(({ shell }) => {
+    const mutableShell = shell as unknown as {
+      openExternal: (url: string) => Promise<void>;
+    };
+    mutableShell.openExternal = (url: string) => {
+      const state = globalThis as typeof globalThis & { paperMindOpenedUrl?: string };
+      state.paperMindOpenedUrl = url;
+      return Promise.resolve();
+    };
+  });
+}
+
 test('reads a short PDF and persists annotations, progress, deletion, and exports', async ({
   browserName,
 }, testInfo) => {
@@ -477,6 +490,7 @@ test('streams, cancels, and persists selected-text AI tasks with the Mock Provid
   let electronApp = await launch(libraryRoot);
   try {
     await approveNativeAiRequests(electronApp);
+    await stubChatGptOpen(electronApp);
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
     await selectFilesInDialog(electronApp, [source]);
@@ -488,6 +502,21 @@ test('streams, cancels, and persists selected-text AI tasks with the Mock Provid
 
     const outgoing = await window.getByTestId('outgoing-selection').textContent();
     expect(outgoing).toContain('Phase five selected excerpt for translation');
+    await window.screenshot({ path: testInfo.outputPath('papermind-chatgpt-handoff.png') });
+    await window.getByRole('button', { name: 'Copy prompt and open ChatGPT' }).click();
+    await expect(window.getByText(/Prompt copied\. Paste it into ChatGPT/)).toBeVisible();
+    const bridgeState = await electronApp.evaluate(({ clipboard }) => ({
+      prompt: clipboard.readText(),
+      openedUrl: (globalThis as typeof globalThis & { paperMindOpenedUrl?: string })
+        .paperMindOpenedUrl,
+    }));
+    expect(bridgeState.openedUrl).toBe('https://chatgpt.com/');
+    expect(bridgeState.prompt).toContain('Phase five selected excerpt for translation');
+    expect(bridgeState.prompt).toContain('## 中文译文');
+    expect(bridgeState.prompt).not.toContain('selected-text-ai.pdf');
+
+    await window.getByRole('button', { name: 'AI actions' }).click();
+    await window.getByRole('menuitem', { name: 'Translate to Chinese' }).click();
     await window.getByRole('button', { name: 'Send to api.openai.com' }).click();
     await expect(window.getByText('AI is responding...')).toBeVisible();
     await expect(

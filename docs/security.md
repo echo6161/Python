@@ -181,6 +181,7 @@ SQLite 不加密不等于数据公开上传；但它不能抵抗本机文件读�
 - Provider 错误先脱敏再展示，移除 header、Key、请求正文和可能的账户信息。
 - 本阶段明确要求的自定义 Base URL 仅允许公开 HTTPS/443：保存时拒绝凭据、query、fragment、本机/私网/保留地址，请求前检查全部 DNS 结果，禁止 HTTP 重定向，并在更换到非官方主机时由 Main 原生确认框重新取得用户同意。代理和其他兼容 Provider 仍后移。
 - OpenAI Responses 请求显式设置 `store: false`；这不会替代 Provider 自身的数据政策，发送确认仍需清楚展示实际选区、问题和重放历史。
+- 手动 ChatGPT bridge 不嵌入网页、不读取 Cookie/Token、不接受 Renderer 提供的 URL。Main 仅复制由固定模板和严格选区 schema 生成的提示词，并打开常量 `https://chatgpt.com/`；用户粘贴并提交前不发生内容上传，且该提示词不含本地对话历史。
 
 ### 9.3 Prompt injection
 

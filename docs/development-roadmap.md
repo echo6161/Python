@@ -129,6 +129,7 @@ Phase 9 MVP 加固、三平台签名与发布候选
 - `safeStorage` Secret Store 和 Linux 后端降级行为。
 - AI 隐私同意、Provider/模型设置和最小发送预览。
 - 选择文本翻译、解释、术语说明、选区追问及可选的本地对话历史；AI 不自动修改用户笔记。
+- 无 API Key 的手动 ChatGPT bridge：复制严格限定的当前任务提示词并打开官方页面，不自动发送或抓取回答。
 - Mock Provider；自动测试绝不调用真实 AI API。
 
 Phase 5 实现说明：Base URL 的最新阶段要求覆盖 Phase 0 的“首版固定官方 endpoint”假设；实现采用公开 HTTPS/443 白名单、DNS 私网拒绝、禁重定向和逐主机原生确认。当前没有 embedding、RAG、全文上传或工具调用。

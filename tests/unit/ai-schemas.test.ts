@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { aiProviderSettingsSchema, aiTaskInputSchema } from '../../src/main/ipc/ai-schemas';
+import {
+  aiChatGptBridgeInputSchema,
+  aiProviderSettingsSchema,
+  aiTaskInputSchema,
+} from '../../src/main/ipc/ai-schemas';
 
 const paperId = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -60,5 +64,38 @@ describe('AI IPC schemas', () => {
         saveHistory: true,
       }),
     ).toThrow('Enter a question');
+  });
+
+  it('bounds the manual ChatGPT bridge to the same selected-text task scope', () => {
+    const selection = {
+      paperId,
+      paperTitle: 'Paper',
+      pageNumber: 1,
+      selectedText: 'Selected text',
+      textStart: 4,
+      textEnd: 17,
+    };
+    expect(
+      aiChatGptBridgeInputSchema.parse({
+        kind: 'translate',
+        selection,
+        prompt: null,
+      }),
+    ).toEqual({ kind: 'translate', selection, prompt: null });
+    expect(() =>
+      aiChatGptBridgeInputSchema.parse({
+        kind: 'translate',
+        selection: null,
+        prompt: null,
+      }),
+    ).toThrow('Select text first');
+    expect(() =>
+      aiChatGptBridgeInputSchema.parse({
+        kind: 'translate',
+        selection,
+        prompt: null,
+        destinationUrl: 'https://example.com/',
+      }),
+    ).toThrow();
   });
 });

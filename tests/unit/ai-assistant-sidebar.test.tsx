@@ -71,12 +71,22 @@ function installAiApi(overrides: Partial<AiApi> = {}) {
     ok: true,
     value: { requestId: 'request-1' },
   });
+  const openChatGptBridge = vi.fn<AiApi['openChatGptBridge']>().mockResolvedValue({
+    ok: true,
+    value: {
+      copied: true,
+      destinationUrl: 'https://chatgpt.com/',
+      opened: true,
+      promptCharacterCount: 512,
+    },
+  });
   const api: AiApi = {
     getCapabilities: vi.fn().mockResolvedValue({ ok: true, value: capabilities }),
     updateSettings: vi.fn(),
     setApiKey: vi.fn(),
     deleteApiKey: vi.fn(),
     getConversation: vi.fn().mockResolvedValue({ ok: true, value: null }),
+    openChatGptBridge,
     startTask,
     cancelTask,
     onStreamEvent: vi.fn((listener: (event: AiStreamEvent) => void) => {
@@ -92,6 +102,7 @@ function installAiApi(overrides: Partial<AiApi> = {}) {
   return {
     cancelTask,
     emit: (event: AiStreamEvent) => streamListener?.(event),
+    openChatGptBridge,
     startTask,
     unsubscribe,
   };
@@ -226,6 +237,44 @@ describe('AiAssistantSidebar', () => {
       'Context for the question',
     );
     expect(handled).not.toHaveBeenCalled();
+  });
+
+  it('uses the manual ChatGPT bridge without an API key or provider request', async () => {
+    const task: AiTaskDraft = {
+      kind: 'translate',
+      prompt: null,
+      selection: {
+        paperId,
+        paperTitle: 'Paper',
+        pageNumber: 3,
+        selectedText: 'Only this selected sentence',
+        textStart: 5,
+        textEnd: 32,
+      },
+    };
+    const { openChatGptBridge, startTask } = installAiApi({
+      getCapabilities: vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          ...capabilities,
+          credential: { ...capabilities.credential, configured: false },
+        },
+      }),
+    });
+    render(<AiAssistantSidebar paperId={paperId} pendingTask={task} onOpenSettings={vi.fn()} />);
+
+    await screen.findByRole('dialog', { name: 'Review outgoing AI request' });
+    fireEvent.click(screen.getByRole('button', { name: 'Copy prompt and open ChatGPT' }));
+
+    await waitFor(() =>
+      expect(openChatGptBridge).toHaveBeenCalledWith({
+        kind: 'translate',
+        selection: task.selection,
+        prompt: null,
+      }),
+    );
+    expect(startTask).not.toHaveBeenCalled();
+    expect(screen.getByText(/Prompt copied\. Paste it into ChatGPT/)).toBeDefined();
   });
 
   it('shows a classified stream error and removes its subscription on unmount', async () => {

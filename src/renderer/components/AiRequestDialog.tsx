@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { LockKeyhole, Send, X } from 'lucide-react';
+import { ExternalLink, LockKeyhole, Send, X } from 'lucide-react';
 
 import {
   selectAiReplayHistory,
@@ -17,29 +17,35 @@ const TASK_LABELS: Readonly<Record<AiTaskKind, string>> = {
 };
 
 interface AiRequestDialogProps {
+  readonly apiConfigured: boolean;
   readonly defaultSaveHistory: boolean;
   readonly destinationHost: string;
   readonly history: readonly AiMessage[];
   readonly historyPersisted: boolean;
   readonly isBusy: boolean;
+  readonly isManualBridgeBusy: boolean;
   readonly kind: AiTaskKind;
   readonly prompt: string | null;
   readonly selection: AiSelectionScope | null;
   readonly onCancel: () => void;
   readonly onConfirm: (saveHistory: boolean) => void;
+  readonly onOpenChatGpt: () => void;
 }
 
 export function AiRequestDialog({
+  apiConfigured,
   defaultSaveHistory,
   destinationHost,
   history,
   historyPersisted,
   isBusy,
+  isManualBridgeBusy,
   kind,
   prompt,
   selection,
   onCancel,
   onConfirm,
+  onOpenChatGpt,
 }: AiRequestDialogProps) {
   const [saveHistory, setSaveHistory] = useState(defaultSaveHistory);
   const descriptionId = useId();
@@ -90,20 +96,20 @@ export function AiRequestDialog({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 text-sm">
+        <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-5 py-5 text-sm">
           {selection ? (
             <section aria-labelledby="selection-scope-heading">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-1">
                 <h3 id="selection-scope-heading" className="font-semibold text-zinc-900">
                   Selected PDF text
                 </h3>
-                <span className="shrink-0 text-xs tabular-nums text-zinc-500">
+                <span className="text-xs tabular-nums text-zinc-500">
                   Page {selection.pageNumber} · offsets {selection.textStart}–{selection.textEnd} ·{' '}
                   {selection.selectedText.length} characters
                 </span>
               </div>
               <blockquote
-                className="mt-3 max-h-44 overflow-y-auto whitespace-pre-wrap border-l-2 border-emerald-600 bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-700"
+                className="mt-3 max-h-44 overflow-y-auto whitespace-pre-wrap break-words border-l-2 border-emerald-600 bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-700"
                 data-testid="outgoing-selection"
               >
                 {selection.selectedText}
@@ -166,6 +172,12 @@ export function AiRequestDialog({
             </p>
           </div>
 
+          <div className="border-l-2 border-zinc-400 bg-zinc-50 px-4 py-3 text-xs leading-5 text-zinc-700">
+            The manual ChatGPT option copies only the selected excerpt, question, and fixed task
+            instructions. It does not include conversation history. Nothing is uploaded until you
+            paste the prompt into ChatGPT and submit it yourself.
+          </div>
+
           <label className="flex items-start gap-3 text-xs text-zinc-700">
             <input
               checked={saveHistory}
@@ -176,24 +188,45 @@ export function AiRequestDialog({
             <span>
               <span className="block font-semibold text-zinc-900">Save conversation locally</span>
               <span className="mt-0.5 block text-zinc-500">
-                Turning this off keeps this request out of the local conversation database.
+                Applies only to direct API requests. Turning this off keeps that request out of the
+                local conversation database.
               </span>
             </span>
           </label>
         </div>
 
-        <footer className="flex shrink-0 justify-end gap-2 border-t border-zinc-200 px-5 py-4">
-          <button className="text-button" disabled={isBusy} type="button" onClick={onCancel}>
-            Cancel
+        <footer className="grid shrink-0 gap-2 border-t border-zinc-200 px-5 py-4">
+          <button
+            aria-label="Copy prompt and open ChatGPT"
+            className={`${apiConfigured ? 'text-button' : 'command-button'} w-full justify-center`}
+            disabled={isBusy}
+            type="button"
+            onClick={onOpenChatGpt}
+          >
+            <ExternalLink aria-hidden="true" className="size-4" />
+            {isManualBridgeBusy ? 'Opening...' : 'Copy & open ChatGPT'}
           </button>
           <button
-            className="command-button"
-            disabled={isBusy}
+            className="command-button w-full justify-center"
+            disabled={isBusy || !apiConfigured}
+            title={apiConfigured ? `Send to ${destinationHost}` : 'Add an API key in Settings'}
             type="button"
             onClick={() => onConfirm(saveHistory)}
           >
             <Send aria-hidden="true" className="size-4" />
-            {isBusy ? 'Starting...' : `Send to ${destinationHost}`}
+            {isBusy
+              ? 'Starting...'
+              : apiConfigured
+                ? `Send to ${destinationHost}`
+                : 'API key required'}
+          </button>
+          <button
+            className="text-button w-full justify-center"
+            disabled={isBusy}
+            type="button"
+            onClick={onCancel}
+          >
+            Cancel
           </button>
         </footer>
       </div>
