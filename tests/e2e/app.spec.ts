@@ -16,6 +16,8 @@ function electronEnvironment(libraryRoot: string): Record<string, string> {
   environment.NODE_ENV = 'test';
   environment.PAPERMIND_LIBRARY_ROOT = libraryRoot;
   environment.PAPERMIND_USER_DATA_ROOT = path.join(libraryRoot, '.electron-user-data');
+  environment.PAPERMIND_AI_PROVIDER = 'mock';
+  environment.PAPERMIND_AI_MOCK_DELAY_MS = '50';
   delete environment.ELECTRON_RUN_AS_NODE;
   return environment;
 }
@@ -80,6 +82,15 @@ async function setSaveDialogPaths(
         filePath: destinations[index++] ?? destinations[0] ?? '',
       });
   }, filePaths);
+}
+
+async function approveNativeAiRequests(electronApp: ElectronApplication): Promise<void> {
+  await electronApp.evaluate(({ dialog }) => {
+    const mutableDialog = dialog as unknown as {
+      showMessageBox: () => Promise<{ response: number; checkboxChecked: boolean }>;
+    };
+    mutableDialog.showMessageBox = () => Promise.resolve({ response: 1, checkboxChecked: false });
+  });
 }
 
 test('reads a short PDF and persists annotations, progress, deletion, and exports', async ({
@@ -448,4 +459,67 @@ test('confirms extracted metadata and persists library organization', async ({
   }
 
   expect(await Promise.all([metadataPdf, plainPdf].map(hashFile))).toEqual(originalHashes);
+});
+
+test('streams, cancels, and persists selected-text AI tasks with the Mock Provider', async ({
+  browserName,
+}, testInfo) => {
+  expect(browserName).toBe('chromium');
+  const fixtureRoot = testInfo.outputPath('phase-5-fixtures');
+  const libraryRoot = testInfo.outputPath('PaperMind AI Library');
+  const source = await writePdfFixture(
+    fixtureRoot,
+    'selected-text-ai.pdf',
+    'Phase five selected excerpt for translation',
+  );
+  const originalHash = await hashFile(source);
+
+  let electronApp = await launch(libraryRoot);
+  try {
+    await approveNativeAiRequests(electronApp);
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await selectFilesInDialog(electronApp, [source]);
+    await window.getByRole('button', { name: 'Import' }).click();
+    await window.getByRole('button', { name: 'Reader' }).click();
+    await selectTextSpan(window, 1);
+    await window.getByRole('button', { name: 'AI actions' }).click();
+    await window.getByRole('menuitem', { name: 'Translate to Chinese' }).click();
+
+    const outgoing = await window.getByTestId('outgoing-selection').textContent();
+    expect(outgoing).toContain('Phase five selected excerpt for translation');
+    await window.getByRole('button', { name: 'Send to api.openai.com' }).click();
+    await expect(window.getByText('AI is responding...')).toBeVisible();
+    await expect(
+      window.getByText(/Selection: Phase five selected excerpt for translation/),
+    ).toBeVisible();
+    await expect(window.getByText('AI-generated')).toBeVisible();
+    await window.screenshot({ path: testInfo.outputPath('papermind-ai-selected-text.png') });
+  } finally {
+    await electronApp.close();
+  }
+
+  electronApp = await launch(libraryRoot);
+  try {
+    await approveNativeAiRequests(electronApp);
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await window.getByRole('tab', { name: 'AI Assistant' }).click();
+    await expect(
+      window.getByText(/Selection: Phase five selected excerpt for translation/),
+    ).toBeVisible();
+
+    await window.getByRole('button', { name: 'Reader' }).click();
+    await selectTextSpan(window, 1);
+    await window.getByRole('button', { name: 'AI actions' }).click();
+    await window.getByRole('menuitem', { name: 'Explain selection' }).click();
+    await window.getByRole('button', { name: 'Send to api.openai.com' }).click();
+    await expect(window.getByText('AI is responding...')).toBeVisible();
+    await window.getByRole('button', { name: 'Cancel' }).click();
+    await expect(window.getByText('cancelled', { exact: true })).toBeVisible();
+  } finally {
+    await electronApp.close();
+  }
+
+  expect(await hashFile(source)).toBe(originalHash);
 });

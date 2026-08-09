@@ -45,7 +45,10 @@ export function App() {
     <div className="flex h-screen min-h-[680px] min-w-[1100px] overflow-hidden bg-zinc-100 text-zinc-900">
       <Sidebar activeView={activeView} appVersion={appVersion} onNavigate={navigate} />
       {activeView === 'library' ? (
-        <LibraryWorkspace onDirtyChange={setHasUnsavedPaperDetails} />
+        <LibraryWorkspace
+          onDirtyChange={setHasUnsavedPaperDetails}
+          onOpenSettings={() => navigate('settings')}
+        />
       ) : (
         <SettingsWorkspace />
       )}

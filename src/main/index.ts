@@ -1,10 +1,13 @@
 import path from 'node:path';
 
-import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, protocol, safeStorage, session } from 'electron';
 
 import { IPC_CHANNELS, type AppInfo, type DesktopPlatform } from '../shared/contracts/app';
 import { createConsoleLogger } from '../shared/logging';
 import { DatabaseWorkerClient } from './database/database-worker-client';
+import { AiAssistantService } from './ai/ai-assistant-service';
+import { AiSecretStore } from './ai/secret-store';
+import { registerAiIpcHandlers } from './ipc/ai-ipc';
 import { registerLibraryIpcHandlers } from './ipc/library-ipc';
 import { registerReaderIpcHandlers } from './ipc/reader-ipc';
 import { PaperFileStorage } from './library/file-storage';
@@ -21,6 +24,7 @@ let mainWindow: BrowserWindow | null = null;
 let databaseClient: DatabaseWorkerClient | null = null;
 let metadataExtractionClient: PdfMetadataExtractionClient | null = null;
 let metadataBackfillPromise: Promise<void> | null = null;
+let aiAssistant: AiAssistantService | null = null;
 let shutdownPromise: Promise<void> | null = null;
 
 protocol.registerSchemesAsPrivileged([
@@ -54,6 +58,20 @@ async function initializeLibrary(): Promise<void> {
   const libraryPaths = await initializeLibraryPaths(libraryRoot);
   const workerPath = path.join(__dirname, 'database/worker.js');
   databaseClient = new DatabaseWorkerClient(workerPath, libraryPaths.database);
+  const secrets = new AiSecretStore({
+    userDataPath: app.getPath('userData'),
+    safeStorage,
+  });
+  aiAssistant = new AiAssistantService(databaseClient, secrets, {
+    useMockProvider:
+      !app.isPackaged &&
+      process.env.NODE_ENV === 'test' &&
+      process.env.PAPERMIND_AI_PROVIDER === 'mock',
+    mockProviderOptions: {
+      delayMs: Number(process.env.PAPERMIND_AI_MOCK_DELAY_MS ?? 15),
+    },
+  });
+  await aiAssistant.initialize();
   const metadataWorkerPath = path.join(__dirname, 'metadata/pdf-metadata-extraction-worker.js');
   metadataExtractionClient = new PdfMetadataExtractionClient(metadataWorkerPath);
   const storage = new PaperFileStorage(libraryPaths);
@@ -66,6 +84,7 @@ async function initializeLibrary(): Promise<void> {
   const reader = new PaperReaderService(databaseClient, storage);
   registerLibraryIpcHandlers(library, () => mainWindow);
   registerReaderIpcHandlers(reader, () => mainWindow);
+  registerAiIpcHandlers(aiAssistant, () => mainWindow);
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()
@@ -90,8 +109,12 @@ async function createMainWindow(): Promise<void> {
   const preloadPath = path.join(__dirname, '../preload/index.js');
   const window = new BrowserWindow(createWindowOptions(preloadPath));
   mainWindow = window;
+  const windowOwnerId = window.webContents.id;
 
   restrictWindowNavigation(window.webContents);
+  window.webContents.once('destroyed', () => {
+    aiAssistant?.cancelOwnerRequests(windowOwnerId);
+  });
   window.once('ready-to-show', () => window.show());
   window.on('closed', () => {
     if (mainWindow === window) {
@@ -153,7 +176,7 @@ app.on('second-instance', () => {
 });
 
 app.on('before-quit', (event) => {
-  if (!databaseClient && !metadataExtractionClient) {
+  if (!databaseClient && !metadataExtractionClient && !aiAssistant) {
     return;
   }
 
@@ -166,6 +189,7 @@ app.on('before-quit', (event) => {
       .then(async () => {
         await metadata?.close();
         await backfill;
+        await aiAssistant?.shutdown();
         await database?.close();
       })
       .catch((error: unknown) => {
@@ -175,6 +199,7 @@ app.on('before-quit', (event) => {
         databaseClient = null;
         metadataExtractionClient = null;
         metadataBackfillPromise = null;
+        aiAssistant = null;
         app.quit();
       });
   }

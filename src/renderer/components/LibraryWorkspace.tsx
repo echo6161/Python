@@ -19,7 +19,9 @@ import type {
   CreateAnnotationInput,
   UpdateAnnotationInput,
 } from '../../shared/contracts/reader';
+import type { AiSelectionScope, AiTaskKind } from '../../shared/contracts/ai';
 import { AnnotationSidebar } from './AnnotationSidebar';
+import { AiAssistantSidebar, type AiTaskDraft } from './AiAssistantSidebar';
 import { DeletePaperDialog } from './DeletePaperDialog';
 import { PaperDetailsPanel, type PaperDetailsSaveInput } from './PaperDetailsPanel';
 import { PaperListPanel } from './PaperListPanel';
@@ -34,9 +36,10 @@ function unwrap<T>(result: ApiResult<T>): T {
 
 interface LibraryWorkspaceProps {
   readonly onDirtyChange?: (isDirty: boolean) => void;
+  readonly onOpenSettings?: () => void;
 }
 
-export function LibraryWorkspace({ onDirtyChange }: LibraryWorkspaceProps) {
+export function LibraryWorkspace({ onDirtyChange, onOpenSettings }: LibraryWorkspaceProps) {
   const [library, setLibrary] = useState<PaperListResult>({ items: [], total: 0 });
   const [organization, setOrganization] = useState<LibraryOrganization>({
     tags: [],
@@ -62,6 +65,8 @@ export function LibraryWorkspace({ onDirtyChange }: LibraryWorkspaceProps) {
   const [jumpRequest, setJumpRequest] = useState<{ pageNumber: number; nonce: number } | null>(
     null,
   );
+  const [rightPanel, setRightPanel] = useState<'annotations' | 'ai'>('annotations');
+  const [pendingAiTask, setPendingAiTask] = useState<AiTaskDraft | null>(null);
   const detailsDirtyRef = useRef(false);
   const listRequestId = useRef(0);
   const preservedSelectionRef = useRef<string | null>(null);
@@ -596,6 +601,14 @@ export function LibraryWorkspace({ onDirtyChange }: LibraryWorkspaceProps) {
     }
   };
 
+  const startAiTask = (
+    kind: Extract<AiTaskKind, 'translate' | 'explain' | 'term' | 'follow_up'>,
+    selection: AiSelectionScope,
+  ) => {
+    setPendingAiTask({ kind, prompt: null, selection });
+    setRightPanel('ai');
+  };
+
   return (
     <section
       className="relative grid h-full min-h-0 min-w-0 flex-1 grid-cols-[minmax(250px,310px)_minmax(440px,1fr)_minmax(280px,320px)] grid-rows-[minmax(0,1fr)] overflow-hidden bg-white"
@@ -679,6 +692,7 @@ export function LibraryWorkspace({ onDirtyChange }: LibraryWorkspaceProps) {
               annotations={annotations}
               jumpRequest={jumpRequest}
               onCreateAnnotation={createAnnotation}
+              onAiAction={startAiTask}
               onError={reportError}
             />
           ) : (
@@ -703,20 +717,56 @@ export function LibraryWorkspace({ onDirtyChange }: LibraryWorkspaceProps) {
         </div>
       </div>
 
-      <AnnotationSidebar
-        key={visiblePaper?.id ?? 'no-paper'}
-        paperTitle={visiblePaper?.title ?? null}
-        annotations={annotations}
-        isBusy={isBusy}
-        onDelete={deleteAnnotation}
-        onExport={exportAnnotations}
-        onJump={(pageNumber) => {
-          if (!discardDraftIfNeeded()) return;
-          setWorkspaceMode('reader');
-          setJumpRequest({ pageNumber, nonce: Date.now() });
-        }}
-        onUpdate={updateAnnotation}
-      />
+      <div className="flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white">
+        <div
+          aria-label="Paper side panel"
+          className="flex h-10 shrink-0 items-center border-b border-zinc-200 bg-zinc-50 p-1"
+          role="tablist"
+        >
+          <button
+            aria-selected={rightPanel === 'annotations'}
+            className={`h-8 flex-1 rounded-sm text-xs font-semibold ${rightPanel === 'annotations' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}
+            role="tab"
+            type="button"
+            onClick={() => setRightPanel('annotations')}
+          >
+            Annotations
+          </button>
+          <button
+            aria-selected={rightPanel === 'ai'}
+            className={`h-8 flex-1 rounded-sm text-xs font-semibold ${rightPanel === 'ai' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}
+            role="tab"
+            type="button"
+            onClick={() => setRightPanel('ai')}
+          >
+            AI Assistant
+          </button>
+        </div>
+        {rightPanel === 'annotations' ? (
+          <AnnotationSidebar
+            key={visiblePaper?.id ?? 'no-paper'}
+            paperTitle={visiblePaper?.title ?? null}
+            annotations={annotations}
+            isBusy={isBusy}
+            onDelete={deleteAnnotation}
+            onExport={exportAnnotations}
+            onJump={(pageNumber) => {
+              if (!discardDraftIfNeeded()) return;
+              setWorkspaceMode('reader');
+              setJumpRequest({ pageNumber, nonce: Date.now() });
+            }}
+            onUpdate={updateAnnotation}
+          />
+        ) : (
+          <AiAssistantSidebar
+            key={visiblePaper?.id ?? 'no-paper'}
+            paperId={visiblePaper?.id ?? null}
+            pendingTask={pendingAiTask}
+            onOpenSettings={() => onOpenSettings?.()}
+            onPendingTaskHandled={() => setPendingAiTask(null)}
+          />
+        )}
+      </div>
 
       {isDragging ? (
         <div className="pointer-events-none absolute inset-3 z-20 flex items-center justify-center border-2 border-dashed border-emerald-600 bg-white/95 text-sm font-semibold text-emerald-800">

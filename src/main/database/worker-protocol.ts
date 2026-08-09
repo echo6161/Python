@@ -12,6 +12,8 @@ import type {
   SaveReadingStateInput,
   UpdateAnnotationInput,
 } from '../../shared/contracts/reader';
+import type { AiProviderSettings } from '../../shared/contracts/ai';
+import type { CreateAiTurnInput, FinalizeAiMessageInput } from '../ai/ai-data-gateway';
 import type { ImportedPaperRecord, PaperTextExtractionRecord } from '../library/paper-data-gateway';
 
 export type DatabaseWorkerRequest =
@@ -110,6 +112,33 @@ export type DatabaseWorkerRequest =
       readonly method: 'saveReadingState';
       readonly payload: SaveReadingStateInput;
     }
+  | { readonly id: number; readonly method: 'getAiSettings'; readonly payload: null }
+  | {
+      readonly id: number;
+      readonly method: 'saveAiSettings';
+      readonly payload: AiProviderSettings;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createAiTurn';
+      readonly payload: CreateAiTurnInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'finalizeAiMessage';
+      readonly payload: FinalizeAiMessageInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getLatestAiConversation';
+      readonly payload: { readonly paperId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getAiConversation';
+      readonly payload: { readonly conversationId: string };
+    }
+  | { readonly id: number; readonly method: 'markStaleAiMessages'; readonly payload: null }
   | {
       readonly id: number;
       readonly method: 'backupTo';

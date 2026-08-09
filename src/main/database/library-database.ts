@@ -4,6 +4,13 @@ import path from 'node:path';
 
 import BetterSqlite3 from 'better-sqlite3';
 
+import type { AiConversation, AiMessage, AiProviderSettings } from '../../shared/contracts/ai';
+import type {
+  AiDataGateway,
+  CreateAiTurnInput,
+  CreateAiTurnResult,
+  FinalizeAiMessageInput,
+} from '../ai/ai-data-gateway';
 import type {
   BatchPaperUpdate,
   BatchPaperUpdateResult,
@@ -35,18 +42,21 @@ import type {
   PaperDataGateway,
 } from '../library/paper-data-gateway';
 import { applyMigrations } from './migrations';
+import { AiRepository } from './ai-repository';
 import { PaperRepository } from './paper-repository';
 import { ReaderRepository } from './reader-repository';
 
-export class LibraryDatabase implements PaperDataGateway {
+export class LibraryDatabase implements PaperDataGateway, AiDataGateway {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
   private readerRepository: ReaderRepository;
+  private aiRepository: AiRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
     this.repository = new PaperRepository(this.database);
     this.readerRepository = new ReaderRepository(this.database);
+    this.aiRepository = new AiRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -141,6 +151,34 @@ export class LibraryDatabase implements PaperDataGateway {
     return this.run(() => this.readerRepository.saveReadingState(input));
   }
 
+  public getAiSettings(): Promise<AiProviderSettings | null> {
+    return this.run(() => this.aiRepository.getSettings());
+  }
+
+  public saveAiSettings(settings: AiProviderSettings): Promise<AiProviderSettings> {
+    return this.run(() => this.aiRepository.saveSettings(settings));
+  }
+
+  public createAiTurn(input: CreateAiTurnInput): Promise<CreateAiTurnResult> {
+    return this.run(() => this.aiRepository.createTurn(input));
+  }
+
+  public finalizeAiMessage(input: FinalizeAiMessageInput): Promise<AiMessage> {
+    return this.run(() => this.aiRepository.finalizeMessage(input));
+  }
+
+  public getLatestAiConversation(paperId: string): Promise<AiConversation | null> {
+    return this.run(() => this.aiRepository.getLatestConversation(paperId));
+  }
+
+  public getAiConversation(conversationId: string): Promise<AiConversation | null> {
+    return this.run(() => this.aiRepository.getConversation(conversationId));
+  }
+
+  public markStaleAiMessages(): Promise<number> {
+    return this.run(() => this.aiRepository.markStaleMessages());
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -179,12 +217,14 @@ export class LibraryDatabase implements PaperDataGateway {
         this.database = this.openDatabase(this.databasePath);
         this.repository = new PaperRepository(this.database);
         this.readerRepository = new ReaderRepository(this.database);
+        this.aiRepository = new AiRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
         this.database = this.openDatabase(this.databasePath);
         this.repository = new PaperRepository(this.database);
         this.readerRepository = new ReaderRepository(this.database);
+        this.aiRepository = new AiRepository(this.database);
         throw error;
       }
 

@@ -132,6 +132,30 @@ describe('App', () => {
           deleteAnnotation: vi.fn(),
           exportAnnotations: vi.fn(),
         },
+        ai: {
+          getCapabilities: vi.fn().mockResolvedValue({
+            ok: true,
+            value: {
+              providerId: 'openai',
+              settings: {
+                baseUrl: 'https://api.openai.com/v1',
+                model: 'gpt-5.6',
+                temperature: 0.2,
+                maxOutputTokens: 2048,
+                saveHistoryByDefault: true,
+              },
+              credential: { configured: false, persistence: 'secure', backend: 'dpapi' },
+              selectionOnlyByDefault: true,
+            },
+          }),
+          updateSettings: vi.fn(),
+          setApiKey: vi.fn(),
+          deleteApiKey: vi.fn(),
+          getConversation: vi.fn().mockResolvedValue({ ok: true, value: null }),
+          startTask: vi.fn(),
+          cancelTask: vi.fn(),
+          onStreamEvent: vi.fn().mockReturnValue(() => undefined),
+        },
       },
     });
   });
@@ -180,13 +204,16 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /Remove record and managed copy/ })).toBeDefined();
   });
 
-  it('opens the settings placeholder from the sidebar', () => {
+  it('opens the settings placeholder from the sidebar', async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeDefined();
-    expect(screen.getByText('No external services are configured.')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'OpenAI provider' })).toBeDefined();
+    await waitFor(() =>
+      expect(screen.getByTestId('api-key-status').textContent).toBe('Not configured'),
+    );
   });
 
   it('keeps an imported paper selected when a stale filtered list refresh finishes', async () => {

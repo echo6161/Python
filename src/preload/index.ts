@@ -2,6 +2,16 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 import type { AppGetInfoChannel, AppInfo, PaperMindApi } from '../shared/contracts/app';
 import type {
+  AiCapabilities,
+  AiConversation,
+  AiCredentialState,
+  AiIpcChannels,
+  AiStreamEvent,
+  AiTaskAccepted,
+  AiTaskInput,
+  AiProviderSettings,
+} from '../shared/contracts/ai';
+import type {
   ApiResult,
   BatchPaperUpdate,
   BatchPaperUpdateResult,
@@ -63,6 +73,16 @@ const READER_CHANNELS = {
   deleteAnnotation: 'annotations:delete',
   exportAnnotations: 'annotations:export',
 } satisfies ReaderIpcChannels;
+const AI_CHANNELS = {
+  getCapabilities: 'ai:get-capabilities',
+  updateSettings: 'settings:update-ai',
+  setApiKey: 'secrets:set-provider-key',
+  deleteApiKey: 'secrets:delete-provider-key',
+  getConversation: 'ai:get-conversation',
+  startTask: 'ai:start-task',
+  cancelTask: 'ai:cancel-task',
+  streamEvent: 'events:ai-stream',
+} satisfies AiIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
   app: Object.freeze({
@@ -149,6 +169,34 @@ const api: PaperMindApi = Object.freeze({
       ipcRenderer.invoke(READER_CHANNELS.exportAnnotations, input) as Promise<
         ApiResult<AnnotationExportResult>
       >,
+  }),
+  ai: Object.freeze({
+    getCapabilities: () =>
+      ipcRenderer.invoke(AI_CHANNELS.getCapabilities) as Promise<ApiResult<AiCapabilities>>,
+    updateSettings: (settings: AiProviderSettings) =>
+      ipcRenderer.invoke(AI_CHANNELS.updateSettings, settings) as Promise<
+        ApiResult<AiCapabilities>
+      >,
+    setApiKey: (apiKey: string) =>
+      ipcRenderer.invoke(AI_CHANNELS.setApiKey, apiKey) as Promise<ApiResult<AiCredentialState>>,
+    deleteApiKey: () =>
+      ipcRenderer.invoke(AI_CHANNELS.deleteApiKey) as Promise<ApiResult<AiCredentialState>>,
+    getConversation: (paperId: string) =>
+      ipcRenderer.invoke(AI_CHANNELS.getConversation, paperId) as Promise<
+        ApiResult<AiConversation | null>
+      >,
+    startTask: (input: AiTaskInput) =>
+      ipcRenderer.invoke(AI_CHANNELS.startTask, input) as Promise<ApiResult<AiTaskAccepted>>,
+    cancelTask: (requestId: string) =>
+      ipcRenderer.invoke(AI_CHANNELS.cancelTask, requestId) as Promise<
+        ApiResult<{ readonly requestId: string }>
+      >,
+    onStreamEvent: (listener: (event: AiStreamEvent) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, streamEvent: AiStreamEvent) =>
+        listener(streamEvent);
+      ipcRenderer.on(AI_CHANNELS.streamEvent, handler);
+      return () => ipcRenderer.removeListener(AI_CHANNELS.streamEvent, handler);
+    },
   }),
 });
 

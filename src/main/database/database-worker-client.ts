@@ -1,5 +1,12 @@
 import { Worker } from 'node:worker_threads';
 
+import type { AiConversation, AiMessage, AiProviderSettings } from '../../shared/contracts/ai';
+import type {
+  AiDataGateway,
+  CreateAiTurnInput,
+  CreateAiTurnResult,
+  FinalizeAiMessageInput,
+} from '../ai/ai-data-gateway';
 import type {
   ApiErrorCode,
   BatchPaperUpdate,
@@ -43,7 +50,7 @@ interface PendingCall {
   readonly reject: (reason: unknown) => void;
 }
 
-export class DatabaseWorkerClient implements PaperDataGateway {
+export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -169,6 +176,34 @@ export class DatabaseWorkerClient implements PaperDataGateway {
 
   public saveReadingState(input: SaveReadingStateInput): Promise<ReadingState> {
     return this.call('saveReadingState', input);
+  }
+
+  public getAiSettings(): Promise<AiProviderSettings | null> {
+    return this.call('getAiSettings', null);
+  }
+
+  public saveAiSettings(settings: AiProviderSettings): Promise<AiProviderSettings> {
+    return this.call('saveAiSettings', settings);
+  }
+
+  public createAiTurn(input: CreateAiTurnInput): Promise<CreateAiTurnResult> {
+    return this.call('createAiTurn', input);
+  }
+
+  public finalizeAiMessage(input: FinalizeAiMessageInput): Promise<AiMessage> {
+    return this.call('finalizeAiMessage', input);
+  }
+
+  public getLatestAiConversation(paperId: string): Promise<AiConversation | null> {
+    return this.call('getLatestAiConversation', { paperId });
+  }
+
+  public getAiConversation(conversationId: string): Promise<AiConversation | null> {
+    return this.call('getAiConversation', { conversationId });
+  }
+
+  public markStaleAiMessages(): Promise<number> {
+    return this.call('markStaleAiMessages', null);
   }
 
   public async backupTo(destinationPath: string): Promise<void> {

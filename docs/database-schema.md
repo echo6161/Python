@@ -1,4 +1,4 @@
-# PaperMind Phase 4 Database Schema
+# PaperMind Phase 5 Database Schema
 
 ## Runtime location
 
@@ -82,6 +82,12 @@ An explicit details save replaces the ordered author relationship, marks the fiv
 Production extraction runs in a dedicated one-shot Worker with a 120-second timeout and a V8 heap limit. Output is bounded to 2,000 pages, 200,000 characters per page, and 20,000,000 characters per document. Reaching a limit produces `partial` status and a visible warning rather than silently claiming complete extraction. The existing 1 GB import limit remains unchanged; PDFs larger than 256 MB are still imported as managed copies but skip metadata/text extraction with an explicit warning to bound Worker memory.
 
 Tags and flat collections continue to use the Phase 2 join tables. Phase 4 adds transaction-backed create/delete, assignment, filtering, and bounded batch operations. Batch updates validate every paper and tag before writing, then either update the whole selection or roll back.
+
+## AI conversation activation
+
+Phase 5 activates the existing `settings`, `ai_conversations`, and `ai_messages` tables, so it requires no schema migration. Non-secret OpenAI settings use the fixed `ai.openai.config.v1` key. Each saved turn atomically creates a complete user message and a streaming assistant placeholder; completion, cancellation, failure, usage counts, and the provider request ID are finalized through the Database Worker. Startup marks interrupted streaming placeholders as failed without making an old conversation appear newly updated.
+
+Conversation text is local plaintext content and may include a user-approved selected excerpt. A per-request opt-out keeps that turn entirely in memory. API keys and encrypted credential blobs are never accepted by this repository and are stored outside the library through the Main-process Secret Store.
 
 ## Import transaction boundary
 

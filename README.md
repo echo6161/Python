@@ -1,6 +1,6 @@
 # PaperMind
 
-PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 4 adds offline PDF metadata and first-page extraction, explicit source/confidence labels, user confirmation, authors, tags, flat collections, favorites, reading status, field filters, local full-text filtering, sorting, and bounded batch updates. The virtualized PDF.js reader and persistent annotations remain available. AI, online DOI lookup, Obsidian, and Git synchronization are not implemented yet.
+PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 5 adds a Main-process OpenAI Provider, operating-system-backed credential storage, selected-text translation and explanation, scoped follow-up chat, streaming, cancellation, and local conversation history. Every request has an outgoing-content review step, and full PDFs are never uploaded in this phase. Vector retrieval, online DOI lookup, Obsidian export, and Git synchronization are not implemented yet.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ PaperMind is a local-first desktop workspace for reading and managing research p
 npm install
 ```
 
-The locked SQLite package includes platform-specific Node-API binaries and is validated in the real Electron runtime. No API key is required. `.env.example` contains only a non-secret logging preference. Never commit `.env` files or credentials.
+The locked SQLite package includes platform-specific Node-API binaries and is validated in the real Electron runtime. An API key is optional; all non-AI features work without one. `.env.example` contains only a non-secret logging preference. Never put credentials in `.env` or commit them to the repository.
 
 ## Development
 
@@ -64,10 +64,10 @@ Production Windows and macOS releases require code-signing credentials supplied 
 
 ## Process Boundaries
 
-- **Main** (`src/main`): Electron lifecycle, controlled PDF protocol, exports, navigation policy, permissions, and the IPC handler whitelist.
+- **Main** (`src/main`): Electron lifecycle, controlled PDF protocol, AI Provider requests, secure credential access, exports, navigation policy, permissions, and the IPC handler whitelist.
 - **Metadata Worker** (`src/main/metadata`): bounded, timeout-controlled local PDF metadata and text extraction; it cannot access renderer state.
 - **Database Worker** (`src/main/database`): owns the only SQLite connection, migrations, and repositories.
-- **Preload** (`src/preload`): exposes fixed library and reader methods through `contextBridge`.
+- **Preload** (`src/preload`): exposes fixed library, reader, and AI intent methods through `contextBridge`; it never exposes a credential read method.
 - **Renderer** (`src/renderer`): React UI without Node.js, file-system, child-process, database, or provider access.
 - **Shared** (`src/shared`): serializable contracts and the logging interface used across process boundaries.
 
@@ -92,3 +92,9 @@ docs/         Product, architecture, data, security, and roadmap documents
 The default library is created automatically in the operating system Documents directory under `PaperMind Library`. It contains `library.sqlite3`, content-addressed managed PDF copies, backups, trash, and a non-secret library manifest. Import always copies a PDF; PaperMind never modifies or deletes the source file.
 
 PDF bytes are streamed from managed copies through a session-authorized `papermind-pdf://` URL with Range support. Renderer never receives a file path and never writes to a PDF. For the implemented schema and rollback behavior, see `docs/database-schema.md`.
+
+## AI Provider
+
+Configure the OpenAI API key and non-secret provider settings in the application Settings view. On Windows and macOS, the key is encrypted through Electron `safeStorage` and stored outside the paper library; on Linux, PaperMind uses a secure desktop backend when available and otherwise keeps the key in memory for the current session only. The key is never returned to the Renderer or stored in SQLite.
+
+The official `https://api.openai.com/v1` endpoint is the default. A different Base URL requires a native warning confirmation and must use public HTTPS on the standard port; local-network targets and redirects are rejected. Requests use the OpenAI Responses API with server-side response storage disabled. Automated tests use the deterministic Mock Provider and never call a paid API. A real API request must be separately and explicitly authorized.

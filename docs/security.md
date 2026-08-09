@@ -176,10 +176,11 @@ SQLite 不加密不等于数据公开上传；但它不能抵抗本机文件读�
 
 ### 9.2 Provider 和网络
 
-- MVP OpenAI 请求由 Main 固定官方 HTTPS endpoint 发起，Renderer CSP 不允许直连。
+- Phase 5 OpenAI 请求仅由 Main 发起，Renderer CSP 不允许直连；默认 endpoint 是官方 `https://api.openai.com/v1`。
 - 设连接/总超时、取消、响应大小和重试上限；不对认证失败自动重试。
 - Provider 错误先脱敏再展示，移除 header、Key、请求正文和可能的账户信息。
-- 自定义 endpoint、代理和兼容 Provider 后移，进入实现前必须设计 SSRF、DNS rebinding、TLS 和局域网访问策略。
+- 本阶段明确要求的自定义 Base URL 仅允许公开 HTTPS/443：保存时拒绝凭据、query、fragment、本机/私网/保留地址，请求前检查全部 DNS 结果，禁止 HTTP 重定向，并在更换到非官方主机时由 Main 原生确认框重新取得用户同意。代理和其他兼容 Provider 仍后移。
+- OpenAI Responses 请求显式设置 `store: false`；这不会替代 Provider 自身的数据政策，发送确认仍需清楚展示实际选区、问题和重放历史。
 
 ### 9.3 Prompt injection
 

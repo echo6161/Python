@@ -9,9 +9,13 @@ import {
 import workerSource from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import {
   Highlighter,
+  Languages,
   Maximize2,
+  MessageCircleQuestion,
   Search,
+  Sparkles,
   StretchHorizontal,
+  TextSearch,
   Underline,
   ZoomIn,
   ZoomOut,
@@ -23,6 +27,7 @@ import type {
   AnnotationType,
   CreateAnnotationInput,
 } from '../../shared/contracts/reader';
+import type { AiSelectionScope, AiTaskKind } from '../../shared/contracts/ai';
 import type { PaperDetails } from '../../shared/contracts/library';
 import { buildPdfSearchIndex, searchPdfIndex, type IndexedPdfPage } from '../pdf/pdf-search';
 import type { SelectionAnchor } from '../pdf/selection-anchor';
@@ -36,6 +41,10 @@ interface PDFReaderProps {
   readonly annotations: readonly Annotation[];
   readonly jumpRequest: { readonly pageNumber: number; readonly nonce: number } | null;
   readonly onCreateAnnotation: (input: CreateAnnotationInput) => Promise<void>;
+  readonly onAiAction: (
+    kind: Extract<AiTaskKind, 'translate' | 'explain' | 'term' | 'follow_up'>,
+    selection: AiSelectionScope,
+  ) => void;
   readonly onError: (message: string) => void;
 }
 
@@ -59,6 +68,7 @@ export function PDFReader({
   annotations,
   jumpRequest,
   onCreateAnnotation,
+  onAiAction,
   onError,
 }: PDFReaderProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -76,6 +86,7 @@ export function PDFReader({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchIndex, setSearchIndex] = useState<readonly IndexedPdfPage[]>([]);
   const [indexedPages, setIndexedPages] = useState(0);
+  const [aiMenuOpen, setAiMenuOpen] = useState(false);
 
   const pageCount = document?.numPages ?? 0;
   // TanStack Virtual intentionally exposes an imperative instance that React Compiler skips.
@@ -240,6 +251,21 @@ export function PDFReader({
     window.getSelection()?.removeAllRanges();
   };
 
+  const startAiAction = (
+    kind: Extract<AiTaskKind, 'translate' | 'explain' | 'term' | 'follow_up'>,
+  ) => {
+    if (!paper || !selectionAnchor) return;
+    onAiAction(kind, {
+      paperId: paper.id,
+      paperTitle: paper.title,
+      pageNumber: selectionAnchor.pageNumber,
+      selectedText: selectionAnchor.selectedText,
+      textStart: selectionAnchor.textStart,
+      textEnd: selectionAnchor.textEnd,
+    });
+    setAiMenuOpen(false);
+  };
+
   return (
     <section
       aria-labelledby="reader-heading"
@@ -375,6 +401,67 @@ export function PDFReader({
             <Underline aria-hidden="true" className="size-4" />
             Underline
           </button>
+          <div className="relative">
+            <button
+              aria-expanded={aiMenuOpen}
+              aria-haspopup="menu"
+              aria-label="AI actions"
+              className="icon-button border-zinc-200"
+              title="AI actions"
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setAiMenuOpen((open) => !open)}
+            >
+              <Sparkles aria-hidden="true" className="size-4" />
+            </button>
+            {aiMenuOpen ? (
+              <div
+                className="absolute right-0 top-9 z-30 w-52 border border-zinc-200 bg-white py-1 shadow-lg"
+                role="menu"
+              >
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                  role="menuitem"
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => startAiAction('translate')}
+                >
+                  <Languages aria-hidden="true" className="size-4" />
+                  Translate to Chinese
+                </button>
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                  role="menuitem"
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => startAiAction('explain')}
+                >
+                  <TextSearch aria-hidden="true" className="size-4" />
+                  Explain selection
+                </button>
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                  role="menuitem"
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => startAiAction('term')}
+                >
+                  <Sparkles aria-hidden="true" className="size-4" />
+                  Explain term
+                </button>
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                  role="menuitem"
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => startAiAction('follow_up')}
+                >
+                  <MessageCircleQuestion aria-hidden="true" className="size-4" />
+                  Ask about selection
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

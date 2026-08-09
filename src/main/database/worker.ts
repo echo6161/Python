@@ -65,6 +65,20 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.getReadingState(request.payload.paperId);
     case 'saveReadingState':
       return database.saveReadingState(request.payload);
+    case 'getAiSettings':
+      return database.getAiSettings();
+    case 'saveAiSettings':
+      return database.saveAiSettings(request.payload);
+    case 'createAiTurn':
+      return database.createAiTurn(request.payload);
+    case 'finalizeAiMessage':
+      return database.finalizeAiMessage(request.payload);
+    case 'getLatestAiConversation':
+      return database.getLatestAiConversation(request.payload.paperId);
+    case 'getAiConversation':
+      return database.getAiConversation(request.payload.conversationId);
+    case 'markStaleAiMessages':
+      return database.markStaleAiMessages();
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

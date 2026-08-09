@@ -1,5 +1,6 @@
 import type { LibraryApi } from './library';
 import type { ReaderApi } from './reader';
+import type { AiApi } from './ai';
 
 export const IPC_CHANNELS = Object.freeze({
   appGetInfo: 'app:get-info',
@@ -20,4 +21,5 @@ export interface PaperMindApi {
   };
   readonly library: LibraryApi;
   readonly reader: ReaderApi;
+  readonly ai: AiApi;
 }
