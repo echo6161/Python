@@ -89,6 +89,12 @@ import type {
   StoredEvidence,
   StoredZoteroEvidence,
 } from '../question/question-data-gateway';
+import type {
+  CreateStoredPaperCodeLinkInput,
+  PaperCodeLinkDataGateway,
+  StoredPaperCodeLink,
+} from '../paper-code-link/paper-code-link-data-gateway';
+import type { UpdatePaperCodeLinkInput } from '../../shared/contracts/paper-code-link';
 
 interface PendingCall {
   readonly resolve: (value: unknown) => void;
@@ -100,6 +106,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly repository: RepositoryDataGateway;
   public readonly codeIndex: CodeIndexDataGateway;
   public readonly question: QuestionDataGateway;
+  public readonly paperCodeLink: PaperCodeLinkDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -112,6 +119,9 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
     this.repository = new RepositoryWorkerGateway((method, payload) => this.call(method, payload));
     this.codeIndex = new CodeIndexWorkerGateway((method, payload) => this.call(method, payload));
     this.question = new QuestionWorkerGateway((method, payload) => this.call(method, payload));
+    this.paperCodeLink = new PaperCodeLinkWorkerGateway((method, payload) =>
+      this.call(method, payload),
+    );
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
       const call = this.pending.get(response.id);
       if (!call) {
@@ -375,6 +385,39 @@ class QuestionWorkerGateway implements QuestionDataGateway {
 
   public codeLocationExists(input: StoredCodeEvidence): Promise<boolean> {
     return this.call('codeLocationExists', input);
+  }
+}
+
+class PaperCodeLinkWorkerGateway implements PaperCodeLinkDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public createPaperCodeLink(input: CreateStoredPaperCodeLinkInput): Promise<StoredPaperCodeLink> {
+    return this.call('createPaperCodeLink', input);
+  }
+
+  public getPaperCodeLink(workspaceId: string, id: string): Promise<StoredPaperCodeLink | null> {
+    return this.call('getPaperCodeLink', { workspaceId, id });
+  }
+
+  public listPaperCodeLinks(workspaceId: string): Promise<readonly StoredPaperCodeLink[]> {
+    return this.call('listPaperCodeLinks', { workspaceId });
+  }
+
+  public updatePaperCodeLink(input: UpdatePaperCodeLinkInput): Promise<StoredPaperCodeLink> {
+    return this.call('updatePaperCodeLink', input);
+  }
+
+  public deletePaperCodeLink(workspaceId: string, id: string): Promise<boolean> {
+    return this.call('deletePaperCodeLink', { workspaceId, id });
+  }
+
+  public paperCodeLocationExists(input: StoredPaperCodeLink): Promise<boolean> {
+    return this.call('paperCodeLocationExists', input);
   }
 }
 

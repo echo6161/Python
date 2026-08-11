@@ -264,6 +264,17 @@ function installApi(overrides: Partial<PaperMindApi['workspace']>) {
         reorderEvidence: vi.fn(),
         openEvidence: vi.fn(),
       },
+      paperCodeLink: {
+        create: vi.fn(),
+        get: vi.fn(),
+        listForWorkspace: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+        listForPaper: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+        listForCode: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+        update: vi.fn(),
+        delete: vi.fn(),
+        openPaper: vi.fn(),
+        openCode: vi.fn(),
+      },
     },
   });
 }

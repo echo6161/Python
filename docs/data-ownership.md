@@ -124,3 +124,22 @@ Phase 6 is read-oriented and additive:
 6. Archiving preserves a Question. Confirmed deletion removes only the Question and
    its PaperMind-owned Evidence rows; it never deletes external or other Workspace
    data.
+
+## 10. Phase 12 Paper-Code Link Rules
+
+1. A Paper-Code Link is a PaperMind-owned, user-confirmed relationship inside one
+   Workspace. Zotero continues to own paper metadata/PDFs and Git or the source
+   folder continues to own repository content.
+2. Each link pins the complete Zotero server/library/item identity and observed item
+   version, plus the repository ID, immutable commit/content snapshot, relative file,
+   optional symbol, exact line range, and content hash.
+3. Current paper metadata, PDF availability, repository state, and code availability
+   are resolved transiently. External changes mark a link stale or unavailable and
+   never rewrite its recorded location to the current HEAD.
+4. Manual creation requires that both external references belong to the same
+   Workspace and that the code location exactly matches the current trusted index.
+5. The Renderer cannot assign AI provenance. The current Phase 5 AI assistant is not
+   used for matching; no unconfirmed suggestion is stored in `paper_code_links`.
+6. Deleting a link deletes only that relationship. It does not delete or modify a
+   Zotero item, PDF, annotation, RepositoryRef, Git object, working-tree file, code
+   index, Question, Evidence, or legacy Paper record.

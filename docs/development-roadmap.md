@@ -121,17 +121,32 @@ deleted, and no Phase 10 code intelligence was introduced.
 
 Build bounded language/file indexing and code navigation over authorized repositories with versioned derived indexes. VS Code remains the editor/debugger/execution surface.
 
+**Implementation status:** completed with additive migration 0006. Python,
+JavaScript, and TypeScript structure/text indexes are bounded, incremental,
+cancellable, snapshot-aware, and navigable through the authorized repository
+viewer and VS Code handoff.
+
 ### Phase 11: Research Questions
 
 **Depends on:** Workspace Core and usable paper/code references.
 
 Add research goals, questions, hypotheses, state transitions, decision history, and provenance-aware question workflows.
 
+**Implementation status:** completed with additive migration 0007. Workspace-bound
+Research Questions and typed Zotero/code Evidence preserve external source identity,
+stale state, ordering, lifecycle, and navigation without copying source content.
+
 ### Phase 12: Paper <-> Code Links
 
 **Depends on:** Zotero references, code intelligence, and research questions.
 
 Create explicit typed links among paper passages/annotations, questions, repository revisions, symbols/files, and rationale. Store links and provenance, not duplicated canonical content.
+
+**Implementation status:** completed with additive migration 0008. Manual,
+user-confirmed Zotero paper-location to indexed code-location links provide precise
+snapshot provenance, independent paper/code stale states, editing, deletion, and
+navigation from paper rows, source files, and the Workspace link section. The Phase 5
+AI assistant was not adapted for candidate matching; no AI suggestion is persisted.
 
 ### Phase 13: Multi-Paper Knowledge Engine
 

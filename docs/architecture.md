@@ -50,6 +50,39 @@ Zotero resources. The current `AiProvider` boundary remains reusable, while the
 paper-bound assistant service and conversation schema will require a separate
 Workspace-aware evolution in a later approved phase.
 
+## Phase 12 Implemented Paper-Code Linking
+
+Phase 12 follows the established privileged path:
+
+```text
+Workspace UI
+  -> window.paperMind.paperCodeLink (fixed typed preload methods)
+  -> paper-code-links:* strict IPC validation
+  -> PaperCodeLinkService
+     -> PaperCodeLinkDataGateway -> database Worker -> SQLite
+     -> ZoteroBridgeService / ZoteroEvidenceLauncher
+     -> CodeIntelligenceService / RepositoryService
+```
+
+Creation accepts only a Workspace UUID, stable Zotero reference, bounded paper
+anchor, RepositoryRef UUID, and a complete Phase 10 search-result location. Main
+requires the current code index snapshot to match and the database repository then
+checks both Workspace memberships plus the exact indexed file/symbol/hash/line
+tuple. Renderer cannot submit a URL, host, port, absolute path, generic file read,
+shell command, Git arguments, or provenance value.
+
+Resolution independently compares the recorded Zotero item version and repository
+snapshot with their current external states. A changed or missing source remains a
+historical link with an explicit stale/unavailable reason. Code navigation is
+blocked when stale instead of silently opening approximate current lines. Paper
+navigation uses only the existing domain-specific Zotero launcher; code navigation
+uses only the authorized RepositoryService VS Code handoff.
+
+The manual dialog searches only the bounded Phase 10 file/symbol/text APIs and shows
+an explicit preview before persistence. The Phase 5 selected-text AI gateway does
+not provide a suitable typed matching contract, so Phase 12 does not invoke it or
+create transient/persistent AI suggestions.
+
 ## Phase 6 Implemented Zotero Bridge
 
 Phase 6 implements this fixed path:

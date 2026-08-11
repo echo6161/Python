@@ -48,6 +48,8 @@ describe('WorkspaceRepositorySection', () => {
   const getCodeIndexStatus = vi.fn();
   const runCodeIndex = vi.fn();
   const searchSymbols = vi.fn();
+  const listLinksForCode = vi.fn();
+  const openLinkedPaper = vi.fn();
 
   beforeEach(() => {
     listForWorkspace.mockReset().mockResolvedValue({ ok: true, value: [repository] });
@@ -144,6 +146,32 @@ describe('WorkspaceRepositorySection', () => {
         total: 1,
       },
     });
+    listLinksForCode.mockReset().mockResolvedValue({
+      ok: true,
+      value: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440009',
+          workspaceId: workspace.id,
+          itemRef: {
+            serverId: 'ServerIdentity01',
+            library: { type: 'user', id: '0' },
+            itemKey: 'PAPERAA2',
+          },
+          item: { title: 'Related PPO paper' },
+          pageNumber: 3,
+          paperAvailability: 'available',
+        },
+      ],
+    });
+    openLinkedPaper.mockReset().mockResolvedValue({
+      ok: true,
+      value: {
+        id: '550e8400-e29b-41d4-a716-446655440009',
+        opened: true,
+        target: 'zotero_pdf',
+        reason: null,
+      },
+    });
     installApi();
   });
 
@@ -190,6 +218,14 @@ describe('WorkspaceRepositorySection', () => {
     expect(await screen.findByRole('heading', { name: 'index.ts' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open line 1 in VS Code' }).className).toContain(
       'ring-emerald-500',
+    );
+    expect(screen.getByText('Related PPO paper | p.3')).toBeDefined();
+    fireEvent.click(screen.getByText('Related PPO paper | p.3'));
+    await waitFor(() =>
+      expect(openLinkedPaper).toHaveBeenCalledWith({
+        workspaceId: workspace.id,
+        id: '550e8400-e29b-41d4-a716-446655440009',
+      }),
     );
   });
 
@@ -254,6 +290,10 @@ describe('WorkspaceRepositorySection', () => {
             value: { results: [], offset: 0, limit: 20, total: 0 },
           }),
           onProgress: vi.fn().mockReturnValue(() => undefined),
+        },
+        paperCodeLink: {
+          listForCode: listLinksForCode,
+          openPaper: openLinkedPaper,
         },
       },
     });

@@ -94,6 +94,13 @@ import type {
   StoredZoteroEvidence,
 } from '../question/question-data-gateway';
 import { QuestionRepository } from './question-repository';
+import { PaperCodeLinkRepository } from './paper-code-link-repository';
+import type {
+  CreateStoredPaperCodeLinkInput,
+  PaperCodeLinkDataGateway,
+  StoredPaperCodeLink,
+} from '../paper-code-link/paper-code-link-data-gateway';
+import type { UpdatePaperCodeLinkInput } from '../../shared/contracts/paper-code-link';
 
 export class LibraryDatabase
   implements
@@ -102,7 +109,8 @@ export class LibraryDatabase
     WorkspaceDataGateway,
     RepositoryDataGateway,
     CodeIndexDataGateway,
-    QuestionDataGateway
+    QuestionDataGateway,
+    PaperCodeLinkDataGateway
 {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
@@ -112,6 +120,7 @@ export class LibraryDatabase
   private repositoryRepository: RepositoryRepository;
   private codeIndexRepository: CodeIndexRepository;
   private questionRepository: QuestionRepository;
+  private paperCodeLinkRepository: PaperCodeLinkRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -122,6 +131,7 @@ export class LibraryDatabase
     this.repositoryRepository = new RepositoryRepository(this.database);
     this.codeIndexRepository = new CodeIndexRepository(this.database);
     this.questionRepository = new QuestionRepository(this.database);
+    this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -473,6 +483,30 @@ export class LibraryDatabase
     return this.run(() => this.questionRepository.codeLocationExists(input));
   }
 
+  public createPaperCodeLink(input: CreateStoredPaperCodeLinkInput): Promise<StoredPaperCodeLink> {
+    return this.run(() => this.paperCodeLinkRepository.create(input));
+  }
+
+  public getPaperCodeLink(workspaceId: string, id: string): Promise<StoredPaperCodeLink | null> {
+    return this.run(() => this.paperCodeLinkRepository.get(workspaceId, id));
+  }
+
+  public listPaperCodeLinks(workspaceId: string): Promise<readonly StoredPaperCodeLink[]> {
+    return this.run(() => this.paperCodeLinkRepository.list(workspaceId));
+  }
+
+  public updatePaperCodeLink(input: UpdatePaperCodeLinkInput): Promise<StoredPaperCodeLink> {
+    return this.run(() => this.paperCodeLinkRepository.update(input));
+  }
+
+  public deletePaperCodeLink(workspaceId: string, id: string): Promise<boolean> {
+    return this.run(() => this.paperCodeLinkRepository.delete(workspaceId, id));
+  }
+
+  public paperCodeLocationExists(input: StoredPaperCodeLink): Promise<boolean> {
+    return this.run(() => this.paperCodeLinkRepository.codeLocationExists(input));
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -516,6 +550,7 @@ export class LibraryDatabase
         this.repositoryRepository = new RepositoryRepository(this.database);
         this.codeIndexRepository = new CodeIndexRepository(this.database);
         this.questionRepository = new QuestionRepository(this.database);
+        this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -527,6 +562,7 @@ export class LibraryDatabase
         this.repositoryRepository = new RepositoryRepository(this.database);
         this.codeIndexRepository = new CodeIndexRepository(this.database);
         this.questionRepository = new QuestionRepository(this.database);
+        this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
         throw error;
       }
 

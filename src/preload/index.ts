@@ -111,6 +111,16 @@ import type {
   SetResearchQuestionStatusInput,
   UpdateResearchQuestionInput,
 } from '../shared/contracts/question';
+import type {
+  CreatePaperCodeLinkInput,
+  PaperCodeLink,
+  PaperCodeLinkCodeQuery,
+  PaperCodeLinkIdentityInput,
+  PaperCodeLinkIpcChannels,
+  PaperCodeLinkNavigationResult,
+  PaperCodeLinkPaperQuery,
+  UpdatePaperCodeLinkInput,
+} from '../shared/contracts/paper-code-link';
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
@@ -210,8 +220,55 @@ const QUESTION_CHANNELS = {
   reorderEvidence: 'questions:reorder-evidence',
   openEvidence: 'questions:open-evidence',
 } satisfies QuestionIpcChannels;
+const PAPER_CODE_LINK_CHANNELS = {
+  create: 'paper-code-links:create',
+  get: 'paper-code-links:get',
+  listForWorkspace: 'paper-code-links:list-for-workspace',
+  listForPaper: 'paper-code-links:list-for-paper',
+  listForCode: 'paper-code-links:list-for-code',
+  update: 'paper-code-links:update',
+  delete: 'paper-code-links:delete',
+  openPaper: 'paper-code-links:open-paper',
+  openCode: 'paper-code-links:open-code',
+} satisfies PaperCodeLinkIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
+  paperCodeLink: Object.freeze({
+    create: (input: CreatePaperCodeLinkInput) =>
+      ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.create, input) as Promise<
+        ApiResult<PaperCodeLink>
+      >,
+    get: (input: PaperCodeLinkIdentityInput) =>
+      ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.get, input) as Promise<ApiResult<PaperCodeLink>>,
+    listForWorkspace: (workspaceId: string) =>
+      ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.listForWorkspace, workspaceId) as Promise<
+        ApiResult<readonly PaperCodeLink[]>
+      >,
+    listForPaper: (input: PaperCodeLinkPaperQuery) =>
+      ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.listForPaper, input) as Promise<
+        ApiResult<readonly PaperCodeLink[]>
+      >,
+    listForCode: (input: PaperCodeLinkCodeQuery) =>
+      ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.listForCode, input) as Promise<
+        ApiResult<readonly PaperCodeLink[]>
+      >,
+    update: (input: UpdatePaperCodeLinkInput) =>
+      ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.update, input) as Promise<
+        ApiResult<PaperCodeLink>
+      >,
+    delete: (input: PaperCodeLinkIdentityInput & { readonly confirmation: 'DELETE_LINK' }) =>
+      ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.delete, input) as Promise<
+        ApiResult<{ readonly id: string }>
+      >,
+    openPaper: (input: PaperCodeLinkIdentityInput) =>
+      ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.openPaper, input) as Promise<
+        ApiResult<PaperCodeLinkNavigationResult>
+      >,
+    openCode: (input: PaperCodeLinkIdentityInput) =>
+      ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.openCode, input) as Promise<
+        ApiResult<PaperCodeLinkNavigationResult>
+      >,
+  }),
   question: Object.freeze({
     create: (input: CreateResearchQuestionInput) =>
       ipcRenderer.invoke(QUESTION_CHANNELS.create, input) as Promise<ApiResult<ResearchQuestion>>,

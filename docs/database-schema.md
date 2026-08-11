@@ -174,6 +174,23 @@ historical Evidence row, which resolves as unavailable. See
 [research-questions-evidence.md](./research-questions-evidence.md) for provenance,
 stale, navigation, and security semantics.
 
+## Paper-Code Link migration
+
+Migration `0008-paper-code-links.ts` is forward-only and creates:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Paper-Code Link | `paper_code_links` | Workspace-bound UUID; complete Zotero identity/version and paper anchor; RepositoryRef plus immutable code snapshot/path/symbol/lines/hash; finite relation/provenance values; timestamps and optimistic row version |
+
+The table stores stable identifiers, precise locations, the user's label/description,
+and confirmation provenance. It does not store Zotero metadata, PDF bytes, source
+bytes, snippets, AI suggestions, or an inferred current location. Creation checks
+both Workspace memberships and an exact Phase 10 index location in one database
+transaction. Workspace deletion cascades only PaperMind-owned links. Removing a
+Workspace repository association or deleting its PaperMind RepositoryRef preserves
+the historical link, which resolves as unavailable. See
+[paper-code-links.md](./paper-code-links.md).
+
 Conversation text is local plaintext content and may include a user-approved selected excerpt. A per-request opt-out keeps that turn entirely in memory. API keys and encrypted credential blobs are never accepted by this repository and are stored outside the library through the Main-process Secret Store.
 
 ## Import transaction boundary

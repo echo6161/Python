@@ -38,6 +38,11 @@ import type {
   CreateStoredZoteroEvidenceInput,
   StoredCodeEvidence,
 } from '../question/question-data-gateway';
+import type {
+  CreateStoredPaperCodeLinkInput,
+  StoredPaperCodeLink,
+} from '../paper-code-link/paper-code-link-data-gateway';
+import type { UpdatePaperCodeLinkInput } from '../../shared/contracts/paper-code-link';
 
 export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'listPapers'; readonly payload: PaperListQuery }
@@ -391,6 +396,36 @@ export type DatabaseWorkerRequest =
       readonly id: number;
       readonly method: 'codeLocationExists';
       readonly payload: StoredCodeEvidence;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createPaperCodeLink';
+      readonly payload: CreateStoredPaperCodeLinkInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getPaperCodeLink';
+      readonly payload: { readonly workspaceId: string; readonly id: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listPaperCodeLinks';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updatePaperCodeLink';
+      readonly payload: UpdatePaperCodeLinkInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'deletePaperCodeLink';
+      readonly payload: { readonly workspaceId: string; readonly id: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'paperCodeLocationExists';
+      readonly payload: StoredPaperCodeLink;
     }
   | {
       readonly id: number;

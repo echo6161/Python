@@ -44,6 +44,8 @@ import { ZoteroBridgeService } from './zotero/zotero-bridge-service';
 import { ZoteroLocalApiClient } from './zotero/zotero-local-api-client';
 import { QuestionService } from './question/question-service';
 import { ZoteroEvidenceLauncher } from './question/zotero-evidence-launcher';
+import { PaperCodeLinkService } from './paper-code-link/paper-code-link-service';
+import { registerPaperCodeLinkIpcHandlers } from './ipc/paper-code-link-ipc';
 
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
@@ -146,6 +148,7 @@ async function initializeLibrary(): Promise<void> {
   );
   await codeIntelligence.initialize();
   registerCodeIntelligenceIpcHandlers(codeIntelligence);
+  const zoteroEvidenceLauncher = new ZoteroEvidenceLauncher(shell);
   registerQuestionIpcHandlers(
     new QuestionService(
       databaseClient.question,
@@ -153,7 +156,17 @@ async function initializeLibrary(): Promise<void> {
       databaseClient.repository,
       codeIntelligence,
       repositoryService,
-      new ZoteroEvidenceLauncher(shell),
+      zoteroEvidenceLauncher,
+    ),
+  );
+  registerPaperCodeLinkIpcHandlers(
+    new PaperCodeLinkService(
+      databaseClient.paperCodeLink,
+      zoteroBridge,
+      databaseClient.repository,
+      codeIntelligence,
+      repositoryService,
+      zoteroEvidenceLauncher,
     ),
   );
   registerPdfProtocol(session.defaultSession, reader);

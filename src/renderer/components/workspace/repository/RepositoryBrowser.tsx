@@ -2,16 +2,24 @@ import { useEffect, useRef, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 
 import type { RepositoryRef, RepositorySourceFile } from '../../../../shared/contracts/repository';
+import type { PaperCodeLink } from '../../../../shared/contracts/paper-code-link';
 import { rendererLogger } from '../../../logger';
 import { RepositoryTree } from './RepositoryTree';
 import { SourceViewer } from './SourceViewer';
 import { CodeSearchPanel } from './CodeSearchPanel';
 
-export function RepositoryBrowser({ repository }: { readonly repository: RepositoryRef }) {
+export function RepositoryBrowser({
+  repository,
+  workspaceId,
+}: {
+  readonly repository: RepositoryRef;
+  readonly workspaceId: string;
+}) {
   const [source, setSource] = useState<RepositorySourceFile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [targetLine, setTargetLine] = useState<number | null>(null);
+  const [relatedPapers, setRelatedPapers] = useState<readonly PaperCodeLink[]>([]);
   const activeRequest = useRef<string | null>(null);
 
   useEffect(() => {
@@ -39,6 +47,18 @@ export function RepositoryBrowser({ repository }: { readonly repository: Reposit
       }
       setSource(result.value);
       setTargetLine(line ?? null);
+      try {
+        const links = await window.paperMind.paperCodeLink.listForCode({
+          workspaceId,
+          repositoryId: repository.id,
+          relativePath,
+        });
+        if (links.ok) setRelatedPapers(links.value);
+        else setError(links.error.message);
+      } catch (caught) {
+        rendererLogger.error('Unable to load Related Papers', caught);
+        setError('Related Papers could not be loaded.');
+      }
     } catch (caught) {
       rendererLogger.error('Unable to read repository source', caught);
       setError('The source file could not be opened.');
@@ -46,6 +66,17 @@ export function RepositoryBrowser({ repository }: { readonly repository: Reposit
       if (activeRequest.current === requestId) activeRequest.current = null;
       setLoading(false);
     }
+  };
+
+  const openRelatedPaper = async (link: PaperCodeLink) => {
+    setError(null);
+    const result = await window.paperMind.paperCodeLink.openPaper({
+      workspaceId,
+      id: link.id,
+    });
+    if (!result.ok) setError(result.error.message);
+    else if (!result.value.opened)
+      setError(result.value.reason ?? 'The linked paper is unavailable.');
   };
 
   const openIndexedLocation = async (relativePath: string, line: number) => {
@@ -119,8 +150,10 @@ export function RepositoryBrowser({ repository }: { readonly repository: Reposit
           onOpenFile={(relativePath) => void readSource(relativePath)}
         />
         <SourceViewer
+          relatedPapers={relatedPapers}
           source={source}
           targetLine={targetLine}
+          onOpenRelatedPaper={(link) => void openRelatedPaper(link)}
           onOpenInVscode={(line) => void openInVscode(line)}
         />
       </div>

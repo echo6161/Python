@@ -200,6 +200,18 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       );
     case 'codeLocationExists':
       return database.codeLocationExists(request.payload);
+    case 'createPaperCodeLink':
+      return database.createPaperCodeLink(request.payload);
+    case 'getPaperCodeLink':
+      return database.getPaperCodeLink(request.payload.workspaceId, request.payload.id);
+    case 'listPaperCodeLinks':
+      return database.listPaperCodeLinks(request.payload.workspaceId);
+    case 'updatePaperCodeLink':
+      return database.updatePaperCodeLink(request.payload);
+    case 'deletePaperCodeLink':
+      return database.deletePaperCodeLink(request.payload.workspaceId, request.payload.id);
+    case 'paperCodeLocationExists':
+      return database.paperCodeLocationExists(request.payload);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

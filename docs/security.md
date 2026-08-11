@@ -99,6 +99,22 @@
   capability. Logs contain error codes, not source content, roots, Git remote
   credentials, environment values, or command output.
 
+## Phase 12 Paper-Code Link Controls
+
+- Renderer can invoke only fixed `paper-code-links:*` operations with strict,
+  bounded schemas. Unknown URL, localhost, path, shell, Git, SQL, file-reader, and
+  provenance fields are rejected.
+- Link creation requires same-Workspace Zotero and repository associations and an
+  exact current trusted index match for snapshot, path, content hash, symbol, and
+  line range. Absolute/traversal paths and inverted or out-of-file lines fail closed.
+- Stored links never grant new filesystem or network authority. Paper opening is
+  delegated to the fixed Zotero launcher; code opening is delegated to the existing
+  authorized RepositoryService and is refused when its recorded snapshot is stale.
+- The preload create method cannot mark input as AI-generated. No AI suggestion is
+  persisted or presented as confirmed by the Phase 12 implementation.
+- Confirmed `DELETE_LINK` removes only one PaperMind relationship. It has no Zotero,
+  PDF, repository, source-file, Git, annotation, Question, or Evidence mutation path.
+
 - 文档状态：Phase 0 基线草案
 - 安全目标：限制不可信内容的权限，最小化外发数据，保护凭据，避免破坏用户文件和 Git 历史
 

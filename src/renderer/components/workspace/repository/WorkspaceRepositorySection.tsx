@@ -266,7 +266,9 @@ export function WorkspaceRepositorySection({ workspace }: { readonly workspace: 
               </li>
             ))}
           </ul>
-          {selected ? <RepositoryBrowser key={selected.id} repository={selected} /> : null}
+          {selected ? (
+            <RepositoryBrowser key={selected.id} repository={selected} workspaceId={workspace.id} />
+          ) : null}
         </div>
       )}
     </section>

@@ -12,6 +12,7 @@ import { WorkspaceLifecycleDialog } from './WorkspaceLifecycleDialog';
 import { WorkspacePaperSection } from './WorkspacePaperSection';
 import { WorkspaceRepositorySection } from './repository/WorkspaceRepositorySection';
 import { WorkspaceQuestionSection } from './question/WorkspaceQuestionSection';
+import { PaperCodeLinkSection } from './paper-code-link/PaperCodeLinkSection';
 
 interface WorkspaceOverviewProps {
   readonly busy: boolean;
@@ -89,6 +90,7 @@ export function WorkspaceOverview({
         <WorkspaceDetailsEditor busy={busy} workspace={workspace} onUpdate={onUpdate} />
         <WorkspacePaperSection workspace={workspace} />
         <WorkspaceRepositorySection workspace={workspace} />
+        <PaperCodeLinkSection workspace={workspace} />
         <WorkspaceQuestionSection workspace={workspace} />
         <ComingLaterSections />
       </div>

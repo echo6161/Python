@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, FileText, Plus, Trash2 } from 'lucide-react';
 
 import type { Workspace, WorkspaceZoteroPaper } from '../../../shared/contracts/workspace';
+import type { PaperCodeLink } from '../../../shared/contracts/paper-code-link';
 import { rendererLogger } from '../../logger';
 import {
   formatZoteroItemType,
@@ -17,6 +18,7 @@ interface WorkspacePaperSectionProps {
 
 export function WorkspacePaperSection({ workspace }: WorkspacePaperSectionProps) {
   const [papers, setPapers] = useState<readonly WorkspaceZoteroPaper[] | null>(null);
+  const [links, setLinks] = useState<readonly PaperCodeLink[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
@@ -31,6 +33,14 @@ export function WorkspacePaperSection({ workspace }: WorkspacePaperSectionProps)
         return;
       }
       setPapers(result.value);
+      try {
+        const linkResult = await window.paperMind.paperCodeLink.listForWorkspace(workspace.id);
+        if (linkResult.ok) setLinks(linkResult.value);
+        else setError(linkResult.error.message);
+      } catch (caught) {
+        rendererLogger.error('Unable to load related code links', caught);
+        setError('Related code links could not be loaded.');
+      }
     } catch (caught) {
       rendererLogger.error('Unable to load Workspace papers', caught);
       setError('Workspace papers could not be loaded.');
@@ -70,6 +80,18 @@ export function WorkspacePaperSection({ workspace }: WorkspacePaperSectionProps)
     () => new Set((papers ?? []).map(({ itemRef }) => zoteroReferenceKey(itemRef))),
     [papers],
   );
+
+  const openRelatedCode = async (link: PaperCodeLink) => {
+    setError(null);
+    setNotice(null);
+    const result = await window.paperMind.paperCodeLink.openCode({
+      workspaceId: link.workspaceId,
+      id: link.id,
+    });
+    if (!result.ok) setError(result.error.message);
+    else if (!result.value.opened)
+      setError(result.value.reason ?? 'The linked code is unavailable.');
+  };
 
   return (
     <section
@@ -141,6 +163,8 @@ export function WorkspacePaperSection({ workspace }: WorkspacePaperSectionProps)
                 workspace.status === 'archived' || removingKey === zoteroReferenceKey(paper.itemRef)
               }
               paper={paper}
+              relatedLinks={links.filter((link) => sameZoteroItem(link, paper))}
+              onOpenCode={(link) => void openRelatedCode(link)}
               onRemove={() => void remove(paper)}
             />
           ))}
@@ -165,10 +189,14 @@ function WorkspacePaperRow({
   paper,
   disabled,
   onRemove,
+  relatedLinks,
+  onOpenCode,
 }: {
   readonly paper: WorkspaceZoteroPaper;
   readonly disabled: boolean;
   readonly onRemove: () => void;
+  readonly relatedLinks: readonly PaperCodeLink[];
+  readonly onOpenCode: (link: PaperCodeLink) => void;
 }) {
   const item = paper.item;
   const unavailable = paper.availability !== 'available';
@@ -186,6 +214,21 @@ function WorkspacePaperRow({
             ? `${String(item.year ?? item.date ?? 'No date')} | ${formatZoteroItemType(item.itemType)}`
             : `${paper.itemRef.library.type} library ${paper.itemRef.library.id}`}
         </p>
+        {relatedLinks.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-2" aria-label={`Related code for ${title}`}>
+            {relatedLinks.map((link) => (
+              <button
+                className="text-button font-mono text-xs"
+                key={link.id}
+                type="button"
+                onClick={() => onOpenCode(link)}
+              >
+                {link.relativePath}:{String(link.startLine)}
+                {link.codeAvailability === 'available' ? '' : ` (${link.codeAvailability})`}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div className="justify-self-end text-right text-xs">
         {item ? (
@@ -212,6 +255,15 @@ function WorkspacePaperRow({
         <Trash2 aria-hidden="true" className="size-4" />
       </button>
     </li>
+  );
+}
+
+function sameZoteroItem(link: PaperCodeLink, paper: WorkspaceZoteroPaper): boolean {
+  return (
+    link.itemRef.serverId === paper.itemRef.serverId &&
+    link.itemRef.library.type === paper.itemRef.library.type &&
+    link.itemRef.library.id === paper.itemRef.library.id &&
+    link.itemRef.itemKey === paper.itemRef.itemKey
   );
 }
 

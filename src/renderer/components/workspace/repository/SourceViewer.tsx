@@ -2,15 +2,24 @@ import { useEffect, useRef } from 'react';
 import { ExternalLink } from 'lucide-react';
 
 import type { RepositorySourceFile } from '../../../../shared/contracts/repository';
+import type { PaperCodeLink } from '../../../../shared/contracts/paper-code-link';
 import { highlightSourceLine } from './source-highlighting';
 
 interface SourceViewerProps {
   readonly source: RepositorySourceFile | null;
   readonly targetLine: number | null;
   readonly onOpenInVscode: (line?: number) => void;
+  readonly relatedPapers: readonly PaperCodeLink[];
+  readonly onOpenRelatedPaper: (link: PaperCodeLink) => void;
 }
 
-export function SourceViewer({ source, targetLine, onOpenInVscode }: SourceViewerProps) {
+export function SourceViewer({
+  source,
+  targetLine,
+  onOpenInVscode,
+  relatedPapers,
+  onOpenRelatedPaper,
+}: SourceViewerProps) {
   const targetRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     if (typeof targetRef.current?.scrollIntoView === 'function') {
@@ -46,6 +55,26 @@ export function SourceViewer({ source, targetLine, onOpenInVscode }: SourceViewe
           Open file
         </button>
       </header>
+      {relatedPapers.length > 0 ? (
+        <div className="border-b border-zinc-200 bg-emerald-50 px-4 py-3">
+          <h4 className="text-xs font-semibold uppercase text-emerald-900">Related Papers</h4>
+          <ul aria-label="Related papers for source file" className="mt-2 space-y-1">
+            {relatedPapers.map((link) => (
+              <li key={link.id}>
+                <button
+                  className="text-button text-left text-xs"
+                  type="button"
+                  onClick={() => onOpenRelatedPaper(link)}
+                >
+                  {link.item?.title ?? `Zotero item ${link.itemRef.itemKey}`}
+                  {link.pageNumber ? ` | p.${String(link.pageNumber)}` : ''}
+                  {link.paperAvailability === 'available' ? '' : ` | ${link.paperAvailability}`}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="max-h-[560px] overflow-auto bg-zinc-950 py-2 font-mono text-xs leading-5">
         {lines.map((line, index) => {
           const lineNumber = index + 1;
