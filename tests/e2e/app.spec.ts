@@ -30,6 +30,12 @@ async function launch(libraryRoot: string): Promise<ElectronApplication> {
   });
 }
 
+async function openLegacyLibrary(
+  window: Awaited<ReturnType<ElectronApplication['firstWindow']>>,
+): Promise<void> {
+  await window.getByRole('button', { name: 'Legacy Library' }).click();
+}
+
 async function selectFilesInDialog(
   electronApp: ElectronApplication,
   filePaths: readonly string[],
@@ -125,6 +131,7 @@ test('reads a short PDF and persists annotations, progress, deletion, and export
   try {
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
+    await openLegacyLibrary(window);
 
     await expect(window.getByText('PaperMind', { exact: true })).toBeVisible();
     await expect(window.getByRole('heading', { name: 'PDF reader' })).toBeVisible();
@@ -196,6 +203,7 @@ test('reads a short PDF and persists annotations, progress, deletion, and export
   try {
     const restartedWindow = await electronApp.firstWindow();
     await restartedWindow.waitForLoadState('domcontentloaded');
+    await openLegacyLibrary(restartedWindow);
     await expect(restartedWindow.getByText('2 papers')).toBeVisible();
     await restartedWindow.getByRole('button', { name: 'alpha-study alpha-study.pdf' }).click();
     await expect(restartedWindow.getByText('2 saved')).toBeVisible();
@@ -239,6 +247,7 @@ test('searches an 80-page PDF while only mounting visible pages', async ({
   try {
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
+    await openLegacyLibrary(window);
     await selectFilesInDialog(electronApp, [source]);
     await window.getByRole('button', { name: 'Import' }).click();
     await window.getByRole('button', { name: 'Reader' }).click();
@@ -297,6 +306,7 @@ test('confirms extracted metadata and persists library organization', async ({
   try {
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
+    await openLegacyLibrary(window);
     await selectFilesInDialog(electronApp, [metadataPdf, plainPdf]);
     await window.getByRole('button', { name: 'Import' }).click();
 
@@ -458,6 +468,7 @@ test('confirms extracted metadata and persists library organization', async ({
   try {
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
+    await openLegacyLibrary(window);
     await window.getByRole('button', { name: /Manually Corrected Paper/ }).click();
     await window.getByRole('button', { name: 'Details' }).click();
     await expect(window.getByLabel(/^Title/)).toHaveValue('Manually Corrected Paper');
@@ -493,6 +504,7 @@ test('streams, cancels, and persists selected-text AI tasks with the Mock Provid
     await stubChatGptOpen(electronApp);
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
+    await openLegacyLibrary(window);
     await selectFilesInDialog(electronApp, [source]);
     await window.getByRole('button', { name: 'Import' }).click();
     await window.getByRole('button', { name: 'Reader' }).click();
@@ -533,6 +545,7 @@ test('streams, cancels, and persists selected-text AI tasks with the Mock Provid
     await approveNativeAiRequests(electronApp);
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
+    await openLegacyLibrary(window);
     await window.getByRole('tab', { name: 'AI Assistant' }).click();
     await expect(
       window.getByText(/Selection: Phase five selected excerpt for translation/),
@@ -551,4 +564,88 @@ test('streams, cancels, and persists selected-text AI tasks with the Mock Provid
   }
 
   expect(await hashFile(source)).toBe(originalHash);
+});
+
+test('creates, switches, restores, archives, and deletes Workspaces', async ({
+  browserName,
+}, testInfo) => {
+  expect(browserName).toBe('chromium');
+  const libraryRoot = testInfo.outputPath('PaperMind Workspace Library');
+  let electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await expect(
+      window.getByRole('heading', { name: 'Create a research Workspace' }),
+    ).toBeVisible();
+
+    await window.getByRole('button', { name: 'Create Workspace', exact: true }).first().click();
+    let dialog = window.getByRole('dialog', { name: 'Create Workspace' });
+    await expect(dialog.getByLabel('Name')).toBeFocused();
+    await dialog.getByLabel('Name').fill('Evidence Workspace');
+    await dialog.getByLabel('Research Goal').fill('Compare evidence synthesis methods');
+    await dialog.getByRole('button', { name: 'Create Workspace' }).click();
+    await expect(window.getByRole('heading', { name: 'Evidence Workspace' })).toBeVisible();
+
+    await window.getByRole('button', { name: 'Create Workspace', exact: true }).click();
+    dialog = window.getByRole('dialog', { name: 'Create Workspace' });
+    await dialog.getByLabel('Name').fill('Replication Workspace');
+    await dialog.getByLabel('Research Goal').fill('Replicate the selected benchmark');
+    await dialog.getByRole('button', { name: 'Create Workspace' }).click();
+    await expect(window.getByRole('heading', { name: 'Replication Workspace' })).toBeVisible();
+
+    const workspaceNavigation = window.getByRole('navigation', { name: 'Workspaces' });
+    await workspaceNavigation.getByRole('button', { name: /Evidence Workspace/ }).click();
+    await window.getByRole('button', { name: 'Edit' }).click();
+    await window
+      .getByLabel('Research Goal')
+      .fill('Compare reproducible evidence synthesis methods');
+    await window.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(window.getByText('Compare reproducible evidence synthesis methods')).toBeVisible();
+    await expect(
+      window.getByText('Define the research goal, then add relevant papers from Zotero.'),
+    ).toBeVisible();
+    await expect(window.getByLabel('Questions: Coming later')).toBeVisible();
+    await window.screenshot({ path: testInfo.outputPath('papermind-workspace-overview.png') });
+    await window.setViewportSize({ width: 1100, height: 680 });
+    expect(
+      await window.evaluate(() => document.documentElement.scrollWidth <= globalThis.innerWidth),
+    ).toBe(true);
+    await window.screenshot({ path: testInfo.outputPath('papermind-workspace-minimum.png') });
+  } finally {
+    await electronApp.close();
+  }
+
+  electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await expect(window.getByRole('heading', { name: 'Evidence Workspace' })).toBeVisible();
+    await expect(window.getByText('Compare reproducible evidence synthesis methods')).toBeVisible();
+
+    await window.getByRole('button', { name: 'Archive' }).click();
+    let confirmation = window.getByRole('alertdialog', { name: 'Archive Workspace?' });
+    await expect(confirmation.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await expect(confirmation).toContainText('Zotero links will be preserved');
+    await confirmation.getByRole('button', { name: 'Archive Workspace' }).click();
+    await expect(
+      window
+        .getByRole('heading', { name: 'Evidence Workspace' })
+        .locator('..')
+        .getByText('archived'),
+    ).toBeVisible();
+
+    await window.getByRole('button', { name: 'Delete' }).click();
+    confirmation = window.getByRole('alertdialog', { name: 'Delete Workspace?' });
+    await expect(confirmation).toContainText(
+      'Zotero items, PDFs, annotations, and legacy library data will not be deleted',
+    );
+    await confirmation.getByRole('button', { name: 'Delete Workspace' }).click();
+    await expect(window.getByRole('heading', { name: 'Replication Workspace' })).toBeVisible();
+    await expect(
+      window.getByRole('navigation', { name: 'Workspaces' }).getByText('Evidence Workspace'),
+    ).not.toBeVisible();
+  } finally {
+    await electronApp.close();
+  }
 });

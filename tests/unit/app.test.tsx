@@ -198,10 +198,17 @@ describe('App', () => {
     vi.useRealTimers();
   });
 
-  it('renders the secure desktop library workspace', async () => {
+  it('renders Workspace as the root and keeps the secure legacy library available', async () => {
     render(<App />);
 
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Workspace' }).getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Create a research Workspace' }),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Legacy Library' }));
     expect(screen.getByRole('heading', { name: 'All papers' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'PDF reader' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'Annotations' })).toBeDefined();
@@ -211,6 +218,7 @@ describe('App', () => {
 
   it('passes dropped PDF files through the preload library API', () => {
     render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Legacy Library' }));
     const file = new File(['%PDF-test'], 'dropped.pdf', { type: 'application/pdf' });
 
     fireEvent.drop(screen.getByTestId('library-drop-zone'), {
@@ -227,6 +235,7 @@ describe('App', () => {
     });
     getPaperMock.mockResolvedValue({ ok: true, value: paperDetails });
     render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Legacy Library' }));
 
     await screen.findByText('Confirmable paper', { selector: 'h2' });
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
@@ -253,7 +262,7 @@ describe('App', () => {
   it('opens the Zotero integration without changing the legacy library', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zotero Integration' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zotero Browser' }));
 
     expect(screen.getByRole('heading', { name: 'Zotero Integration' })).toBeDefined();
     expect(await screen.findByText('Status: Not Running')).toBeDefined();
@@ -277,6 +286,7 @@ describe('App', () => {
     });
     getPaperMock.mockResolvedValue({ ok: true, value: paperDetails });
     render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Legacy Library' }));
 
     const file = new File(['%PDF-test'], 'confirmable.pdf', { type: 'application/pdf' });
     fireEvent.drop(screen.getByTestId('library-drop-zone'), {
@@ -309,6 +319,7 @@ describe('App', () => {
       .mockResolvedValueOnce({ ok: true, value: pendingPaper })
       .mockReturnValue(indexLookup.promise);
     render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Legacy Library' }));
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(200);
@@ -354,6 +365,7 @@ describe('App', () => {
     });
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Legacy Library' }));
 
     await screen.findByText('Confirmable paper', { selector: 'h2' });
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
@@ -390,6 +402,7 @@ describe('App', () => {
     deleteTagMock.mockResolvedValue({ ok: true, value: { id: managedTag.id } });
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Legacy Library' }));
 
     await screen.findByText('Confirmable paper', { selector: 'h2' });
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));

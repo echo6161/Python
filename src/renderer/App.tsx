@@ -4,10 +4,11 @@ import { LibraryWorkspace } from './components/LibraryWorkspace';
 import { type AppView, Sidebar } from './components/Sidebar';
 import { SettingsWorkspace } from './components/SettingsWorkspace';
 import { ZoteroIntegration } from './components/ZoteroIntegration';
+import { WorkspaceView } from './components/workspace/WorkspaceView';
 import { rendererLogger } from './logger';
 
 export function App() {
-  const [activeView, setActiveView] = useState<AppView>('library');
+  const [activeView, setActiveView] = useState<AppView>('workspace');
   const [appVersion, setAppVersion] = useState('0.1.0');
   const [hasUnsavedPaperDetails, setHasUnsavedPaperDetails] = useState(false);
 
@@ -45,7 +46,9 @@ export function App() {
   return (
     <div className="flex h-screen min-h-[680px] min-w-[1100px] overflow-hidden bg-zinc-100 text-zinc-900">
       <Sidebar activeView={activeView} appVersion={appVersion} onNavigate={navigate} />
-      {activeView === 'library' ? (
+      {activeView === 'workspace' ? (
+        <WorkspaceView />
+      ) : activeView === 'library' ? (
         <LibraryWorkspace
           onDirtyChange={setHasUnsavedPaperDetails}
           onOpenSettings={() => navigate('settings')}

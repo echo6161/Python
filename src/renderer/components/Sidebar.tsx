@@ -1,6 +1,6 @@
-import { BookOpen, Library, Settings, Waypoints } from 'lucide-react';
+import { BookOpen, FolderKanban, Library, Settings, Waypoints } from 'lucide-react';
 
-export type AppView = 'library' | 'settings' | 'zotero';
+export type AppView = 'library' | 'settings' | 'workspace' | 'zotero';
 
 interface SidebarProps {
   readonly activeView: AppView;
@@ -13,8 +13,9 @@ const navigationItems: readonly {
   readonly label: string;
   readonly view: AppView;
 }[] = [
-  { icon: Library, label: 'Library', view: 'library' },
-  { icon: Waypoints, label: 'Zotero Integration', view: 'zotero' },
+  { icon: FolderKanban, label: 'Workspace', view: 'workspace' },
+  { icon: Library, label: 'Legacy Library', view: 'library' },
+  { icon: Waypoints, label: 'Zotero Browser', view: 'zotero' },
   { icon: Settings, label: 'Settings', view: 'settings' },
 ];
 
@@ -54,7 +55,7 @@ export function Sidebar({ activeView, appVersion, onNavigate }: SidebarProps) {
       <div className="border-t border-zinc-800 px-5 py-4 text-xs text-zinc-500">
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-          Local workspace
+          Local first
         </div>
         <p className="mt-2">v{appVersion}</p>
       </div>

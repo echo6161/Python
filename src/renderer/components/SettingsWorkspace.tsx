@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import { Database, KeyRound, Languages, Save, ShieldCheck, Trash2 } from 'lucide-react';
 
 import type { AiCapabilities, AiProviderSettings } from '../../shared/contracts/ai';
-import { WorkspaceCorePanel } from './WorkspaceCorePanel';
 
 const DEFAULT_SETTINGS: AiProviderSettings = {
   baseUrl: 'https://api.openai.com/v1',
@@ -185,8 +184,6 @@ export function SettingsWorkspace() {
             <span className="text-sm text-zinc-500">System default</span>
           </div>
         </section>
-
-        <WorkspaceCorePanel />
 
         <section
           aria-labelledby="ai-provider-settings"

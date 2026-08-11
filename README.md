@@ -2,7 +2,7 @@
 
 PaperMind is an AI-native Research Workspace and Research Control Plane. It coordinates research goals, papers, questions, code, experiments, evidence, conclusions, and durable memory while leaving authoritative data in the tools that own it: Zotero for bibliography/PDFs, Git for code history, VS Code for editing and execution, and Obsidian for long-term knowledge.
 
-The implemented application includes a secure local Paper/PDF compatibility library, reader, annotation system, selected-text AI assistant, the Phase 6 read-only Zotero Bridge, and the Phase 7 Workspace domain core. Workspaces persist local goals and lifecycle state and may share stable Zotero references without copying Zotero metadata or PDFs. The Settings view contains only a minimal Workspace verification entry; the full Workspace shell remains Phase 8. PaperMind does not read `zotero.sqlite`, scan Zotero storage, copy Zotero PDFs, or expose Zotero paths/endpoints to Renderer. Phase 5 also includes OS-backed OpenAI credentials and a manual ChatGPT handoff for Plus users. Full PDFs are never uploaded by default.
+The implemented application includes a secure local Paper/PDF compatibility library, reader, annotation system, selected-text AI assistant, the Phase 6 read-only Zotero Bridge, and the Phase 7-8 Workspace core and application shell. Workspaces persist local goals and lifecycle state, restore the last active Workspace, and may share stable Zotero references without copying Zotero metadata or PDFs. Users can search or filter Zotero through a controlled picker, add multiple references, and see explicit external availability states. The existing reader remains available under **Legacy Library**; it is not deleted or silently migrated. PaperMind does not read `zotero.sqlite`, scan Zotero storage, copy Zotero PDFs, or expose Zotero paths/endpoints to Renderer. Phase 5 also includes OS-backed OpenAI credentials and a manual ChatGPT handoff for Plus users. Full PDFs are never uploaded by default.
 
 Architecture authority: [product vision](docs/product-vision.md), [data ownership](docs/data-ownership.md), [Phase 5.5 audit](docs/phase-5.5-architecture-audit.md), and [development roadmap](docs/development-roadmap.md).
 
@@ -85,7 +85,7 @@ The BrowserWindow baseline is `contextIsolation: true`, `nodeIntegration: false`
 src/
   main/       Electron Main process, local metadata extraction, and security policy
   preload/    Minimal contextBridge API
-  renderer/   React library management, virtualized PDF reader, search, and annotations
+  renderer/   Workspace shell, controlled integrations, legacy library, PDF reader, and annotations
   shared/     Cross-process contracts and logging types
 tests/
   unit/       Vitest component and security tests

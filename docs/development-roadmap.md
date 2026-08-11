@@ -26,6 +26,7 @@
 | 5.5 | Product, ownership, source-of-truth, architecture, security, and roadmap reorientation | Completed |
 | 6 | Read-only Zotero Local API bridge, stable references, metadata/collection/attachment/PDF availability UI | Implemented; validation recorded in Phase 6 report |
 | 7 | Workspace persistence, lifecycle, last-active state, and many-to-many Zotero references | Implemented; validation recorded in Phase 7 report |
+| 8 | Workspace-first navigation, goals, Zotero picker, reference states, and lifecycle UX | Implemented; validation recorded in Phase 8 report |
 
 ## 3. Authoritative Phase Order
 
@@ -90,6 +91,14 @@ remains responsible for the full Workspace shell and navigation.
 **Depends on:** Phase 7 domain services and contracts.
 
 Make Workspace the application shell and navigation root. Provide creation/selection/status views and embed Zotero resources and legacy library/reader as bounded tools. Do not add repository or agent features.
+
+**Implementation status:** completed. Workspace is the default top-level view
+with persisted creation, selection, goal editing, pause/archive/delete UX, and
+last-active restoration. The Zotero picker supports bounded search, collection
+filtering, pagination, multi-select, deduplication, retry, and typed add actions.
+Workspace paper rows resolve transient Zotero metadata and explicit
+missing/stale/unavailable states. Legacy Paper/PDF features remain available as
+the clearly labelled `Legacy Library`; no legacy data or schema was changed.
 
 ### Phase 9: Repository Integration
 

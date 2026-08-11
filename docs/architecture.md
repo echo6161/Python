@@ -115,9 +115,53 @@ confirmed delete removes only Workspace-owned rows. External resolution reports
 repairs an association by guesswork. Resolution is bounded to four concurrent
 items and 500 persisted associations per Workspace.
 
-The Phase 7 UI is intentionally limited to creation, listing, and last-active
-selection under Settings. Full Workspace navigation and resource management are
-reserved for Phase 8.
+The Phase 7 verification panel has been superseded by the Phase 8 Workspace
+shell described below.
+
+## Phase 8 Implemented Workspace UX
+
+Phase 8 makes Workspace the Renderer navigation root without changing the
+Phase 7 persistence or Electron trust boundaries:
+
+```text
+WorkspaceView (Renderer)
+  -> useWorkspaceController
+  -> window.paperMind.workspace (fixed typed preload methods)
+  -> workspaces:* validated IPC
+  -> WorkspaceService / WorkspaceRepository
+
+ZoteroPickerDialog (Renderer)
+  -> window.paperMind.zotero domain methods
+  -> zotero:* validated IPC
+  -> ZoteroBridgeService -> fixed ZoteroLocalApiClient
+```
+
+The Workspace view owns only UI state for the currently selected Workspace.
+The overview subtree is keyed by the stable Workspace ID, so paper lists,
+loading states, picker selection, and local notices are discarded on a
+Workspace switch. Last-active selection continues to use the Phase 7 persisted
+singleton state and restores after restart.
+
+The picker never accepts a protocol, host, port, URL, or file path. Remote
+top-level items use the existing bounded Zotero pagination API. Collection
+filtering uses the existing bounded collection-item DTO read and performs only
+local filtering and 20-item presentation pages; it does not claim an unbounded
+mirror of Zotero. Selected references are deduplicated by complete server,
+library, and item identity before invoking the existing Workspace association
+API. Zotero metadata and PDF state remain transient and non-authoritative.
+
+Workspace cards show explicit `missing`, `stale_identity`, and `unavailable`
+states without removing persisted associations. Removal deletes only the
+PaperMind-owned Workspace association. Archive preserves the Workspace and its
+links; confirmed delete removes only Workspace-owned rows. Neither operation
+writes to Zotero or touches legacy Paper/PDF data.
+
+Questions, Repositories, Reading Plan, and Experiments are non-interactive
+`Coming later` states with no records, fake activity, routes, or IPC. Recent
+Activity appears only when persisted Workspace associations provide a real
+`addedAt` timestamp. The Phase 1-5 Paper/PDF UI remains reachable through the
+explicit `Legacy Library` compatibility entry and is no longer the top-level
+application context.
 
 - 文档状态：Phase 1-5 实现基线；Phase 5.5 目标架构见上方权威说明
 - 架构风格：本地优先的 Electron 分层桌面应用
