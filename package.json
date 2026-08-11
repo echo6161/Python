@@ -1,8 +1,8 @@
 {
   "name": "papermind",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
-  "description": "Local-first research workspace with a read-only Zotero bridge.",
+  "description": "Local-first research workspace with read-only literature and code bridges.",
   "main": "dist/node/main/index.js",
   "engines": {
     "node": ">=24.19.0 <25"
@@ -62,6 +62,8 @@
     }
   },
   "dependencies": {
+    "@lezer/javascript": "1.5.4",
+    "@lezer/python": "1.1.19",
     "@tanstack/react-virtual": "3.14.8",
     "better-sqlite3": "13.0.3",
     "lucide-react": "1.30.0",

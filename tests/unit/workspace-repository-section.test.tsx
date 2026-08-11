@@ -45,6 +45,9 @@ describe('WorkspaceRepositorySection', () => {
   const listTree = vi.fn();
   const readSource = vi.fn();
   const openInVscode = vi.fn();
+  const getCodeIndexStatus = vi.fn();
+  const runCodeIndex = vi.fn();
+  const searchSymbols = vi.fn();
 
   beforeEach(() => {
     listForWorkspace.mockReset().mockResolvedValue({ ok: true, value: [repository] });
@@ -94,6 +97,53 @@ describe('WorkspaceRepositorySection', () => {
       },
     });
     openInVscode.mockReset().mockResolvedValue({ ok: true, value: { opened: true } });
+    getCodeIndexStatus.mockReset().mockResolvedValue({
+      ok: true,
+      value: {
+        repositoryId: repository.id,
+        status: 'ready',
+        snapshotIdentity: 'content:fixture',
+        currentSnapshotIdentity: 'content:fixture',
+        dirty: true,
+        parserVersion: 'test-parser',
+        fileCount: 2,
+        symbolCount: 4,
+        chunkCount: 3,
+        processedFiles: 2,
+        totalFiles: 2,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: '2026-08-11T00:00:00.000Z',
+        completedAt: '2026-08-11T00:00:01.000Z',
+        updatedAt: '2026-08-11T00:00:01.000Z',
+      },
+    });
+    runCodeIndex.mockReset();
+    searchSymbols.mockReset().mockResolvedValue({
+      ok: true,
+      value: {
+        results: [
+          {
+            repositoryId: repository.id,
+            relativePath: 'index.ts',
+            language: 'typescript',
+            snapshotIdentity: 'content:fixture',
+            currentSnapshotIdentity: 'content:fixture',
+            stale: false,
+            contentHash: 'a'.repeat(64),
+            startLine: 1,
+            endLine: 1,
+            snippet: 'export const answer = 42;',
+            symbolKind: 'export',
+            symbolName: 'answer',
+            qualifiedName: 'answer',
+          },
+        ],
+        offset: 0,
+        limit: 20,
+        total: 1,
+      },
+    });
     installApi();
   });
 
@@ -128,6 +178,19 @@ describe('WorkspaceRepositorySection', () => {
       await screen.findByText('Repository linked. Local files were not copied or modified.'),
     ).toBeDefined();
     expect(chooseAndLink).toHaveBeenCalledWith(workspace.id);
+  });
+
+  it('searches symbols and navigates through the authorized source viewer', async () => {
+    render(<WorkspaceRepositorySection workspace={workspace} />);
+    expect(await screen.findByText('Ready | 2 files | 4 symbols')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Search indexed code'), { target: { value: 'answer' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    expect(await screen.findByText('export answer')).toBeDefined();
+    fireEvent.click(screen.getByText('export answer'));
+    expect(await screen.findByRole('heading', { name: 'index.ts' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open line 1 in VS Code' }).className).toContain(
+      'ring-emerald-500',
+    );
   });
 
   it('shows missing state and removes only the Workspace association after confirmation', async () => {
@@ -172,7 +235,27 @@ describe('WorkspaceRepositorySection', () => {
     };
     Object.defineProperty(window, 'paperMind', {
       configurable: true,
-      value: { repository: api },
+      value: {
+        repository: api,
+        codeIntelligence: {
+          getStatus: getCodeIndexStatus,
+          runIndex: runCodeIndex,
+          cancelIndex: vi.fn().mockResolvedValue({
+            ok: true,
+            value: { requestId: crypto.randomUUID(), cancelled: false },
+          }),
+          searchFiles: vi.fn().mockResolvedValue({
+            ok: true,
+            value: { results: [], offset: 0, limit: 20, total: 0 },
+          }),
+          searchSymbols,
+          searchText: vi.fn().mockResolvedValue({
+            ok: true,
+            value: { results: [], offset: 0, limit: 20, total: 0 },
+          }),
+          onProgress: vi.fn().mockReturnValue(() => undefined),
+        },
+      },
     });
   }
 });

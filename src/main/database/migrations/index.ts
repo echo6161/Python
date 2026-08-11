@@ -7,6 +7,7 @@ import { readerAnnotationsMigration } from './0002-reader-annotations';
 import { metadataOrganizationMigration } from './0003-metadata-organization';
 import { workspaceCoreMigration } from './0004-workspace-core';
 import { repositoryBridgeMigration } from './0005-repository-bridge';
+import { codeIntelligenceMigration } from './0006-code-intelligence';
 import type { DatabaseMigration } from './types';
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
@@ -15,6 +16,7 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   metadataOrganizationMigration,
   workspaceCoreMigration,
   repositoryBridgeMigration,
+  codeIntelligenceMigration,
 ];
 
 interface AppliedMigration {

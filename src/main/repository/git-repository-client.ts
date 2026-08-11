@@ -162,6 +162,21 @@ export class GitRepositoryClient {
     return new Set(result.stdout.split('\0').filter(Boolean));
   }
 
+  public async hasWorkingTreeChanges(root: string, signal?: AbortSignal): Promise<boolean> {
+    const result = await this.runGit(
+      root,
+      ['status', '--porcelain=v1', '-z', '--untracked-files=all'],
+      signal,
+    );
+    if (result.exitCode !== 0) {
+      throw new RepositoryError(
+        'REPOSITORY_GIT_ERROR',
+        'Git working-tree state could not be inspected.',
+      );
+    }
+    return result.stdout.length > 0;
+  }
+
   private async inspectGitRoot(root: string, signal?: AbortSignal): Promise<RepositoryInspection> {
     const [branchResult, headResult, remoteResult] = await Promise.all([
       this.runGit(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], signal),

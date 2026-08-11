@@ -1,6 +1,7 @@
 import type { LibraryApi } from './library';
 import type { ReaderApi } from './reader';
 import type { RepositoryApi } from './repository';
+import type { CodeIntelligenceApi } from './code-intelligence';
 import type { AiApi } from './ai';
 import type { ZoteroApi } from './zotero';
 import type { WorkspaceApi } from './workspace';
@@ -19,6 +20,7 @@ export interface AppInfo {
 }
 
 export interface PaperMindApi {
+  readonly codeIntelligence: CodeIntelligenceApi;
   readonly app: {
     getInfo(): Promise<AppInfo>;
   };

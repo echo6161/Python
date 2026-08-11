@@ -63,9 +63,29 @@ import { PaperRepository } from './paper-repository';
 import { ReaderRepository } from './reader-repository';
 import { WorkspaceRepository } from './workspace-repository';
 import { RepositoryRepository } from './repository-repository';
+import { CodeIndexRepository } from './code-index-repository';
+import type {
+  CodeIndexDataGateway,
+  CodeIndexFailureInput,
+  CompleteCodeIndexInput,
+  StoredCodeFileHash,
+} from '../code-intelligence/code-index-data-gateway';
+import type {
+  CodeFileSearchResult,
+  CodeIndexStatus,
+  CodeSearchInput,
+  CodeSearchPage,
+  CodeSymbolSearchResult,
+  CodeTextSearchResult,
+} from '../../shared/contracts/code-intelligence';
 
 export class LibraryDatabase
-  implements PaperDataGateway, AiDataGateway, WorkspaceDataGateway, RepositoryDataGateway
+  implements
+    PaperDataGateway,
+    AiDataGateway,
+    WorkspaceDataGateway,
+    RepositoryDataGateway,
+    CodeIndexDataGateway
 {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
@@ -73,6 +93,7 @@ export class LibraryDatabase
   private aiRepository: AiRepository;
   private workspaceRepository: WorkspaceRepository;
   private repositoryRepository: RepositoryRepository;
+  private codeIndexRepository: CodeIndexRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -81,6 +102,7 @@ export class LibraryDatabase
     this.aiRepository = new AiRepository(this.database);
     this.workspaceRepository = new WorkspaceRepository(this.database);
     this.repositoryRepository = new RepositoryRepository(this.database);
+    this.codeIndexRepository = new CodeIndexRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -288,6 +310,78 @@ export class LibraryDatabase
     return this.run(() => this.repositoryRepository.delete(id));
   }
 
+  public recoverInterruptedIndexes(updatedAt: string): Promise<number> {
+    return this.run(() => this.codeIndexRepository.recoverInterrupted(updatedAt));
+  }
+
+  public getCodeIndexStatus(repositoryId: string): Promise<CodeIndexStatus | null> {
+    return this.run(() => this.codeIndexRepository.getStatus(repositoryId));
+  }
+
+  public listCodeFileHashes(repositoryId: string): Promise<readonly StoredCodeFileHash[]> {
+    return this.run(() => this.codeIndexRepository.listFileHashes(repositoryId));
+  }
+
+  public beginCodeIndex(
+    repositoryId: string,
+    requestId: string,
+    parserVersion: string,
+    totalFiles: number,
+    startedAt: string,
+  ): Promise<CodeIndexStatus> {
+    return this.run(() =>
+      this.codeIndexRepository.begin(repositoryId, requestId, parserVersion, totalFiles, startedAt),
+    );
+  }
+
+  public updateCodeIndexProgress(
+    repositoryId: string,
+    requestId: string,
+    processedFiles: number,
+    totalFiles: number,
+    updatedAt: string,
+  ): Promise<void> {
+    return this.run(() =>
+      this.codeIndexRepository.updateProgress(
+        repositoryId,
+        requestId,
+        processedFiles,
+        totalFiles,
+        updatedAt,
+      ),
+    );
+  }
+
+  public completeCodeIndex(input: CompleteCodeIndexInput): Promise<CodeIndexStatus> {
+    return this.run(() => this.codeIndexRepository.complete(input));
+  }
+
+  public cancelCodeIndex(input: CodeIndexFailureInput): Promise<CodeIndexStatus> {
+    return this.run(() => this.codeIndexRepository.cancel(input));
+  }
+
+  public failCodeIndex(input: CodeIndexFailureInput): Promise<CodeIndexStatus> {
+    return this.run(() => this.codeIndexRepository.fail(input));
+  }
+
+  public markCodeIndexStale(repositoryId: string, updatedAt: string): Promise<CodeIndexStatus> {
+    return this.run(() => this.codeIndexRepository.markStale(repositoryId, updatedAt));
+  }
+
+  public searchCodeFiles(input: CodeSearchInput): Promise<CodeSearchPage<CodeFileSearchResult>> {
+    return this.run(() => this.codeIndexRepository.searchFiles(input));
+  }
+
+  public searchCodeSymbols(
+    input: CodeSearchInput,
+  ): Promise<CodeSearchPage<CodeSymbolSearchResult>> {
+    return this.run(() => this.codeIndexRepository.searchSymbols(input));
+  }
+
+  public searchCodeText(input: CodeSearchInput): Promise<CodeSearchPage<CodeTextSearchResult>> {
+    return this.run(() => this.codeIndexRepository.searchText(input));
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -329,6 +423,7 @@ export class LibraryDatabase
         this.aiRepository = new AiRepository(this.database);
         this.workspaceRepository = new WorkspaceRepository(this.database);
         this.repositoryRepository = new RepositoryRepository(this.database);
+        this.codeIndexRepository = new CodeIndexRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -338,6 +433,7 @@ export class LibraryDatabase
         this.aiRepository = new AiRepository(this.database);
         this.workspaceRepository = new WorkspaceRepository(this.database);
         this.repositoryRepository = new RepositoryRepository(this.database);
+        this.codeIndexRepository = new CodeIndexRepository(this.database);
         throw error;
       }
 

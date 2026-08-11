@@ -1,4 +1,4 @@
-# PaperMind Phase 9 Database Schema
+# PaperMind Phase 10 Database Schema
 
 > This document describes the implemented Phase 1-5 compatibility schema. It is
 > runtime truth, not the Phase 5.5 target domain model. The current `papers` root
@@ -128,8 +128,29 @@ never accepted from Renderer. Branch, HEAD, remotes, and availability are
 observed diagnostics rather than copied Git authority. Deleting a Workspace
 cascades only its membership rows. Removing a membership or explicitly deleting
 a Repository reference never deletes or modifies a local directory, source file,
-Git ref, object, index, or working-tree entry. Existing legacy Paper/PDF,
+Git ref, object, or working-tree entry. It deletes only the reference's rebuildable
+PaperMind code index. Existing legacy Paper/PDF,
 Zotero-reference, annotation, and Workspace records are not migrated or removed.
+
+## Code Intelligence migration
+
+Migration `0006-code-intelligence.ts` is forward-only and creates:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Index lifecycle | `code_index_states` | One crash-safe state per RepositoryRef; active request, parser/snapshot identity, progress, counts, safe error, and timestamps |
+| Indexed file | `code_index_files` | Unique repository-relative path with language, snapshot/content hash, parser version, parse mode, size, and line count |
+| Code symbol | `code_index_symbols` | Repository/file-bound module/class/function/method/interface/type/import/export with stable line range and hashes |
+| Search chunk | `code_index_chunks` | Optional symbol binding, bounded line range/content, snapshot/content hash, and parser version |
+| Full-text search | `code_index_text_fts` | Trigger-maintained FTS5 projection of rebuildable source chunks |
+
+All index tables are derived, local, and subordinate to `repository_references`.
+Deleting a RepositoryRef cascades these rows but never addresses the authorized
+filesystem root. An incremental completion replaces changed/deleted paths, advances
+unchanged snapshot identities, updates FTS, counts, and lifecycle state in one
+transaction. A cancelled, failed, or interrupted task never promotes partial rows
+to ready. See [code-intelligence.md](./code-intelligence.md) for parser versions,
+snapshot rules, stale behavior, query bounds, and resource ceilings.
 
 Conversation text is local plaintext content and may include a user-approved selected excerpt. A per-request opt-out keeps that turn entirely in memory. API keys and encrypted credential blobs are never accepted by this repository and are stored outside the library through the Main-process Secret Store.
 

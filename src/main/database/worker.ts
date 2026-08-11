@@ -124,6 +124,42 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.listWorkspaceRepositories(request.payload.workspaceId);
     case 'deleteRepository':
       return database.deleteRepository(request.payload.id);
+    case 'recoverInterruptedIndexes':
+      return database.recoverInterruptedIndexes(request.payload.updatedAt);
+    case 'getCodeIndexStatus':
+      return database.getCodeIndexStatus(request.payload.repositoryId);
+    case 'listCodeFileHashes':
+      return database.listCodeFileHashes(request.payload.repositoryId);
+    case 'beginCodeIndex':
+      return database.beginCodeIndex(
+        request.payload.repositoryId,
+        request.payload.requestId,
+        request.payload.parserVersion,
+        request.payload.totalFiles,
+        request.payload.startedAt,
+      );
+    case 'updateCodeIndexProgress':
+      return database.updateCodeIndexProgress(
+        request.payload.repositoryId,
+        request.payload.requestId,
+        request.payload.processedFiles,
+        request.payload.totalFiles,
+        request.payload.updatedAt,
+      );
+    case 'completeCodeIndex':
+      return database.completeCodeIndex(request.payload);
+    case 'cancelCodeIndex':
+      return database.cancelCodeIndex(request.payload);
+    case 'failCodeIndex':
+      return database.failCodeIndex(request.payload);
+    case 'markCodeIndexStale':
+      return database.markCodeIndexStale(request.payload.repositoryId, request.payload.updatedAt);
+    case 'searchCodeFiles':
+      return database.searchCodeFiles(request.payload);
+    case 'searchCodeSymbols':
+      return database.searchCodeSymbols(request.payload);
+    case 'searchCodeText':
+      return database.searchCodeText(request.payload);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

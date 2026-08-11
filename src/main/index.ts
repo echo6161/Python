@@ -20,6 +20,7 @@ import { registerAiIpcHandlers } from './ipc/ai-ipc';
 import { registerLibraryIpcHandlers } from './ipc/library-ipc';
 import { registerReaderIpcHandlers } from './ipc/reader-ipc';
 import { registerRepositoryIpcHandlers } from './ipc/repository-ipc';
+import { registerCodeIntelligenceIpcHandlers } from './ipc/code-intelligence-ipc';
 import { registerWorkspaceIpcHandlers } from './ipc/workspace-ipc';
 import { registerZoteroIpcHandlers } from './ipc/zotero-ipc';
 import { PaperFileStorage } from './library/file-storage';
@@ -31,6 +32,9 @@ import { GitRepositoryClient } from './repository/git-repository-client';
 import { RepositoryFileService } from './repository/repository-file-service';
 import { RepositoryService } from './repository/repository-service';
 import { RepositoryVscodeLauncher } from './repository/repository-vscode-launcher';
+import { CodeIndexScanner } from './code-intelligence/code-index-scanner';
+import { CodeParserClient } from './code-intelligence/code-parser-client';
+import { CodeIntelligenceService } from './code-intelligence/code-intelligence-service';
 import { registerPdfProtocol } from './reader/pdf-protocol';
 import { configureSessionSecurity, restrictWindowNavigation } from './security';
 import { createWindowOptions } from './window-options';
@@ -108,11 +112,12 @@ async function initializeLibrary(): Promise<void> {
   registerZoteroIpcHandlers(zoteroBridge);
   registerWorkspaceIpcHandlers(new WorkspaceService(databaseClient.workspace, zoteroBridge));
   const gitRepositories = new GitRepositoryClient();
+  const repositoryFiles = new RepositoryFileService(gitRepositories);
   registerRepositoryIpcHandlers(
     new RepositoryService(
       databaseClient.repository,
       gitRepositories,
-      new RepositoryFileService(gitRepositories),
+      repositoryFiles,
       {
         chooseDirectory: async () => {
           const owner = mainWindow;
@@ -131,6 +136,14 @@ async function initializeLibrary(): Promise<void> {
       new RepositoryVscodeLauncher(shell),
     ),
   );
+  const codeIntelligence = new CodeIntelligenceService(
+    databaseClient.codeIndex,
+    databaseClient.repository,
+    new CodeIndexScanner(repositoryFiles, gitRepositories),
+    new CodeParserClient(path.join(__dirname, 'code-intelligence/code-parser-worker.js')),
+  );
+  await codeIntelligence.initialize();
+  registerCodeIntelligenceIpcHandlers(codeIntelligence);
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()

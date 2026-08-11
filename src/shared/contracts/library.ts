@@ -190,6 +190,8 @@ export interface PaperImportBatch {
 }
 
 export type ApiErrorCode =
+  | 'CODE_INDEX_CANCELLED'
+  | 'CODE_INDEX_LIMIT_EXCEEDED'
   | 'CONFLICT'
   | 'DATABASE_ERROR'
   | 'DUPLICATE_PAPER'

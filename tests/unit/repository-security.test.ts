@@ -20,6 +20,11 @@ import {
   repositoryTreeRequestSchema,
   workspaceRepositoryInputSchema,
 } from '../../src/main/ipc/repository-schemas';
+import {
+  codeRepositoryIdSchema,
+  codeSearchInputSchema,
+  runCodeIndexSchema,
+} from '../../src/main/ipc/code-intelligence-schemas';
 
 const REPOSITORY_ID = '550e8400-e29b-41d4-a716-446655440001';
 const WORKSPACE_ID = '550e8400-e29b-41d4-a716-446655440002';
@@ -84,6 +89,30 @@ describe('Repository Bridge security', () => {
         root: 'C:\\private',
       }),
     ).toThrow();
+    expect(codeRepositoryIdSchema.parse(REPOSITORY_ID)).toBe(REPOSITORY_ID);
+    expect(codeSearchInputSchema.parse({ repositoryId: REPOSITORY_ID, query: 'Reader' })).toEqual({
+      repositoryId: REPOSITORY_ID,
+      query: 'Reader',
+      offset: 0,
+      limit: 20,
+    });
+    expect(() =>
+      codeSearchInputSchema.parse({
+        repositoryId: REPOSITORY_ID,
+        query: 'Reader',
+        root: 'C:\\private',
+        url: 'http://localhost:9999/private',
+        relativePath: '../secret',
+      }),
+    ).toThrow();
+    expect(() =>
+      runCodeIndexSchema.parse({
+        repositoryId: REPOSITORY_ID,
+        requestId: REQUEST_ID,
+        mode: 'rebuild',
+        gitArgs: ['reset', '--hard'],
+      }),
+    ).toThrow();
   });
 
   it('uses only the fixed read-only Git command set and strips remote credentials', async () => {
@@ -110,6 +139,23 @@ describe('Repository Bridge security', () => {
     );
   });
 
+  it('checks dirty state using one fixed read-only Git command', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'papermind-git-dirty-test-'));
+    roots.push(root);
+    const runner = new FakeGitRunner(root);
+
+    expect(await new GitRepositoryClient(runner).hasWorkingTreeChanges(root)).toBe(false);
+    expect(runner.calls.at(-1)).toEqual([
+      '--no-optional-locks',
+      '-C',
+      root,
+      'status',
+      '--porcelain=v1',
+      '-z',
+      '--untracked-files=all',
+    ]);
+  });
+
   it('maps permission failures to a stable safe error', () => {
     expect(
       mapFileSystemError(Object.assign(new Error('private path'), { code: 'EACCES' }), 'x'),
@@ -126,6 +172,7 @@ class FakeGitRunner implements GitCommandRunner {
 
   public run(args: readonly string[]): Promise<GitCommandResult> {
     this.calls.push([...args]);
+    if (args.includes('status')) return result('');
     if (args.includes('--show-toplevel')) return result(this.root);
     if (args.includes('symbolic-ref')) return result('main');
     if (args.includes('--verify')) return result('a'.repeat(40));

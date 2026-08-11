@@ -56,6 +56,20 @@ import type {
 } from '../repository/repository-data-gateway';
 import type { RepositoryRef, WorkspaceRepositoryRef } from '../../shared/contracts/repository';
 import type {
+  CodeFileSearchResult,
+  CodeIndexStatus,
+  CodeSearchInput,
+  CodeSearchPage,
+  CodeSymbolSearchResult,
+  CodeTextSearchResult,
+} from '../../shared/contracts/code-intelligence';
+import type {
+  CodeIndexDataGateway,
+  CodeIndexFailureInput,
+  CompleteCodeIndexInput,
+  StoredCodeFileHash,
+} from '../code-intelligence/code-index-data-gateway';
+import type {
   DatabaseWorkerData,
   DatabaseWorkerRequest,
   DatabaseWorkerResponse,
@@ -69,6 +83,7 @@ interface PendingCall {
 export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly workspace: WorkspaceDataGateway;
   public readonly repository: RepositoryDataGateway;
+  public readonly codeIndex: CodeIndexDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -79,6 +94,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
     this.worker = new Worker(workerPath, { workerData });
     this.workspace = new WorkspaceWorkerGateway((method, payload) => this.call(method, payload));
     this.repository = new RepositoryWorkerGateway((method, payload) => this.call(method, payload));
+    this.codeIndex = new CodeIndexWorkerGateway((method, payload) => this.call(method, payload));
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
       const call = this.pending.get(response.id);
       if (!call) {
@@ -368,5 +384,88 @@ class RepositoryWorkerGateway implements RepositoryDataGateway {
 
   public deleteRepository(id: string): Promise<boolean> {
     return this.call('deleteRepository', { id });
+  }
+}
+
+class CodeIndexWorkerGateway implements CodeIndexDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public recoverInterruptedIndexes(updatedAt: string): Promise<number> {
+    return this.call('recoverInterruptedIndexes', { updatedAt });
+  }
+
+  public getCodeIndexStatus(repositoryId: string): Promise<CodeIndexStatus | null> {
+    return this.call('getCodeIndexStatus', { repositoryId });
+  }
+
+  public listCodeFileHashes(repositoryId: string): Promise<readonly StoredCodeFileHash[]> {
+    return this.call('listCodeFileHashes', { repositoryId });
+  }
+
+  public beginCodeIndex(
+    repositoryId: string,
+    requestId: string,
+    parserVersion: string,
+    totalFiles: number,
+    startedAt: string,
+  ): Promise<CodeIndexStatus> {
+    return this.call('beginCodeIndex', {
+      repositoryId,
+      requestId,
+      parserVersion,
+      totalFiles,
+      startedAt,
+    });
+  }
+
+  public async updateCodeIndexProgress(
+    repositoryId: string,
+    requestId: string,
+    processedFiles: number,
+    totalFiles: number,
+    updatedAt: string,
+  ): Promise<void> {
+    await this.call('updateCodeIndexProgress', {
+      repositoryId,
+      requestId,
+      processedFiles,
+      totalFiles,
+      updatedAt,
+    });
+  }
+
+  public completeCodeIndex(input: CompleteCodeIndexInput): Promise<CodeIndexStatus> {
+    return this.call('completeCodeIndex', input);
+  }
+
+  public cancelCodeIndex(input: CodeIndexFailureInput): Promise<CodeIndexStatus> {
+    return this.call('cancelCodeIndex', input);
+  }
+
+  public failCodeIndex(input: CodeIndexFailureInput): Promise<CodeIndexStatus> {
+    return this.call('failCodeIndex', input);
+  }
+
+  public markCodeIndexStale(repositoryId: string, updatedAt: string): Promise<CodeIndexStatus> {
+    return this.call('markCodeIndexStale', { repositoryId, updatedAt });
+  }
+
+  public searchCodeFiles(input: CodeSearchInput): Promise<CodeSearchPage<CodeFileSearchResult>> {
+    return this.call('searchCodeFiles', input);
+  }
+
+  public searchCodeSymbols(
+    input: CodeSearchInput,
+  ): Promise<CodeSearchPage<CodeSymbolSearchResult>> {
+    return this.call('searchCodeSymbols', input);
+  }
+
+  public searchCodeText(input: CodeSearchInput): Promise<CodeSearchPage<CodeTextSearchResult>> {
+    return this.call('searchCodeText', input);
   }
 }

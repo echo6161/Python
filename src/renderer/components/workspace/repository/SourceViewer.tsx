@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { ExternalLink } from 'lucide-react';
 
 import type { RepositorySourceFile } from '../../../../shared/contracts/repository';
@@ -5,10 +6,18 @@ import { highlightSourceLine } from './source-highlighting';
 
 interface SourceViewerProps {
   readonly source: RepositorySourceFile | null;
+  readonly targetLine: number | null;
   readonly onOpenInVscode: (line?: number) => void;
 }
 
-export function SourceViewer({ source, onOpenInVscode }: SourceViewerProps) {
+export function SourceViewer({ source, targetLine, onOpenInVscode }: SourceViewerProps) {
+  const targetRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (typeof targetRef.current?.scrollIntoView === 'function') {
+      targetRef.current.scrollIntoView({ block: 'center' });
+    }
+    targetRef.current?.focus({ preventScroll: true });
+  }, [source?.relativePath, targetLine]);
   if (!source) {
     return (
       <div className="flex min-h-72 items-center justify-center text-sm text-zinc-500">
@@ -43,8 +52,9 @@ export function SourceViewer({ source, onOpenInVscode }: SourceViewerProps) {
           return (
             <button
               aria-label={`Open line ${String(lineNumber)} in VS Code`}
-              className="grid min-h-5 w-full grid-cols-[56px_minmax(max-content,1fr)] text-left hover:bg-zinc-800 focus-visible:bg-zinc-800 focus-visible:outline-none"
+              className={`grid min-h-5 w-full grid-cols-[56px_minmax(max-content,1fr)] text-left hover:bg-zinc-800 focus-visible:outline-none ${targetLine === lineNumber ? 'bg-emerald-950 ring-1 ring-inset ring-emerald-500' : 'focus-visible:bg-zinc-800'}`}
               key={lineNumber}
+              ref={targetLine === lineNumber ? targetRef : undefined}
               type="button"
               onClick={() => onOpenInVscode(lineNumber)}
             >

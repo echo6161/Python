@@ -15,6 +15,11 @@ import type {
 import type { AiProviderSettings } from '../../shared/contracts/ai';
 import type { RepositoryObservationInput } from '../repository/repository-data-gateway';
 import type {
+  CodeIndexFailureInput,
+  CompleteCodeIndexInput,
+} from '../code-intelligence/code-index-data-gateway';
+import type { CodeSearchInput } from '../../shared/contracts/code-intelligence';
+import type {
   CreateWorkspaceInput,
   SetWorkspaceStatusInput,
   UpdateWorkspaceInput,
@@ -234,6 +239,66 @@ export type DatabaseWorkerRequest =
       readonly method: 'deleteRepository';
       readonly payload: { readonly id: string };
     }
+  | {
+      readonly id: number;
+      readonly method: 'recoverInterruptedIndexes';
+      readonly payload: { readonly updatedAt: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getCodeIndexStatus';
+      readonly payload: { readonly repositoryId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listCodeFileHashes';
+      readonly payload: { readonly repositoryId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'beginCodeIndex';
+      readonly payload: {
+        readonly repositoryId: string;
+        readonly requestId: string;
+        readonly parserVersion: string;
+        readonly totalFiles: number;
+        readonly startedAt: string;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateCodeIndexProgress';
+      readonly payload: {
+        readonly repositoryId: string;
+        readonly requestId: string;
+        readonly processedFiles: number;
+        readonly totalFiles: number;
+        readonly updatedAt: string;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'completeCodeIndex';
+      readonly payload: CompleteCodeIndexInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'cancelCodeIndex';
+      readonly payload: CodeIndexFailureInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'failCodeIndex';
+      readonly payload: CodeIndexFailureInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'markCodeIndexStale';
+      readonly payload: { readonly repositoryId: string; readonly updatedAt: string };
+    }
+  | { readonly id: number; readonly method: 'searchCodeFiles'; readonly payload: CodeSearchInput }
+  | { readonly id: number; readonly method: 'searchCodeSymbols'; readonly payload: CodeSearchInput }
+  | { readonly id: number; readonly method: 'searchCodeText'; readonly payload: CodeSearchInput }
   | {
       readonly id: number;
       readonly method: 'backupTo';

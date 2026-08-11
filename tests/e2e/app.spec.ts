@@ -685,7 +685,7 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
   }
 });
 
-test('links, browses, refreshes, restores, and removes a read-only repository', async ({
+test('indexes, searches, refreshes, restores, and removes a read-only repository', async ({
   browserName,
 }, testInfo) => {
   expect(browserName).toBe('chromium');
@@ -693,7 +693,21 @@ test('links, browses, refreshes, restores, and removes a read-only repository', 
   const repositoryRoot = testInfo.outputPath('phase-9-repository-fixture');
   const sourcePath = path.join(repositoryRoot, 'src', 'index.ts');
   await mkdir(path.dirname(sourcePath), { recursive: true });
-  await writeFile(sourcePath, 'export const phase = 9;\n', 'utf8');
+  await writeFile(
+    sourcePath,
+    'export function phaseTenSearch(): string {\n  return "semantic boundary";\n}\n',
+    'utf8',
+  );
+  await writeFile(
+    path.join(repositoryRoot, 'src', 'analysis.py'),
+    'class EvidenceAnalyzer:\n    def analyze(self):\n        return "citation evidence"\n',
+    'utf8',
+  );
+  await writeFile(
+    path.join(repositoryRoot, 'src', 'helper.js'),
+    'export const helper = () => "bounded snippet";\n',
+    'utf8',
+  );
   await writeFile(path.join(repositoryRoot, '.gitignore'), 'ignored.txt\n', 'utf8');
   await writeFile(path.join(repositoryRoot, 'ignored.txt'), 'not visible\n', 'utf8');
   await git(repositoryRoot, ['init', '-b', 'main']);
@@ -722,8 +736,19 @@ test('links, browses, refreshes, restores, and removes a read-only repository', 
     await expect(window.getByText('Available', { exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'ignored.txt' })).not.toBeVisible();
 
-    await window.getByRole('button', { name: 'src' }).click();
-    await window.getByRole('button', { name: 'index.ts' }).click();
+    await expect(window.getByText('Not indexed')).toBeVisible();
+    await window.getByRole('button', { name: 'Build index' }).click();
+    await expect(window.getByText(/Ready \| 3 files \|/)).toBeVisible();
+    await window.getByLabel('Search indexed code').fill('phaseTenSearch');
+    await window.getByRole('button', { name: 'Search' }).click();
+    const symbolResult = window.getByRole('button', { name: /^function phaseTenSearch/u }).first();
+    await expect(symbolResult).toBeVisible();
+    await symbolResult.click();
+    await expect(window.getByRole('heading', { name: 'src/index.ts' })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Open line 1 in VS Code' })).toHaveClass(
+      /ring-emerald-500/u,
+    );
+
     await expect(window.getByRole('heading', { name: 'src/index.ts' })).toBeVisible();
     await expect(window.getByText('export', { exact: true })).toBeVisible();
     await stubVscodeOpen(electronApp);
@@ -739,7 +764,11 @@ test('links, browses, refreshes, restores, and removes a read-only repository', 
   }
 
   expect(await git(repositoryRoot, ['status', '--porcelain'])).toBe('');
-  await writeFile(sourcePath, 'export const phase = 9;\nexport const refreshed = true;\n', 'utf8');
+  await writeFile(
+    sourcePath,
+    'export function phaseTenSearch(): string {\n  return "updated semantic boundary";\n}\nexport const refreshed = true;\n',
+    'utf8',
+  );
   await git(repositoryRoot, ['add', 'src/index.ts']);
   await git(repositoryRoot, ['commit', '-m', 'fixture: advance head']);
   const refreshedHead = await git(repositoryRoot, ['rev-parse', 'HEAD']);
@@ -750,6 +779,15 @@ test('links, browses, refreshes, restores, and removes a read-only repository', 
     await window.waitForLoadState('domcontentloaded');
     await expect(window.getByRole('heading', { name: 'Repository Workspace' })).toBeVisible();
     await expect(window.getByText(`main | ${initialHead.slice(0, 10)}`)).toBeVisible();
+    await expect(window.getByText(/Stale \| 3 files \|/)).toBeVisible();
+    await window.getByRole('button', { name: 'Update index' }).click();
+    await expect(window.getByText(/Ready \| 3 files \|/)).toBeVisible();
+    await window.getByLabel('Search indexed code').fill('updated semantic boundary');
+    await window.getByRole('button', { name: 'Text' }).click();
+    await window.getByRole('button', { name: 'Search' }).click();
+    await expect(
+      window.getByRole('button', { name: /updated semantic boundary/u }).first(),
+    ).toBeVisible();
     await window.getByRole('button', { name: 'Refresh phase-9-repository-fixture' }).click();
     await expect(window.getByText(`main | ${refreshedHead.slice(0, 10)}`)).toBeVisible();
 

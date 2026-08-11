@@ -2,6 +2,18 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 import type { AppGetInfoChannel, AppInfo, PaperMindApi } from '../shared/contracts/app';
 import type {
+  CodeFileSearchResult,
+  CodeIndexCancelResult,
+  CodeIndexProgress,
+  CodeIndexStatus,
+  CodeIntelligenceIpcChannels,
+  CodeSearchInput,
+  CodeSearchPage,
+  CodeSymbolSearchResult,
+  CodeTextSearchResult,
+  RunCodeIndexInput,
+} from '../shared/contracts/code-intelligence';
+import type {
   AiCapabilities,
   AiChatGptBridgeInput,
   AiChatGptBridgeResult,
@@ -88,6 +100,15 @@ import type {
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
+const CODE_INTELLIGENCE_CHANNELS = {
+  getStatus: 'code-intelligence:get-status',
+  runIndex: 'code-intelligence:run-index',
+  cancelIndex: 'code-intelligence:cancel-index',
+  searchFiles: 'code-intelligence:search-files',
+  searchSymbols: 'code-intelligence:search-symbols',
+  searchText: 'code-intelligence:search-text',
+  progress: 'events:code-intelligence-progress',
+} satisfies CodeIntelligenceIpcChannels;
 const LIBRARY_CHANNELS = {
   chooseAndImportPdfs: 'dialog:choose-pdfs',
   importDroppedPdfs: 'papers:import-dropped',
@@ -163,6 +184,38 @@ const WORKSPACE_CHANNELS = {
 } satisfies WorkspaceIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
+  codeIntelligence: Object.freeze({
+    getStatus: (repositoryId: string) =>
+      ipcRenderer.invoke(CODE_INTELLIGENCE_CHANNELS.getStatus, repositoryId) as Promise<
+        ApiResult<CodeIndexStatus>
+      >,
+    runIndex: (input: RunCodeIndexInput) =>
+      ipcRenderer.invoke(CODE_INTELLIGENCE_CHANNELS.runIndex, input) as Promise<
+        ApiResult<CodeIndexStatus>
+      >,
+    cancelIndex: (requestId: string) =>
+      ipcRenderer.invoke(CODE_INTELLIGENCE_CHANNELS.cancelIndex, requestId) as Promise<
+        ApiResult<CodeIndexCancelResult>
+      >,
+    searchFiles: (input: CodeSearchInput) =>
+      ipcRenderer.invoke(CODE_INTELLIGENCE_CHANNELS.searchFiles, input) as Promise<
+        ApiResult<CodeSearchPage<CodeFileSearchResult>>
+      >,
+    searchSymbols: (input: CodeSearchInput) =>
+      ipcRenderer.invoke(CODE_INTELLIGENCE_CHANNELS.searchSymbols, input) as Promise<
+        ApiResult<CodeSearchPage<CodeSymbolSearchResult>>
+      >,
+    searchText: (input: CodeSearchInput) =>
+      ipcRenderer.invoke(CODE_INTELLIGENCE_CHANNELS.searchText, input) as Promise<
+        ApiResult<CodeSearchPage<CodeTextSearchResult>>
+      >,
+    onProgress: (listener: (progress: CodeIndexProgress) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: CodeIndexProgress) =>
+        listener(progress);
+      ipcRenderer.on(CODE_INTELLIGENCE_CHANNELS.progress, handler);
+      return () => ipcRenderer.removeListener(CODE_INTELLIGENCE_CHANNELS.progress, handler);
+    },
+  }),
   app: Object.freeze({
     getInfo: () => ipcRenderer.invoke(APP_GET_INFO_CHANNEL) as Promise<AppInfo>,
   }),
