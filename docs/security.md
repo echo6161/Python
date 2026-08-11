@@ -1,5 +1,75 @@
 # PaperMind 安全与隐私模型
 
+> **Phase 5.5 extension (2026-08-10):** The Phase 1-5 controls below remain in
+> force. Zotero, Git/GitHub, VS Code handoffs, Obsidian, AI providers, and future
+> agent runtimes are external trust domains. Their authority is defined in
+> [data-ownership.md](./data-ownership.md); the target boundary is defined in
+> [architecture.md](./architecture.md).
+
+## Phase 5.5 External Adapter and Agent Boundary
+
+- Only Main-process adapters may access the Zotero local API, Git, OS paths,
+  external AI endpoints, or any future local Codex/agent service.
+- Renderer cannot make arbitrary localhost requests. A localhost origin is not a
+  trust boundary and must not be added broadly to CSP `connect-src`.
+- Every adapter method is domain-specific, runtime-validated, scoped, bounded,
+  cancellable, timed out, and represented in a fixed IPC allowlist.
+- Returned external data is untrusted input. Normalize it into bounded DTOs;
+  never render unsanitized HTML or treat paper/code text as instructions.
+- Agent tools follow least privilege. Arbitrary shell, SQL, filesystem reads,
+  URL fetch, raw Git commands, raw Zotero requests, and generic IPC are forbidden.
+- Agent tool calls record actor, Workspace, purpose, resource scope, inputs
+  redacted as needed, outcome, provenance, and approval when required.
+- Read-only operations still enforce item/result/byte/time limits. Mutating,
+  destructive, executable, publishing, commit, push, or export actions require
+  explicit capability-specific approval in their future phases.
+- Cached external data carries source identifiers, observation time, freshness,
+  and version/fingerprint when available. Stale snapshots are labeled rather
+  than silently presented as current.
+- Credentials and session material stay in OS-backed secure storage or the
+  owning tool. They never enter Renderer, SQLite plaintext, logs, exports,
+  prompts, or agent tool results.
+
+## Phase 6 Zotero Controls
+
+- Zotero Local API origin is compiled into Main as `http://127.0.0.1:23119/api/`.
+  Preload and Renderer cannot select protocol, host, port, endpoint, or headers.
+- The client sends only `GET` and uses internally generated user/group,
+  collection, item, child, and attachment-availability routes.
+- Main negotiates API v3 and prefers a valid `Zotero-Server-ID`. Zotero 9 may
+  use only the real non-zero user-library ID returned by the API, labeled
+  `library_fallback`; PaperMind never fabricates a database ID. Empty legacy
+  libraries without either identity fail closed. References are rejected when
+  the active native server ID or fallback library ID changes.
+- Responses have fixed timeout, byte, page, result, and attachment-probe
+  concurrency limits. Invalid status, headers, JSON, keys, or DTO output fail
+  closed with redacted structured errors.
+- Search/list pagination accepts only an opaque UUID, a non-negative offset,
+  and a page size from 1 to 25. Cancellation is a dedicated IPC operation keyed
+  by the invoking Renderer and that UUID; it cannot cancel or address arbitrary
+  network traffic.
+- The attachment file endpoint is an availability probe only. Main discards its
+  response body after checking it is non-empty; no file URL or path crosses IPC.
+- PaperMind does not read `zotero.sqlite`, enumerate Zotero storage, copy Zotero
+  attachments, authenticate writes, or add localhost access to Renderer CSP.
+
+## Phase 7 Workspace Controls
+
+- Workspace operations use only fixed `workspaces:*` IPC channels and the frozen
+  `window.paperMind.workspace` preload namespace. Every input and output is
+  validated with a strict Zod schema in Main.
+- Renderer can submit a Workspace UUID and a normalized `ZoteroItemRef`; it
+  cannot submit a URL, protocol, host, port, request headers, SQL, or file path.
+- Workspace persistence is reachable only through the Database Worker gateway.
+  Renderer and preload never receive SQLite access or table/repository handles.
+- Zotero metadata resolution remains a Main-to-Main call from WorkspaceService
+  to the read-only ZoteroBridgeService. No raw Zotero payload is persisted.
+- Workspace delete requires the literal `DELETE_WORKSPACE` confirmation and can
+  delete only Workspace-owned rows. It has no Zotero, PDF, annotation,
+  collection, or legacy Paper deletion capability.
+- Changed Zotero server/profile identity is reported as `stale_identity`; it is
+  never silently repaired by item key, title, DOI, path, or filename.
+
 - 文档状态：Phase 0 基线草案
 - 安全目标：限制不可信内容的权限，最小化外发数据，保护凭据，避免破坏用户文件和 Git 历史
 

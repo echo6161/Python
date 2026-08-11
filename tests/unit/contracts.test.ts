@@ -4,6 +4,8 @@ import { IPC_CHANNELS } from '../../src/shared/contracts/app';
 import { AI_IPC_CHANNELS } from '../../src/shared/contracts/ai';
 import { LIBRARY_IPC_CHANNELS } from '../../src/shared/contracts/library';
 import { READER_IPC_CHANNELS } from '../../src/shared/contracts/reader';
+import { ZOTERO_IPC_CHANNELS } from '../../src/shared/contracts/zotero';
+import { WORKSPACE_IPC_CHANNELS } from '../../src/shared/contracts/workspace';
 
 describe('IPC contract', () => {
   it('contains only fixed application, library, reader, and AI channels', () => {
@@ -51,5 +53,32 @@ describe('IPC contract', () => {
       streamEvent: 'events:ai-stream',
     });
     expect(Object.isFrozen(AI_IPC_CHANNELS)).toBe(true);
+    expect(ZOTERO_IPC_CHANNELS).toEqual({
+      detect: 'zotero:detect',
+      listItems: 'zotero:list-items',
+      searchItems: 'zotero:search-items',
+      cancelRequest: 'zotero:cancel-request',
+      getItem: 'zotero:get-item',
+      listCollections: 'zotero:list-collections',
+      listCollectionItems: 'zotero:list-collection-items',
+      listAttachments: 'zotero:list-attachments',
+      findPrimaryPdf: 'zotero:find-primary-pdf',
+      resolvePdfAvailability: 'zotero:resolve-pdf-availability',
+    });
+    expect(Object.isFrozen(ZOTERO_IPC_CHANNELS)).toBe(true);
+    expect(WORKSPACE_IPC_CHANNELS).toEqual({
+      create: 'workspaces:create',
+      get: 'workspaces:get',
+      list: 'workspaces:list',
+      update: 'workspaces:update',
+      setStatus: 'workspaces:set-status',
+      delete: 'workspaces:delete',
+      getLastActive: 'workspaces:get-last-active',
+      setLastActive: 'workspaces:set-last-active',
+      addPaper: 'workspaces:add-zotero-paper',
+      removePaper: 'workspaces:remove-zotero-paper',
+      listPapers: 'workspaces:list-zotero-papers',
+    });
+    expect(Object.isFrozen(WORKSPACE_IPC_CHANNELS)).toBe(true);
   });
 });

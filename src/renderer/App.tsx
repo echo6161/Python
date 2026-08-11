@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { LibraryWorkspace } from './components/LibraryWorkspace';
 import { type AppView, Sidebar } from './components/Sidebar';
 import { SettingsWorkspace } from './components/SettingsWorkspace';
+import { ZoteroIntegration } from './components/ZoteroIntegration';
 import { rendererLogger } from './logger';
 
 export function App() {
@@ -49,6 +50,8 @@ export function App() {
           onDirtyChange={setHasUnsavedPaperDetails}
           onOpenSettings={() => navigate('settings')}
         />
+      ) : activeView === 'zotero' ? (
+        <ZoteroIntegration />
       ) : (
         <SettingsWorkspace />
       )}

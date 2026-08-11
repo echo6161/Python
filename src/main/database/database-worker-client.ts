@@ -30,6 +30,13 @@ import type {
   SaveReadingStateInput,
   UpdateAnnotationInput,
 } from '../../shared/contracts/reader';
+import type {
+  CreateWorkspaceInput,
+  SetWorkspaceStatusInput,
+  UpdateWorkspaceInput,
+  Workspace,
+} from '../../shared/contracts/workspace';
+import type { ZoteroItemRef } from '../../shared/contracts/zotero';
 import { LibraryError } from '../library/errors';
 import type {
   CreateImportedPaperResult,
@@ -39,6 +46,10 @@ import type {
   PendingPaperTextExtraction,
   PaperDataGateway,
 } from '../library/paper-data-gateway';
+import type {
+  StoredWorkspaceZoteroPaper,
+  WorkspaceDataGateway,
+} from '../workspace/workspace-data-gateway';
 import type {
   DatabaseWorkerData,
   DatabaseWorkerRequest,
@@ -51,6 +62,7 @@ interface PendingCall {
 }
 
 export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
+  public readonly workspace: WorkspaceDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -59,6 +71,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public constructor(workerPath: string, databasePath: string) {
     const workerData: DatabaseWorkerData = { databasePath };
     this.worker = new Worker(workerPath, { workerData });
+    this.workspace = new WorkspaceWorkerGateway((method, payload) => this.call(method, payload));
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
       const call = this.pending.get(response.id);
       if (!call) {
@@ -245,5 +258,63 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
       call.reject(reason);
     }
     this.pending.clear();
+  }
+}
+
+class WorkspaceWorkerGateway implements WorkspaceDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public createWorkspace(input: CreateWorkspaceInput): Promise<Workspace> {
+    return this.call('createWorkspace', input);
+  }
+
+  public getWorkspace(id: string): Promise<Workspace | null> {
+    return this.call('getWorkspace', { id });
+  }
+
+  public listWorkspaces(): Promise<readonly Workspace[]> {
+    return this.call('listWorkspaces', null);
+  }
+
+  public updateWorkspace(input: UpdateWorkspaceInput): Promise<Workspace> {
+    return this.call('updateWorkspace', input);
+  }
+
+  public setWorkspaceStatus(input: SetWorkspaceStatusInput): Promise<Workspace> {
+    return this.call('setWorkspaceStatus', input);
+  }
+
+  public deleteWorkspace(id: string): Promise<boolean> {
+    return this.call('deleteWorkspace', { id });
+  }
+
+  public getLastActiveWorkspace(): Promise<Workspace | null> {
+    return this.call('getLastActiveWorkspace', null);
+  }
+
+  public setLastActiveWorkspace(workspaceId: string | null): Promise<Workspace | null> {
+    return this.call('setLastActiveWorkspace', { workspaceId });
+  }
+
+  public addWorkspaceZoteroPaper(
+    workspaceId: string,
+    itemRef: ZoteroItemRef,
+  ): Promise<StoredWorkspaceZoteroPaper> {
+    return this.call('addWorkspaceZoteroPaper', { workspaceId, itemRef });
+  }
+
+  public removeWorkspaceZoteroPaper(workspaceId: string, itemRef: ZoteroItemRef): Promise<boolean> {
+    return this.call('removeWorkspaceZoteroPaper', { workspaceId, itemRef });
+  }
+
+  public listWorkspaceZoteroPapers(
+    workspaceId: string,
+  ): Promise<readonly StoredWorkspaceZoteroPaper[]> {
+    return this.call('listWorkspaceZoteroPapers', { workspaceId });
   }
 }

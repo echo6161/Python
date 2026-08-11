@@ -1,6 +1,6 @@
-import { BookOpen, Library, Settings } from 'lucide-react';
+import { BookOpen, Library, Settings, Waypoints } from 'lucide-react';
 
-export type AppView = 'library' | 'settings';
+export type AppView = 'library' | 'settings' | 'zotero';
 
 interface SidebarProps {
   readonly activeView: AppView;
@@ -14,6 +14,7 @@ const navigationItems: readonly {
   readonly view: AppView;
 }[] = [
   { icon: Library, label: 'Library', view: 'library' },
+  { icon: Waypoints, label: 'Zotero Integration', view: 'zotero' },
   { icon: Settings, label: 'Settings', view: 'settings' },
 ];
 

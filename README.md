@@ -1,6 +1,10 @@
 # PaperMind
 
-PaperMind is a local-first desktop workspace for reading and managing research papers. Phase 5 adds a Main-process OpenAI Provider, operating-system-backed credential storage, selected-text translation and explanation, scoped follow-up chat, streaming, cancellation, and local conversation history. A manual ChatGPT handoff also works without an API key by copying a scoped prompt and opening the official ChatGPT page; the user must paste and submit it. Every request has an outgoing-content review step, and full PDFs are never uploaded in this phase. Vector retrieval, online DOI lookup, Obsidian export, and Git synchronization are not implemented yet.
+PaperMind is an AI-native Research Workspace and Research Control Plane. It coordinates research goals, papers, questions, code, experiments, evidence, conclusions, and durable memory while leaving authoritative data in the tools that own it: Zotero for bibliography/PDFs, Git for code history, VS Code for editing and execution, and Obsidian for long-term knowledge.
+
+The implemented application includes a secure local Paper/PDF compatibility library, reader, annotation system, selected-text AI assistant, the Phase 6 read-only Zotero Bridge, and the Phase 7 Workspace domain core. Workspaces persist local goals and lifecycle state and may share stable Zotero references without copying Zotero metadata or PDFs. The Settings view contains only a minimal Workspace verification entry; the full Workspace shell remains Phase 8. PaperMind does not read `zotero.sqlite`, scan Zotero storage, copy Zotero PDFs, or expose Zotero paths/endpoints to Renderer. Phase 5 also includes OS-backed OpenAI credentials and a manual ChatGPT handoff for Plus users. Full PDFs are never uploaded by default.
+
+Architecture authority: [product vision](docs/product-vision.md), [data ownership](docs/data-ownership.md), [Phase 5.5 audit](docs/phase-5.5-architecture-audit.md), and [development roadmap](docs/development-roadmap.md).
 
 ## Prerequisites
 
@@ -23,6 +27,8 @@ Start the Vite renderer, TypeScript Main/Preload watcher, and Electron window:
 ```powershell
 npm run dev
 ```
+
+For Zotero Integration, run Zotero 9 or later and enable **Settings → Advanced → Allow other applications on this computer to communicate with Zotero**. Zotero 10+ supplies a native server/database ID; Zotero 9 uses the real non-zero user-library ID returned by the API as an explicitly marked compatibility identity. The application remains usable when Zotero is stopped or the Local API is unavailable.
 
 Build and launch the packaged-mode application locally:
 
@@ -64,10 +70,10 @@ Production Windows and macOS releases require code-signing credentials supplied 
 
 ## Process Boundaries
 
-- **Main** (`src/main`): Electron lifecycle, controlled PDF protocol, AI Provider requests, secure credential access, exports, navigation policy, permissions, and the IPC handler whitelist.
+- **Main** (`src/main`): Electron lifecycle, Workspace and integration services, controlled PDF protocol, AI Provider requests, secure credential access, exports, navigation policy, permissions, and the IPC handler whitelist.
 - **Metadata Worker** (`src/main/metadata`): bounded, timeout-controlled local PDF metadata and text extraction; it cannot access renderer state.
 - **Database Worker** (`src/main/database`): owns the only SQLite connection, migrations, and repositories.
-- **Preload** (`src/preload`): exposes fixed library, reader, and AI intent methods through `contextBridge`; it never exposes a credential read method.
+- **Preload** (`src/preload`): exposes fixed library, reader, AI, Zotero, and Workspace intent methods through `contextBridge`; it never exposes a credential read method.
 - **Renderer** (`src/renderer`): React UI without Node.js, file-system, child-process, database, or provider access.
 - **Shared** (`src/shared`): serializable contracts and the logging interface used across process boundaries.
 

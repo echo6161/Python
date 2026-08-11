@@ -1,4 +1,10 @@
-# PaperMind Phase 5 Database Schema
+# PaperMind Phase 7 Database Schema
+
+> This document describes the implemented Phase 1-5 compatibility schema. It is
+> runtime truth, not the Phase 5.5 target domain model. The current `papers` root
+> and managed PDF store must remain readable, but new Workspace/Zotero work must
+> follow [data-ownership.md](./data-ownership.md) and use additive forward
+> migrations. Zotero-owned PDFs and metadata are not copied here by default.
 
 ## Runtime location
 
@@ -86,6 +92,27 @@ Tags and flat collections continue to use the Phase 2 join tables. Phase 4 adds 
 ## AI conversation activation
 
 Phase 5 activates the existing `settings`, `ai_conversations`, and `ai_messages` tables, so it requires no schema migration. Non-secret OpenAI settings use the fixed `ai.openai.config.v1` key. Each saved turn atomically creates a complete user message and a streaming assistant placeholder; completion, cancellation, failure, usage counts, and the provider request ID are finalized through the Database Worker. Startup marks interrupted streaming placeholders as failed without making an old conversation appear newly updated.
+
+Phase 6 adds no tables, settings, caches, or migrations. Zotero remains the bibliographic source of truth, and the read-only bridge returns transient reference DTOs directly from the Local API. Existing Paper/PDF rows and managed files remain unchanged and continue to coexist as the legacy compatibility library.
+
+## Workspace core migration
+
+Migration `0004-workspace-core.ts` is additive and creates:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Workspace | `workspaces` | UUID, bounded name/description/research goal, active/paused/archived status, timestamps, optimistic row version |
+| Zotero stable reference | `zotero_item_references` | Unique server identity + library type/id + item key; no bibliographic metadata or file path |
+| Workspace membership | `workspace_zotero_items` | Many-to-many join with PaperMind-owned added timestamp and stable per-Workspace order |
+| Last active state | `workspace_state` | Singleton row; foreign key uses `ON DELETE SET NULL` |
+
+Deleting a Workspace cascades only through `workspace_zotero_items`. It does not
+delete a stable reference row, a Zotero object, a Zotero attachment/PDF, or any
+legacy Paper/PDF/annotation/collection row. Archiving does not delete any row.
+The reference's `server_id` partitions identities from different Zotero
+profiles/databases, so equal library IDs and item keys from different identities
+cannot be conflated. Zotero metadata is resolved through the read-only bridge at
+request time and is not stored by this migration.
 
 Conversation text is local plaintext content and may include a user-approved selected excerpt. A per-request opt-out keeps that turn entirely in memory. API keys and encrypted credential blobs are never accepted by this repository and are stored outside the library through the Main-process Secret Store.
 

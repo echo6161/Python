@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsWorkspace } from '../../src/renderer/components/SettingsWorkspace';
 import type { AiApi, AiCapabilities, AiProviderSettings } from '../../src/shared/contracts/ai';
+import type { WorkspaceApi } from '../../src/shared/contracts/workspace';
 
 const capabilities: AiCapabilities = {
   providerId: 'openai',
@@ -42,9 +43,22 @@ function installAiApi(overrides: Partial<AiApi> = {}) {
     onStreamEvent: vi.fn(() => vi.fn()),
     ...overrides,
   };
+  const workspace: WorkspaceApi = {
+    create: vi.fn(),
+    get: vi.fn(),
+    list: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+    update: vi.fn(),
+    setStatus: vi.fn(),
+    delete: vi.fn(),
+    getLastActive: vi.fn().mockResolvedValue({ ok: true, value: null }),
+    setLastActive: vi.fn(),
+    addPaper: vi.fn(),
+    removePaper: vi.fn(),
+    listPapers: vi.fn(),
+  };
   Object.defineProperty(window, 'paperMind', {
     configurable: true,
-    value: { ai: api },
+    value: { ai: api, workspace },
   });
   return { setApiKey, updateSettings };
 }

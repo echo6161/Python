@@ -199,7 +199,15 @@ export type ApiErrorCode =
   | 'INVALID_PDF'
   | 'NOT_FOUND'
   | 'PERMISSION_DENIED'
-  | 'STORAGE_ERROR';
+  | 'STORAGE_ERROR'
+  | 'ZOTERO_API_DISABLED'
+  | 'ZOTERO_CANCELLED'
+  | 'ZOTERO_IDENTITY_CHANGED'
+  | 'ZOTERO_INVALID_RESPONSE'
+  | 'ZOTERO_NOT_RUNNING'
+  | 'ZOTERO_SERVER_ERROR'
+  | 'ZOTERO_TIMEOUT'
+  | 'ZOTERO_UNSUPPORTED_VERSION';
 
 export interface ApiError {
   readonly code: ApiErrorCode;

@@ -79,6 +79,31 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.getAiConversation(request.payload.conversationId);
     case 'markStaleAiMessages':
       return database.markStaleAiMessages();
+    case 'createWorkspace':
+      return database.createWorkspace(request.payload);
+    case 'getWorkspace':
+      return database.getWorkspace(request.payload.id);
+    case 'listWorkspaces':
+      return database.listWorkspaces();
+    case 'updateWorkspace':
+      return database.updateWorkspace(request.payload);
+    case 'setWorkspaceStatus':
+      return database.setWorkspaceStatus(request.payload);
+    case 'deleteWorkspace':
+      return database.deleteWorkspace(request.payload.id);
+    case 'getLastActiveWorkspace':
+      return database.getLastActiveWorkspace();
+    case 'setLastActiveWorkspace':
+      return database.setLastActiveWorkspace(request.payload.workspaceId);
+    case 'addWorkspaceZoteroPaper':
+      return database.addWorkspaceZoteroPaper(request.payload.workspaceId, request.payload.itemRef);
+    case 'removeWorkspaceZoteroPaper':
+      return database.removeWorkspaceZoteroPaper(
+        request.payload.workspaceId,
+        request.payload.itemRef,
+      );
+    case 'listWorkspaceZoteroPapers':
+      return database.listWorkspaceZoteroPapers(request.payload.workspaceId);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

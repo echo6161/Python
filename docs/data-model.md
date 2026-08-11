@@ -1,6 +1,38 @@
 # PaperMind 数据模型
 
-- 文档状态：Phase 0 基线草案
+> **Phase 5.5 authority notice (2026-08-10):** This is the historical Phase 0
+> Paper/PDF model and remains useful for understanding the implemented legacy
+> library. It is not the target root domain model. New work follows the Workspace
+> ownership and reference rules in [product-vision.md](./product-vision.md),
+> [data-ownership.md](./data-ownership.md), and
+> [phase-5.5-architecture-audit.md](./phase-5.5-architecture-audit.md). The actual
+> implemented Phase 5 schema is documented in
+> [database-schema.md](./database-schema.md).
+
+## Phase 7 Implemented Workspace Model
+
+The implemented root-domain persistence is additive to the legacy Paper model:
+
+```text
+Workspace 1 --- * WorkspaceZoteroItem * --- 1 ZoteroItemReference
+Workspace 0 --- 1 WorkspaceState.lastActiveWorkspace
+```
+
+- `workspaces` owns id, name, description, research goal, lifecycle status,
+  timestamps, and optimistic row version.
+- `zotero_item_references` stores only server/database identity, library
+  type/id, item key, and creation time. It stores no title, author, DOI,
+  abstract, PDF path/content, collection, tag, or annotation.
+- `workspace_zotero_items` is the many-to-many join and owns `added_at` and
+  per-Workspace `sort_order`.
+- `workspace_state` is a singleton holding the nullable last-active Workspace.
+
+Archive preserves all four structures. Confirmed Workspace deletion cascades
+only its join rows and clears last-active through a foreign key; stable reference
+rows and every legacy table remain intact. Zotero availability and normalized
+metadata are transient service results, not database facts.
+
+- 文档状态：Phase 0 历史概念模型；仅描述兼容文献库方向
 - 存储引擎：SQLite
 - 数据原则：结构化事实进数据库，PDF 进内容寻址文件库，密钥不进数据库
 

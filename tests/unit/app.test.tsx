@@ -157,6 +157,39 @@ describe('App', () => {
           cancelTask: vi.fn(),
           onStreamEvent: vi.fn().mockReturnValue(() => undefined),
         },
+        zotero: {
+          detectZotero: vi.fn().mockResolvedValue({
+            ok: true,
+            value: {
+              available: false,
+              apiVersion: null,
+              serverIdentity: null,
+              error: { code: 'not_running', message: 'Zotero is not running.' },
+            },
+          }),
+          listItems: vi.fn(),
+          searchItems: vi.fn(),
+          cancelRequest: vi.fn(),
+          getItem: vi.fn(),
+          listCollections: vi.fn(),
+          listCollectionItems: vi.fn(),
+          listAttachments: vi.fn(),
+          findPrimaryPdf: vi.fn(),
+          resolvePdfAvailability: vi.fn(),
+        },
+        workspace: {
+          create: vi.fn(),
+          get: vi.fn(),
+          list: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+          update: vi.fn(),
+          setStatus: vi.fn(),
+          delete: vi.fn(),
+          getLastActive: vi.fn().mockResolvedValue({ ok: true, value: null }),
+          setLastActive: vi.fn(),
+          addPaper: vi.fn(),
+          removePaper: vi.fn(),
+          listPapers: vi.fn(),
+        },
       },
     });
   });
@@ -215,6 +248,15 @@ describe('App', () => {
     await waitFor(() =>
       expect(screen.getByTestId('api-key-status').textContent).toBe('Not configured'),
     );
+  });
+
+  it('opens the Zotero integration without changing the legacy library', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zotero Integration' }));
+
+    expect(screen.getByRole('heading', { name: 'Zotero Integration' })).toBeDefined();
+    expect(await screen.findByText('Status: Not Running')).toBeDefined();
   });
 
   it('keeps an imported paper selected when a stale filtered list refresh finishes', async () => {

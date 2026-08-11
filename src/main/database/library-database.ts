@@ -41,22 +41,36 @@ import type {
   PendingPaperTextExtraction,
   PaperDataGateway,
 } from '../library/paper-data-gateway';
+import type {
+  CreateWorkspaceInput,
+  SetWorkspaceStatusInput,
+  UpdateWorkspaceInput,
+  Workspace,
+} from '../../shared/contracts/workspace';
+import type { ZoteroItemRef } from '../../shared/contracts/zotero';
+import type {
+  StoredWorkspaceZoteroPaper,
+  WorkspaceDataGateway,
+} from '../workspace/workspace-data-gateway';
 import { applyMigrations } from './migrations';
 import { AiRepository } from './ai-repository';
 import { PaperRepository } from './paper-repository';
 import { ReaderRepository } from './reader-repository';
+import { WorkspaceRepository } from './workspace-repository';
 
-export class LibraryDatabase implements PaperDataGateway, AiDataGateway {
+export class LibraryDatabase implements PaperDataGateway, AiDataGateway, WorkspaceDataGateway {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
   private readerRepository: ReaderRepository;
   private aiRepository: AiRepository;
+  private workspaceRepository: WorkspaceRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
     this.repository = new PaperRepository(this.database);
     this.readerRepository = new ReaderRepository(this.database);
     this.aiRepository = new AiRepository(this.database);
+    this.workspaceRepository = new WorkspaceRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -179,6 +193,55 @@ export class LibraryDatabase implements PaperDataGateway, AiDataGateway {
     return this.run(() => this.aiRepository.markStaleMessages());
   }
 
+  public createWorkspace(input: CreateWorkspaceInput): Promise<Workspace> {
+    return this.run(() => this.workspaceRepository.create(input));
+  }
+
+  public getWorkspace(id: string): Promise<Workspace | null> {
+    return this.run(() => this.workspaceRepository.get(id));
+  }
+
+  public listWorkspaces(): Promise<readonly Workspace[]> {
+    return this.run(() => this.workspaceRepository.list());
+  }
+
+  public updateWorkspace(input: UpdateWorkspaceInput): Promise<Workspace> {
+    return this.run(() => this.workspaceRepository.update(input));
+  }
+
+  public setWorkspaceStatus(input: SetWorkspaceStatusInput): Promise<Workspace> {
+    return this.run(() => this.workspaceRepository.setStatus(input));
+  }
+
+  public deleteWorkspace(id: string): Promise<boolean> {
+    return this.run(() => this.workspaceRepository.delete(id));
+  }
+
+  public getLastActiveWorkspace(): Promise<Workspace | null> {
+    return this.run(() => this.workspaceRepository.getLastActive());
+  }
+
+  public setLastActiveWorkspace(workspaceId: string | null): Promise<Workspace | null> {
+    return this.run(() => this.workspaceRepository.setLastActive(workspaceId));
+  }
+
+  public addWorkspaceZoteroPaper(
+    workspaceId: string,
+    itemRef: ZoteroItemRef,
+  ): Promise<StoredWorkspaceZoteroPaper> {
+    return this.run(() => this.workspaceRepository.addZoteroPaper(workspaceId, itemRef));
+  }
+
+  public removeWorkspaceZoteroPaper(workspaceId: string, itemRef: ZoteroItemRef): Promise<boolean> {
+    return this.run(() => this.workspaceRepository.removeZoteroPaper(workspaceId, itemRef));
+  }
+
+  public listWorkspaceZoteroPapers(
+    workspaceId: string,
+  ): Promise<readonly StoredWorkspaceZoteroPaper[]> {
+    return this.run(() => this.workspaceRepository.listZoteroPapers(workspaceId));
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -218,6 +281,7 @@ export class LibraryDatabase implements PaperDataGateway, AiDataGateway {
         this.repository = new PaperRepository(this.database);
         this.readerRepository = new ReaderRepository(this.database);
         this.aiRepository = new AiRepository(this.database);
+        this.workspaceRepository = new WorkspaceRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -225,6 +289,7 @@ export class LibraryDatabase implements PaperDataGateway, AiDataGateway {
         this.repository = new PaperRepository(this.database);
         this.readerRepository = new ReaderRepository(this.database);
         this.aiRepository = new AiRepository(this.database);
+        this.workspaceRepository = new WorkspaceRepository(this.database);
         throw error;
       }
 

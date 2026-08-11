@@ -1,6 +1,125 @@
 # PaperMind 系统架构
 
-- 文档状态：Phase 0 基线草案
+> **Phase 5.5 authority notice (2026-08-10):** The detailed Phase 1-5 Electron,
+> database, PDF, and AI descriptions below remain the current implementation
+> baseline. The target product architecture is now an AI-native Research Workspace
+> and Research Control Plane. Product ownership follows
+> [product-vision.md](./product-vision.md) and
+> [data-ownership.md](./data-ownership.md); the repository findings are in
+> [phase-5.5-architecture-audit.md](./phase-5.5-architecture-audit.md). Any Phase 0
+> future RAG, Obsidian, or Git design that conflicts with those documents is
+> superseded.
+
+## Phase 5.5 Target Architecture
+
+The root domain is `Workspace`. A Workspace owns research goals, questions,
+state, notes/memory, reading plans, experiments, evidence, provenance, graph
+relationships, and agent state. Papers, repositories, code revisions, and
+knowledge-base notes are referenced resources whose authoritative content stays
+with Zotero, Git/GitHub, VS Code, or Obsidian.
+
+```text
+Renderer (untrusted UI)
+  -> typed, minimal preload use cases
+  -> whitelisted IPC with runtime validation
+  -> Main domain services
+       -> Workspace repositories (PaperMind-owned state)
+       -> Zotero adapter (bibliography/PDF source of truth)
+       -> Repository adapter (Git source of truth)
+       -> Knowledge export adapter (Obsidian-owned destination)
+       -> Research services / bounded agent tools
+       -> AI provider gateway and OS credential store
+  -> external systems and local persistence
+```
+
+The Renderer never receives Node.js, filesystem, SQLite, shell, Git executable,
+Zotero HTTP/API, Codex server, arbitrary localhost, or generic network access.
+Each external integration gets a separate Main-process adapter, domain service,
+typed contract, IPC namespace, preload namespace, timeout/cancellation policy,
+and structured error model. Adapters return stable external identifiers and
+provenance-bearing snapshots rather than claiming ownership of external data.
+
+The Research Agent is an orchestration layer above domain services, not a new
+privilege boundary. It may invoke only typed, validated, bounded, auditable tools
+with explicit Workspace/resource scope. Generic shell, arbitrary SQL,
+`readAnyFile`, generic IPC, and unrestricted URL/localhost tools are prohibited.
+
+The existing managed Paper/PDF library is retained as a compatibility and
+fallback-import subsystem. It is not used as the canonical backing store for
+Zotero resources. The current `AiProvider` boundary remains reusable, while the
+paper-bound assistant service and conversation schema will require a separate
+Workspace-aware evolution in a later approved phase.
+
+## Phase 6 Implemented Zotero Bridge
+
+Phase 6 implements this fixed path:
+
+```text
+ZoteroIntegration (Renderer)
+  -> window.paperMind.zotero (typed, frozen preload namespace)
+  -> zotero:* whitelisted IPC + Zod input/output validation
+  -> ZoteroBridgeService (mapping and bibliography/PDF domain rules)
+  -> ZoteroLocalApiClient (fixed loopback GET client)
+  -> http://127.0.0.1:23119/api/
+```
+
+`ZoteroLocalApiClient` negotiates API version at `/api/`, records the schema
+version, bounds time/bytes/pages/results, and maps connection, cancellation, timeout, HTTP,
+JSON, version, and identity errors. Zotero 10+ uses the native
+`Zotero-Server-ID`, which is sent back on reads. Zotero 9 compatibility is
+read-only and derives an explicitly marked `library_fallback` partition from the
+real non-zero user-library ID returned by an item or collection. An empty legacy
+library that exposes neither identity fails closed. The client constructs every
+endpoint internally and cannot be configured by Renderer.
+
+The bridge uses `/items/top`, `itemType=-attachment`, and collection
+`/items/top`; the service also rejects child, note, annotation, and attachment
+objects from bibliography result DTOs. Item search/list requests use explicit
+`start`/`limit` pages (maximum 25), expose only normalized pagination metadata,
+and can be cancelled through a sender-scoped opaque request ID. Raw JSON is normalized into stable
+item/collection references and bounded DTOs. Attachment file availability is
+probed through Zotero's `/file/view/url` endpoint; the returned location is
+discarded inside Main. Renderer sees only stored/linked and
+available/not-local/missing/none state. No database table, managed PDF copy,
+Zotero write, direct SQLite read, or storage-directory scan is involved.
+
+## Phase 7 Implemented Workspace Core
+
+Phase 7 adds the following fixed path without changing the Phase 6 Zotero access
+boundary:
+
+```text
+Settings verification UI (Renderer)
+  -> window.paperMind.workspace (typed, frozen preload namespace)
+  -> workspaces:* whitelisted IPC + strict Zod input/output validation
+  -> WorkspaceService (lifecycle, confirmation, external availability policy)
+  -> WorkspaceDataGateway
+  -> DatabaseWorkerClient -> database Worker -> WorkspaceRepository -> SQLite
+
+WorkspaceService
+  -> ZoteroBridgeService (read-only transient metadata resolution)
+  -> ZoteroLocalApiClient (fixed Zotero Local API client)
+```
+
+`Workspace` is now a persisted top-level domain object with active, paused, and
+archived lifecycle states. The many-to-many association stores only the stable
+Zotero identity (`serverId`, library type/id, item key) plus PaperMind-owned
+`addedAt` and display order. Titles, creators, abstracts, DOI, collections,
+attachments, and PDF state remain transient Zotero-owned read results.
+
+The singleton Workspace state persists the last active Workspace. Paused
+Workspaces may remain last active; archiving or deleting the selected Workspace
+clears that state. Archive preserves the Workspace and its associations, while
+confirmed delete removes only Workspace-owned rows. External resolution reports
+`available`, `missing`, `stale_identity`, or `unavailable` and never deletes or
+repairs an association by guesswork. Resolution is bounded to four concurrent
+items and 500 persisted associations per Workspace.
+
+The Phase 7 UI is intentionally limited to creation, listing, and last-active
+selection under Settings. Full Workspace navigation and resource management are
+reserved for Phase 8.
+
+- 文档状态：Phase 1-5 实现基线；Phase 5.5 目标架构见上方权威说明
 - 架构风格：本地优先的 Electron 分层桌面应用
 
 ## 1. 架构目标
@@ -275,7 +394,7 @@ interface AIProvider {
 
 AI 请求只能从主进程 AI Service 发起。Phase 5 默认使用 OpenAI 官方 HTTPS endpoint，并按本阶段明确要求开放受限 Base URL：只允许标准 443 端口的公开 HTTPS 主机，拒绝 URL 凭据、查询、fragment、本机/私网地址和重定向；请求前重新做 DNS 公网地址检查。用户首次切换到每个新自定义 endpoint 时，Main 使用原生警告框说明 Key 和选中文本的接收主机并要求确认。Renderer CSP 仍不允许直接联网。
 
-Phase 5 实现 `streamChat` 路径；`embed` 保留为 Phase 6 的接口演进点，当前不创建向量、不上传全文。请求只重放最近 20 条已完成且非空的消息，并受 40,000 字符本地上限约束；确认对话框展示相同范围。OpenAI Responses 请求设置 `store: false`，同时保留取消、90 秒总超时、Provider 有界重试和 2,000,000 字符响应上限。
+Phase 5 实现 `streamChat` 路径；向量和多论文检索已推迟到 Phase 13，Phase 6 不创建向量、不上传全文。请求只重放最近 20 条已完成且非空的消息，并受 40,000 字符本地上限约束；确认对话框展示相同范围。OpenAI Responses 请求设置 `store: false`，同时保留取消、90 秒总超时、Provider 有界重试和 2,000,000 字符响应上限。
 
 无 API Key 时可使用手动 ChatGPT bridge。Renderer 只提交经过 schema 限制的任务类型、当前选区和问题；Main 重新构造提示词、写入系统剪贴板，并仅打开常量 `https://chatgpt.com/`。该路径不读取浏览器 Cookie、ChatGPT 登录态或页面内容，不自动粘贴、发送或导入回答，也不包含 PaperMind 对话历史。
 

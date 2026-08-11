@@ -13,6 +13,12 @@ import type {
   UpdateAnnotationInput,
 } from '../../shared/contracts/reader';
 import type { AiProviderSettings } from '../../shared/contracts/ai';
+import type {
+  CreateWorkspaceInput,
+  SetWorkspaceStatusInput,
+  UpdateWorkspaceInput,
+} from '../../shared/contracts/workspace';
+import type { ZoteroItemRef } from '../../shared/contracts/zotero';
 import type { CreateAiTurnInput, FinalizeAiMessageInput } from '../ai/ai-data-gateway';
 import type { ImportedPaperRecord, PaperTextExtractionRecord } from '../library/paper-data-gateway';
 
@@ -139,6 +145,53 @@ export type DatabaseWorkerRequest =
       readonly payload: { readonly conversationId: string };
     }
   | { readonly id: number; readonly method: 'markStaleAiMessages'; readonly payload: null }
+  | {
+      readonly id: number;
+      readonly method: 'createWorkspace';
+      readonly payload: CreateWorkspaceInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getWorkspace';
+      readonly payload: { readonly id: string };
+    }
+  | { readonly id: number; readonly method: 'listWorkspaces'; readonly payload: null }
+  | {
+      readonly id: number;
+      readonly method: 'updateWorkspace';
+      readonly payload: UpdateWorkspaceInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'setWorkspaceStatus';
+      readonly payload: SetWorkspaceStatusInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'deleteWorkspace';
+      readonly payload: { readonly id: string };
+    }
+  | { readonly id: number; readonly method: 'getLastActiveWorkspace'; readonly payload: null }
+  | {
+      readonly id: number;
+      readonly method: 'setLastActiveWorkspace';
+      readonly payload: { readonly workspaceId: string | null };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'addWorkspaceZoteroPaper';
+      readonly payload: { readonly workspaceId: string; readonly itemRef: ZoteroItemRef };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'removeWorkspaceZoteroPaper';
+      readonly payload: { readonly workspaceId: string; readonly itemRef: ZoteroItemRef };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listWorkspaceZoteroPapers';
+      readonly payload: { readonly workspaceId: string };
+    }
   | {
       readonly id: number;
       readonly method: 'backupTo';

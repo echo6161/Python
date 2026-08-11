@@ -10,6 +10,8 @@ import { AiSecretStore } from './ai/secret-store';
 import { registerAiIpcHandlers } from './ipc/ai-ipc';
 import { registerLibraryIpcHandlers } from './ipc/library-ipc';
 import { registerReaderIpcHandlers } from './ipc/reader-ipc';
+import { registerWorkspaceIpcHandlers } from './ipc/workspace-ipc';
+import { registerZoteroIpcHandlers } from './ipc/zotero-ipc';
 import { PaperFileStorage } from './library/file-storage';
 import { getDefaultLibraryRoot, initializeLibraryPaths } from './library/library-paths';
 import { PaperLibraryService } from './library/paper-library-service';
@@ -18,6 +20,9 @@ import { PaperReaderService } from './reader/paper-reader-service';
 import { registerPdfProtocol } from './reader/pdf-protocol';
 import { configureSessionSecurity, restrictWindowNavigation } from './security';
 import { createWindowOptions } from './window-options';
+import { WorkspaceService } from './workspace/workspace-service';
+import { ZoteroBridgeService } from './zotero/zotero-bridge-service';
+import { ZoteroLocalApiClient } from './zotero/zotero-local-api-client';
 
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
@@ -85,6 +90,9 @@ async function initializeLibrary(): Promise<void> {
   registerLibraryIpcHandlers(library, () => mainWindow);
   registerReaderIpcHandlers(reader, () => mainWindow);
   registerAiIpcHandlers(aiAssistant, () => mainWindow);
+  const zoteroBridge = new ZoteroBridgeService(new ZoteroLocalApiClient());
+  registerZoteroIpcHandlers(zoteroBridge);
+  registerWorkspaceIpcHandlers(new WorkspaceService(databaseClient.workspace, zoteroBridge));
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()

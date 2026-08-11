@@ -1,6 +1,14 @@
 # PaperMind 产品需求文档
 
-- 文档状态：Phase 0 基线草案
+> **Phase 5.5 authority notice (2026-08-10):** This document is retained as the
+> historical Phase 0 baseline for the completed Paper/PDF compatibility features.
+> Its product direction, ownership assumptions, MVP definition, and future phase
+> ordering are superseded by [product-vision.md](./product-vision.md),
+> [data-ownership.md](./data-ownership.md), and
+> [development-roadmap.md](./development-roadmap.md). Do not use the future-facing
+> sections below to plan new phases.
+
+- 文档状态：Phase 0 历史基线；Phase 5.5 后不再是未来产品方向的权威来源
 - 产品形态：Windows、macOS、Linux 桌面应用
 - 核心原则：本地优先、隐私优先、用户拥有数据、外部传输可见且可控
 
