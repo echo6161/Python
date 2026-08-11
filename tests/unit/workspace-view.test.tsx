@@ -106,7 +106,8 @@ describe('WorkspaceView', () => {
     expect(await screen.findByRole('heading', { name: 'Evidence review' })).toBeDefined();
     expect(await screen.findByText('Workspace-specific paper')).toBeDefined();
     expect(screen.getByText('Stored PDF')).toBeDefined();
-    for (const section of ['Questions', 'Repositories', 'Reading Plan', 'Experiments']) {
+    expect(await screen.findByRole('heading', { name: 'Repositories' })).toBeDefined();
+    for (const section of ['Questions', 'Reading Plan', 'Experiments']) {
       expect(screen.getByLabelText(`${section}: Coming later`)).toBeDefined();
     }
 
@@ -232,6 +233,22 @@ function installApi(overrides: Partial<PaperMindApi['workspace']>) {
   };
   Object.defineProperty(window, 'paperMind', {
     configurable: true,
-    value: { workspace },
+    value: {
+      workspace,
+      repository: {
+        chooseAndLink: vi.fn(),
+        listForWorkspace: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+        removeFromWorkspace: vi.fn(),
+        deleteReference: vi.fn(),
+        refresh: vi.fn(),
+        listTree: vi.fn(),
+        readSource: vi.fn(),
+        openInVscode: vi.fn(),
+        cancelRequest: vi.fn().mockResolvedValue({
+          ok: true,
+          value: { requestId: crypto.randomUUID(), cancelled: false },
+        }),
+      },
+    },
   });
 }

@@ -104,6 +104,26 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       );
     case 'listWorkspaceZoteroPapers':
       return database.listWorkspaceZoteroPapers(request.payload.workspaceId);
+    case 'createOrUpdateRepository':
+      return database.createOrUpdateRepository(request.payload);
+    case 'getRepository':
+      return database.getRepository(request.payload.id);
+    case 'updateRepositoryObservation':
+      return database.updateRepositoryObservation(request.payload.id, request.payload.observation);
+    case 'addWorkspaceRepository':
+      return database.addWorkspaceRepository(
+        request.payload.workspaceId,
+        request.payload.repositoryId,
+      );
+    case 'removeWorkspaceRepository':
+      return database.removeWorkspaceRepository(
+        request.payload.workspaceId,
+        request.payload.repositoryId,
+      );
+    case 'listWorkspaceRepositories':
+      return database.listWorkspaceRepositories(request.payload.workspaceId);
+    case 'deleteRepository':
+      return database.deleteRepository(request.payload.id);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

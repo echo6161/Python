@@ -10,6 +10,7 @@ import { ComingLaterSections } from './ComingLaterSections';
 import { WorkspaceDetailsEditor } from './WorkspaceDetailsEditor';
 import { WorkspaceLifecycleDialog } from './WorkspaceLifecycleDialog';
 import { WorkspacePaperSection } from './WorkspacePaperSection';
+import { WorkspaceRepositorySection } from './repository/WorkspaceRepositorySection';
 
 interface WorkspaceOverviewProps {
   readonly busy: boolean;
@@ -86,6 +87,7 @@ export function WorkspaceOverview({
       <div className="space-y-7">
         <WorkspaceDetailsEditor busy={busy} workspace={workspace} onUpdate={onUpdate} />
         <WorkspacePaperSection workspace={workspace} />
+        <WorkspaceRepositorySection workspace={workspace} />
         <ComingLaterSections />
       </div>
 

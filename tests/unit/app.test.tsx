@@ -132,6 +132,17 @@ describe('App', () => {
           deleteAnnotation: vi.fn(),
           exportAnnotations: vi.fn(),
         },
+        repository: {
+          chooseAndLink: vi.fn(),
+          listForWorkspace: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+          removeFromWorkspace: vi.fn(),
+          deleteReference: vi.fn(),
+          refresh: vi.fn(),
+          listTree: vi.fn(),
+          readSource: vi.fn(),
+          openInVscode: vi.fn(),
+          cancelRequest: vi.fn(),
+        },
         ai: {
           getCapabilities: vi.fn().mockResolvedValue({
             ok: true,

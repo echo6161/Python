@@ -48,6 +48,11 @@ import type {
   Workspace,
 } from '../../shared/contracts/workspace';
 import type { ZoteroItemRef } from '../../shared/contracts/zotero';
+import type { RepositoryRef, WorkspaceRepositoryRef } from '../../shared/contracts/repository';
+import type {
+  RepositoryDataGateway,
+  RepositoryObservationInput,
+} from '../repository/repository-data-gateway';
 import type {
   StoredWorkspaceZoteroPaper,
   WorkspaceDataGateway,
@@ -57,13 +62,17 @@ import { AiRepository } from './ai-repository';
 import { PaperRepository } from './paper-repository';
 import { ReaderRepository } from './reader-repository';
 import { WorkspaceRepository } from './workspace-repository';
+import { RepositoryRepository } from './repository-repository';
 
-export class LibraryDatabase implements PaperDataGateway, AiDataGateway, WorkspaceDataGateway {
+export class LibraryDatabase
+  implements PaperDataGateway, AiDataGateway, WorkspaceDataGateway, RepositoryDataGateway
+{
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
   private readerRepository: ReaderRepository;
   private aiRepository: AiRepository;
   private workspaceRepository: WorkspaceRepository;
+  private repositoryRepository: RepositoryRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -71,6 +80,7 @@ export class LibraryDatabase implements PaperDataGateway, AiDataGateway, Workspa
     this.readerRepository = new ReaderRepository(this.database);
     this.aiRepository = new AiRepository(this.database);
     this.workspaceRepository = new WorkspaceRepository(this.database);
+    this.repositoryRepository = new RepositoryRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -242,6 +252,42 @@ export class LibraryDatabase implements PaperDataGateway, AiDataGateway, Workspa
     return this.run(() => this.workspaceRepository.listZoteroPapers(workspaceId));
   }
 
+  public createOrUpdateRepository(input: RepositoryObservationInput): Promise<RepositoryRef> {
+    return this.run(() => this.repositoryRepository.createOrUpdate(input));
+  }
+
+  public getRepository(id: string): Promise<RepositoryRef | null> {
+    return this.run(() => this.repositoryRepository.get(id));
+  }
+
+  public updateRepositoryObservation(
+    id: string,
+    input: Omit<RepositoryObservationInput, 'canonicalKey' | 'canonicalRoot' | 'displayName'>,
+  ): Promise<RepositoryRef> {
+    return this.run(() => this.repositoryRepository.updateObservation(id, input));
+  }
+
+  public addWorkspaceRepository(
+    workspaceId: string,
+    repositoryId: string,
+  ): Promise<WorkspaceRepositoryRef> {
+    return this.run(() => this.repositoryRepository.addToWorkspace(workspaceId, repositoryId));
+  }
+
+  public removeWorkspaceRepository(workspaceId: string, repositoryId: string): Promise<boolean> {
+    return this.run(() => this.repositoryRepository.removeFromWorkspace(workspaceId, repositoryId));
+  }
+
+  public listWorkspaceRepositories(
+    workspaceId: string,
+  ): Promise<readonly WorkspaceRepositoryRef[]> {
+    return this.run(() => this.repositoryRepository.listForWorkspace(workspaceId));
+  }
+
+  public deleteRepository(id: string): Promise<boolean> {
+    return this.run(() => this.repositoryRepository.delete(id));
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -282,6 +328,7 @@ export class LibraryDatabase implements PaperDataGateway, AiDataGateway, Workspa
         this.readerRepository = new ReaderRepository(this.database);
         this.aiRepository = new AiRepository(this.database);
         this.workspaceRepository = new WorkspaceRepository(this.database);
+        this.repositoryRepository = new RepositoryRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -290,6 +337,7 @@ export class LibraryDatabase implements PaperDataGateway, AiDataGateway, Workspa
         this.readerRepository = new ReaderRepository(this.database);
         this.aiRepository = new AiRepository(this.database);
         this.workspaceRepository = new WorkspaceRepository(this.database);
+        this.repositoryRepository = new RepositoryRepository(this.database);
         throw error;
       }
 

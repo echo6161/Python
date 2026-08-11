@@ -27,6 +27,7 @@
 | 6 | Read-only Zotero Local API bridge, stable references, metadata/collection/attachment/PDF availability UI | Implemented; validation recorded in Phase 6 report |
 | 7 | Workspace persistence, lifecycle, last-active state, and many-to-many Zotero references | Implemented; validation recorded in Phase 7 report |
 | 8 | Workspace-first navigation, goals, Zotero picker, reference states, and lifecycle UX | Implemented; validation recorded in Phase 8 report |
+| 9 | Read-only Repository Bridge, secure source browsing, observed Git identity, and VS Code handoff | Implemented; validation recorded in Phase 9 report |
 
 ## 3. Authoritative Phase Order
 
@@ -105,6 +106,14 @@ the clearly labelled `Legacy Library`; no legacy data or schema was changed.
 **Depends on:** Workspace identity and UI.
 
 Add a Main-process read-oriented Git repository adapter, repository/revision references, status diagnostics, explicit folder authorization, and immutable commit identity. Git remains authoritative; no generic shell or automatic mutation.
+
+**Implementation status:** completed with additive migration 0005. Workspaces
+may share authorized Git repository or source-folder references. Main owns
+canonicalization, fixed read-only Git inspection, lazy ignored tree reads,
+bounded text decoding, refresh state, and validated user-triggered VS Code
+handoff. Renderer receives no generic filesystem, shell, Git, URL, executable,
+or localhost capability. No repository content is copied, indexed, edited, or
+deleted, and no Phase 10 code intelligence was introduced.
 
 ### Phase 10: Code Intelligence
 

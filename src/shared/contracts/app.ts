@@ -1,5 +1,6 @@
 import type { LibraryApi } from './library';
 import type { ReaderApi } from './reader';
+import type { RepositoryApi } from './repository';
 import type { AiApi } from './ai';
 import type { ZoteroApi } from './zotero';
 import type { WorkspaceApi } from './workspace';
@@ -23,6 +24,7 @@ export interface PaperMindApi {
   };
   readonly library: LibraryApi;
   readonly reader: ReaderApi;
+  readonly repository: RepositoryApi;
   readonly ai: AiApi;
   readonly zotero: ZoteroApi;
   readonly workspace: WorkspaceApi;

@@ -87,3 +87,21 @@ Phase 6 is read-oriented and additive:
 4. The same Zotero reference may belong to multiple Workspaces. Removing it from one Workspace does not affect another.
 5. `archived` preserves the Workspace and its links. Confirmed delete removes only the Workspace and PaperMind-owned association rows.
 6. Missing items, stopped Zotero, and changed server/profile identity remain visible as `missing`, `unavailable`, or `stale_identity`; links are retained for explicit future repair.
+
+## 8. Phase 9 Repository Bridge Rules
+
+1. The local working tree and Git object database own source content and history.
+   PaperMind stores only an authorized canonical root, display label, kind,
+   Workspace association, and observed diagnostics.
+2. Branch, HEAD, remote summary, availability, and observation time are labeled
+   snapshots. Refresh may replace those observations but never mutates Git.
+3. One `RepositoryRef` may belong to multiple Workspaces. Removing it from one
+   Workspace deletes only that association; explicit reference deletion removes
+   PaperMind rows only.
+4. Source bytes returned to Renderer are bounded, transient read results and are
+   not persisted as a PaperMind-owned repository copy or index.
+5. Missing, moved, or inaccessible roots retain their references and associations
+   with an explicit state. PaperMind does not search the filesystem to guess a
+   replacement.
+6. VS Code owns editing and execution. PaperMind can only make a user-triggered
+   handoff to an already authorized root or file and legal line/column.

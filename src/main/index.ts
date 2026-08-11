@@ -1,6 +1,15 @@
 import path from 'node:path';
 
-import { app, BrowserWindow, dialog, ipcMain, protocol, safeStorage, session } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  protocol,
+  safeStorage,
+  session,
+  shell,
+} from 'electron';
 
 import { IPC_CHANNELS, type AppInfo, type DesktopPlatform } from '../shared/contracts/app';
 import { createConsoleLogger } from '../shared/logging';
@@ -10,6 +19,7 @@ import { AiSecretStore } from './ai/secret-store';
 import { registerAiIpcHandlers } from './ipc/ai-ipc';
 import { registerLibraryIpcHandlers } from './ipc/library-ipc';
 import { registerReaderIpcHandlers } from './ipc/reader-ipc';
+import { registerRepositoryIpcHandlers } from './ipc/repository-ipc';
 import { registerWorkspaceIpcHandlers } from './ipc/workspace-ipc';
 import { registerZoteroIpcHandlers } from './ipc/zotero-ipc';
 import { PaperFileStorage } from './library/file-storage';
@@ -17,6 +27,10 @@ import { getDefaultLibraryRoot, initializeLibraryPaths } from './library/library
 import { PaperLibraryService } from './library/paper-library-service';
 import { PdfMetadataExtractionClient } from './metadata/pdf-metadata-extraction-client';
 import { PaperReaderService } from './reader/paper-reader-service';
+import { GitRepositoryClient } from './repository/git-repository-client';
+import { RepositoryFileService } from './repository/repository-file-service';
+import { RepositoryService } from './repository/repository-service';
+import { RepositoryVscodeLauncher } from './repository/repository-vscode-launcher';
 import { registerPdfProtocol } from './reader/pdf-protocol';
 import { configureSessionSecurity, restrictWindowNavigation } from './security';
 import { createWindowOptions } from './window-options';
@@ -93,6 +107,30 @@ async function initializeLibrary(): Promise<void> {
   const zoteroBridge = new ZoteroBridgeService(new ZoteroLocalApiClient());
   registerZoteroIpcHandlers(zoteroBridge);
   registerWorkspaceIpcHandlers(new WorkspaceService(databaseClient.workspace, zoteroBridge));
+  const gitRepositories = new GitRepositoryClient();
+  registerRepositoryIpcHandlers(
+    new RepositoryService(
+      databaseClient.repository,
+      gitRepositories,
+      new RepositoryFileService(gitRepositories),
+      {
+        chooseDirectory: async () => {
+          const owner = mainWindow;
+          const result = owner
+            ? await dialog.showOpenDialog(owner, {
+                title: 'Select Git repository or source folder',
+                properties: ['openDirectory'],
+              })
+            : await dialog.showOpenDialog({
+                title: 'Select Git repository or source folder',
+                properties: ['openDirectory'],
+              });
+          return result.canceled ? null : (result.filePaths[0] ?? null);
+        },
+      },
+      new RepositoryVscodeLauncher(shell),
+    ),
+  );
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()

@@ -13,6 +13,7 @@ import type {
   UpdateAnnotationInput,
 } from '../../shared/contracts/reader';
 import type { AiProviderSettings } from '../../shared/contracts/ai';
+import type { RepositoryObservationInput } from '../repository/repository-data-gateway';
 import type {
   CreateWorkspaceInput,
   SetWorkspaceStatusInput,
@@ -191,6 +192,47 @@ export type DatabaseWorkerRequest =
       readonly id: number;
       readonly method: 'listWorkspaceZoteroPapers';
       readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createOrUpdateRepository';
+      readonly payload: RepositoryObservationInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getRepository';
+      readonly payload: { readonly id: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateRepositoryObservation';
+      readonly payload: {
+        readonly id: string;
+        readonly observation: Omit<
+          RepositoryObservationInput,
+          'canonicalKey' | 'canonicalRoot' | 'displayName'
+        >;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'addWorkspaceRepository';
+      readonly payload: { readonly workspaceId: string; readonly repositoryId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'removeWorkspaceRepository';
+      readonly payload: { readonly workspaceId: string; readonly repositoryId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listWorkspaceRepositories';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'deleteRepository';
+      readonly payload: { readonly id: string };
     }
   | {
       readonly id: number;

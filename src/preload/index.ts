@@ -47,6 +47,19 @@ import type {
   UpdateAnnotationInput,
 } from '../shared/contracts/reader';
 import type {
+  DeleteRepositoryRefInput,
+  OpenRepositoryInVscodeInput,
+  RepositoryCancelResult,
+  RepositoryIpcChannels,
+  RepositoryRef,
+  RepositorySourceFile,
+  RepositorySourceRequest,
+  RepositoryTreePage,
+  RepositoryTreeRequest,
+  WorkspaceRepositoryInput,
+  WorkspaceRepositoryRef,
+} from '../shared/contracts/repository';
+import type {
   ZoteroAttachment,
   ZoteroCancelResult,
   ZoteroCollection,
@@ -101,6 +114,17 @@ const READER_CHANNELS = {
   deleteAnnotation: 'annotations:delete',
   exportAnnotations: 'annotations:export',
 } satisfies ReaderIpcChannels;
+const REPOSITORY_CHANNELS = {
+  chooseAndLink: 'repositories:choose-and-link',
+  listForWorkspace: 'repositories:list-for-workspace',
+  removeFromWorkspace: 'repositories:remove-from-workspace',
+  deleteReference: 'repositories:delete-reference',
+  refresh: 'repositories:refresh',
+  listTree: 'repositories:list-tree',
+  readSource: 'repositories:read-source',
+  openInVscode: 'repositories:open-in-vscode',
+  cancelRequest: 'repositories:cancel-request',
+} satisfies RepositoryIpcChannels;
 const AI_CHANNELS = {
   getCapabilities: 'ai:get-capabilities',
   updateSettings: 'settings:update-ai',
@@ -222,6 +246,42 @@ const api: PaperMindApi = Object.freeze({
     exportAnnotations: (input: AnnotationExportRequest) =>
       ipcRenderer.invoke(READER_CHANNELS.exportAnnotations, input) as Promise<
         ApiResult<AnnotationExportResult>
+      >,
+  }),
+  repository: Object.freeze({
+    chooseAndLink: (workspaceId: string) =>
+      ipcRenderer.invoke(REPOSITORY_CHANNELS.chooseAndLink, workspaceId) as Promise<
+        ApiResult<WorkspaceRepositoryRef | null>
+      >,
+    listForWorkspace: (workspaceId: string) =>
+      ipcRenderer.invoke(REPOSITORY_CHANNELS.listForWorkspace, workspaceId) as Promise<
+        ApiResult<readonly WorkspaceRepositoryRef[]>
+      >,
+    removeFromWorkspace: (input: WorkspaceRepositoryInput) =>
+      ipcRenderer.invoke(REPOSITORY_CHANNELS.removeFromWorkspace, input) as Promise<
+        ApiResult<{ readonly removed: boolean }>
+      >,
+    deleteReference: (input: DeleteRepositoryRefInput) =>
+      ipcRenderer.invoke(REPOSITORY_CHANNELS.deleteReference, input) as Promise<
+        ApiResult<{ readonly repositoryId: string }>
+      >,
+    refresh: (input: { readonly repositoryId: string; readonly requestId: string }) =>
+      ipcRenderer.invoke(REPOSITORY_CHANNELS.refresh, input) as Promise<ApiResult<RepositoryRef>>,
+    listTree: (input: RepositoryTreeRequest) =>
+      ipcRenderer.invoke(REPOSITORY_CHANNELS.listTree, input) as Promise<
+        ApiResult<RepositoryTreePage>
+      >,
+    readSource: (input: RepositorySourceRequest) =>
+      ipcRenderer.invoke(REPOSITORY_CHANNELS.readSource, input) as Promise<
+        ApiResult<RepositorySourceFile>
+      >,
+    openInVscode: (input: OpenRepositoryInVscodeInput) =>
+      ipcRenderer.invoke(REPOSITORY_CHANNELS.openInVscode, input) as Promise<
+        ApiResult<{ readonly opened: boolean }>
+      >,
+    cancelRequest: (requestId: string) =>
+      ipcRenderer.invoke(REPOSITORY_CHANNELS.cancelRequest, requestId) as Promise<
+        ApiResult<RepositoryCancelResult>
       >,
   }),
   ai: Object.freeze({

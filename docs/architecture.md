@@ -163,6 +163,46 @@ Activity appears only when persisted Workspace associations provide a real
 explicit `Legacy Library` compatibility entry and is no longer the top-level
 application context.
 
+## Phase 9 Implemented Repository Bridge
+
+Phase 9 replaces only the Phase 8 Repositories placeholder. The privileged path
+is fixed:
+
+```text
+WorkspaceRepositorySection / RepositoryBrowser (Renderer)
+  -> window.paperMind.repository (typed, frozen preload namespace)
+  -> repositories:* whitelisted IPC + strict Zod validation
+  -> RepositoryService
+       -> RepositoryRepository through DatabaseWorkerClient
+       -> GitRepositoryClient (fixed read-only argv, shell disabled)
+       -> RepositoryFileService (authorized-root relative paths only)
+       -> RepositoryVscodeLauncher (fixed vscode://file handoff)
+```
+
+The native directory picker is the only way to authorize a root. Main resolves
+the canonical path, promotes a selected Git subdirectory to its repository root,
+and stores a PaperMind `RepositoryRef`. `workspace_repositories` is a
+many-to-many association, so one reference can be shared by several Workspaces.
+Observed branch, HEAD, remote summary, availability, and time are diagnostic
+snapshots; the working tree and Git object database remain authoritative.
+
+Git execution uses `spawn` without a shell and an internal allowlist of
+`rev-parse`, `symbolic-ref`, `remote`, and `check-ignore` arguments. There is no
+generic command, URL, executable, path, or filesystem IPC. Tree and source
+requests carry a repository UUID and normalized repository-relative path. Main
+re-resolves containment, refuses symlink/junction traversal, applies default
+dependency/build/cache/binary/credential exclusions, and uses `git check-ignore` for Git
+repositories. Directory scans are capped at 5,000 entries and returned in pages
+of at most 100. Source reads are capped at 1 MiB with explicit UTF-8/UTF-16,
+binary, unsupported-encoding, missing, permission, and oversized-file errors.
+
+VS Code handoff is user initiated. Main resolves the repository root or an
+authorized in-root regular file and constructs only a `vscode://file` location
+with a validated positive line/column. PaperMind performs no checkout, commit,
+fetch, pull, push, merge, reset, clean, file edit, repository copy, or automatic
+external-app launch. Missing/moved repositories preserve their local reference
+and Workspace associations for explicit refresh or removal.
+
 - 文档状态：Phase 1-5 实现基线；Phase 5.5 目标架构见上方权威说明
 - 架构风格：本地优先的 Electron 分层桌面应用
 

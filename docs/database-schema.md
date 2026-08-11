@@ -1,4 +1,4 @@
-# PaperMind Phase 7 Database Schema
+# PaperMind Phase 9 Database Schema
 
 > This document describes the implemented Phase 1-5 compatibility schema. It is
 > runtime truth, not the Phase 5.5 target domain model. The current `papers` root
@@ -113,6 +113,23 @@ The reference's `server_id` partitions identities from different Zotero
 profiles/databases, so equal library IDs and item keys from different identities
 cannot be conflated. Zotero metadata is resolved through the read-only bridge at
 request time and is not stored by this migration.
+
+## Repository Bridge migration
+
+Migration `0005-repository-bridge.ts` is forward-only and creates:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Repository reference | `repository_references` | UUID, unique canonical-key partition, canonical authorized root, Git/source-folder kind, observed branch/HEAD/sanitized remotes, availability, timestamps, optimistic row version |
+| Workspace membership | `workspace_repositories` | Many-to-many join with PaperMind-owned added timestamp and display order |
+
+The canonical root is selected through Main's native directory picker and is
+never accepted from Renderer. Branch, HEAD, remotes, and availability are
+observed diagnostics rather than copied Git authority. Deleting a Workspace
+cascades only its membership rows. Removing a membership or explicitly deleting
+a Repository reference never deletes or modifies a local directory, source file,
+Git ref, object, index, or working-tree entry. Existing legacy Paper/PDF,
+Zotero-reference, annotation, and Workspace records are not migrated or removed.
 
 Conversation text is local plaintext content and may include a user-approved selected excerpt. A per-request opt-out keeps that turn entirely in memory. API keys and encrypted credential blobs are never accepted by this repository and are stored outside the library through the Main-process Secret Store.
 

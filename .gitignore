@@ -1,6 +1,7 @@
 # Node and package managers
 node_modules/
 npm-debug.log*
+debug.log
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*

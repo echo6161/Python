@@ -70,6 +70,35 @@
 - Changed Zotero server/profile identity is reported as `stale_identity`; it is
   never silently repaired by item key, title, DOI, path, or filename.
 
+## Phase 9 Repository Controls
+
+- Renderer can request only repository-domain operations by UUID and normalized
+  relative path. It cannot submit a root path, absolute path, URL, protocol,
+  executable, Git arguments, shell fragment, environment, or arbitrary line.
+- A native Main-process directory picker establishes explicit authorization.
+  Main stores the canonical root and revalidates realpath containment for every
+  tree, source, refresh, and VS Code operation.
+- Absolute paths, empty segments, backslashes, `..`, NUL, root escape, and any
+  symlink/junction traversal are rejected. Links may be displayed as disabled
+  tree entries but are never followed, which also prevents cycles and outside
+  reads.
+- Git is spawned with `shell: false`, fixed read-only arguments, disabled prompts
+  and optional locks, a five-second timeout, and bounded output. Remote summaries
+  remove URL credentials and replace local remote paths before persistence or
+  IPC output.
+- Tree reads are lazy, paginated, ignored by Git rules where applicable, and
+  protected by default exclusions and entry/size caps. Source reads accept only
+  regular text files within the authorized root and fail closed for binary,
+  unsupported encoding, oversized, missing, inaccessible, environment-secret,
+  private-key, credential-file, or otherwise excluded paths.
+- `openInVscode` is a user-triggered, domain-specific action. Main builds the
+  fixed `vscode://file` target only after resolving an authorized root or file;
+  no generic `openExternal` capability crosses preload.
+- Removing an association or deleting a PaperMind `RepositoryRef` affects only
+  PaperMind database rows. Neither path has a local delete or Git mutation
+  capability. Logs contain error codes, not source content, roots, Git remote
+  credentials, environment values, or command output.
+
 - 文档状态：Phase 0 基线草案
 - 安全目标：限制不可信内容的权限，最小化外发数据，保护凭据，避免破坏用户文件和 Git 历史
 

@@ -2,7 +2,7 @@
 
 PaperMind is an AI-native Research Workspace and Research Control Plane. It coordinates research goals, papers, questions, code, experiments, evidence, conclusions, and durable memory while leaving authoritative data in the tools that own it: Zotero for bibliography/PDFs, Git for code history, VS Code for editing and execution, and Obsidian for long-term knowledge.
 
-The implemented application includes a secure local Paper/PDF compatibility library, reader, annotation system, selected-text AI assistant, the Phase 6 read-only Zotero Bridge, and the Phase 7-8 Workspace core and application shell. Workspaces persist local goals and lifecycle state, restore the last active Workspace, and may share stable Zotero references without copying Zotero metadata or PDFs. Users can search or filter Zotero through a controlled picker, add multiple references, and see explicit external availability states. The existing reader remains available under **Legacy Library**; it is not deleted or silently migrated. PaperMind does not read `zotero.sqlite`, scan Zotero storage, copy Zotero PDFs, or expose Zotero paths/endpoints to Renderer. Phase 5 also includes OS-backed OpenAI credentials and a manual ChatGPT handoff for Plus users. Full PDFs are never uploaded by default.
+The implemented application includes a secure local Paper/PDF compatibility library, reader, annotation system, selected-text AI assistant, the Phase 6 read-only Zotero Bridge, the Phase 7-8 Workspace core and application shell, and the Phase 9 read-only Repository Bridge. Workspaces persist local goals and lifecycle state, restore the last active Workspace, and may share stable Zotero and authorized local repository references without copying external metadata, PDFs, or source trees. Users can browse a bounded ignored source tree, inspect text, refresh observed Git state, and explicitly open an authorized location in VS Code. The existing reader remains available under **Legacy Library**; it is not deleted or silently migrated. PaperMind exposes no generic filesystem, shell, Git, URL, or localhost capability to Renderer. Phase 5 also includes OS-backed OpenAI credentials and a manual ChatGPT handoff for Plus users. Full PDFs are never uploaded by default.
 
 Architecture authority: [product vision](docs/product-vision.md), [data ownership](docs/data-ownership.md), [Phase 5.5 audit](docs/phase-5.5-architecture-audit.md), and [development roadmap](docs/development-roadmap.md).
 
@@ -73,11 +73,17 @@ Production Windows and macOS releases require code-signing credentials supplied 
 - **Main** (`src/main`): Electron lifecycle, Workspace and integration services, controlled PDF protocol, AI Provider requests, secure credential access, exports, navigation policy, permissions, and the IPC handler whitelist.
 - **Metadata Worker** (`src/main/metadata`): bounded, timeout-controlled local PDF metadata and text extraction; it cannot access renderer state.
 - **Database Worker** (`src/main/database`): owns the only SQLite connection, migrations, and repositories.
-- **Preload** (`src/preload`): exposes fixed library, reader, AI, Zotero, and Workspace intent methods through `contextBridge`; it never exposes a credential read method.
+- **Preload** (`src/preload`): exposes fixed library, reader, AI, Zotero, Workspace, and Repository intent methods through `contextBridge`; it never exposes a credential read method or generic filesystem/shell operation.
 - **Renderer** (`src/renderer`): React UI without Node.js, file-system, child-process, database, or provider access.
 - **Shared** (`src/shared`): serializable contracts and the logging interface used across process boundaries.
 
 The BrowserWindow baseline is `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, and `webSecurity: true`. New privileged operations require a named IPC contract and Main-side validation.
+
+Repository roots are authorized only through Main's native directory picker.
+Git inspection uses fixed read-only commands without a shell; tree and source
+reads are lazy, bounded, ignore-aware, reject link traversal, and accept only
+repository-relative paths. Removing a PaperMind link never changes local source
+or Git history. VS Code handoff occurs only after an explicit user action.
 
 ## Project Structure
 

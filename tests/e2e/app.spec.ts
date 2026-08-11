@@ -1,10 +1,14 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, readdir } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 
 import { writePdfFixture, writeStructuredPdfFixture } from '../helpers/pdf-fixture';
+
+const execFileAsync = promisify(execFile);
 
 function electronEnvironment(libraryRoot: string): Record<string, string> {
   const environment: Record<string, string> = {};
@@ -47,6 +51,19 @@ async function selectFilesInDialog(
     mutableDialog.showOpenDialog = () =>
       Promise.resolve({ canceled: false, filePaths: selectedPaths });
   }, filePaths);
+}
+
+async function selectDirectoryInDialog(
+  electronApp: ElectronApplication,
+  directoryPath: string,
+): Promise<void> {
+  await electronApp.evaluate(({ dialog }, selectedPath) => {
+    const mutableDialog = dialog as unknown as {
+      showOpenDialog: () => Promise<{ canceled: boolean; filePaths: readonly string[] }>;
+    };
+    mutableDialog.showOpenDialog = () =>
+      Promise.resolve({ canceled: false, filePaths: [selectedPath] });
+  }, directoryPath);
 }
 
 async function hashFile(filePath: string): Promise<string> {
@@ -110,6 +127,24 @@ async function stubChatGptOpen(electronApp: ElectronApplication): Promise<void> 
       return Promise.resolve();
     };
   });
+}
+
+async function stubVscodeOpen(electronApp: ElectronApplication): Promise<void> {
+  await electronApp.evaluate(({ shell }) => {
+    const mutableShell = shell as unknown as {
+      openExternal: (url: string) => Promise<void>;
+    };
+    mutableShell.openExternal = (url: string) => {
+      const state = globalThis as typeof globalThis & { paperMindVscodeUrl?: string };
+      state.paperMindVscodeUrl = url;
+      return Promise.resolve();
+    };
+  });
+}
+
+async function git(cwd: string, args: readonly string[]): Promise<string> {
+  const result = await execFileAsync('git', ['-C', cwd, ...args], { encoding: 'utf8' });
+  return result.stdout.trim();
 }
 
 test('reads a short PDF and persists annotations, progress, deletion, and exports', async ({
@@ -648,4 +683,85 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
   } finally {
     await electronApp.close();
   }
+});
+
+test('links, browses, refreshes, restores, and removes a read-only repository', async ({
+  browserName,
+}, testInfo) => {
+  expect(browserName).toBe('chromium');
+  const libraryRoot = testInfo.outputPath('PaperMind Repository Library');
+  const repositoryRoot = testInfo.outputPath('phase-9-repository-fixture');
+  const sourcePath = path.join(repositoryRoot, 'src', 'index.ts');
+  await mkdir(path.dirname(sourcePath), { recursive: true });
+  await writeFile(sourcePath, 'export const phase = 9;\n', 'utf8');
+  await writeFile(path.join(repositoryRoot, '.gitignore'), 'ignored.txt\n', 'utf8');
+  await writeFile(path.join(repositoryRoot, 'ignored.txt'), 'not visible\n', 'utf8');
+  await git(repositoryRoot, ['init', '-b', 'main']);
+  await git(repositoryRoot, ['config', 'user.name', 'PaperMind E2E']);
+  await git(repositoryRoot, ['config', 'user.email', 'papermind-e2e@example.invalid']);
+  await git(repositoryRoot, ['add', '.']);
+  await git(repositoryRoot, ['commit', '-m', 'fixture: initial']);
+  const initialHead = await git(repositoryRoot, ['rev-parse', 'HEAD']);
+  expect(await git(repositoryRoot, ['status', '--porcelain'])).toBe('');
+
+  let electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await window.getByRole('button', { name: 'Create Workspace', exact: true }).first().click();
+    const dialog = window.getByRole('dialog', { name: 'Create Workspace' });
+    await dialog.getByLabel('Name').fill('Repository Workspace');
+    await dialog.getByRole('button', { name: 'Create Workspace' }).click();
+
+    await selectDirectoryInDialog(electronApp, repositoryRoot);
+    await window.getByRole('button', { name: 'Add repository' }).click();
+    await expect(
+      window.getByText('Repository linked. Local files were not copied or modified.'),
+    ).toBeVisible();
+    await expect(window.getByText(`main | ${initialHead.slice(0, 10)}`)).toBeVisible();
+    await expect(window.getByText('Available', { exact: true })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'ignored.txt' })).not.toBeVisible();
+
+    await window.getByRole('button', { name: 'src' }).click();
+    await window.getByRole('button', { name: 'index.ts' }).click();
+    await expect(window.getByRole('heading', { name: 'src/index.ts' })).toBeVisible();
+    await expect(window.getByText('export', { exact: true })).toBeVisible();
+    await stubVscodeOpen(electronApp);
+    await window.getByRole('button', { name: 'Open line 1 in VS Code' }).click();
+    const openedUrl = await electronApp.evaluate(() => {
+      const state = globalThis as typeof globalThis & { paperMindVscodeUrl?: string };
+      return state.paperMindVscodeUrl ?? null;
+    });
+    expect(openedUrl).toMatch(/^vscode:\/\/file.*src\/index\.ts:1:1$/u);
+    await window.screenshot({ path: testInfo.outputPath('papermind-repository-browser.png') });
+  } finally {
+    await electronApp.close();
+  }
+
+  expect(await git(repositoryRoot, ['status', '--porcelain'])).toBe('');
+  await writeFile(sourcePath, 'export const phase = 9;\nexport const refreshed = true;\n', 'utf8');
+  await git(repositoryRoot, ['add', 'src/index.ts']);
+  await git(repositoryRoot, ['commit', '-m', 'fixture: advance head']);
+  const refreshedHead = await git(repositoryRoot, ['rev-parse', 'HEAD']);
+
+  electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await expect(window.getByRole('heading', { name: 'Repository Workspace' })).toBeVisible();
+    await expect(window.getByText(`main | ${initialHead.slice(0, 10)}`)).toBeVisible();
+    await window.getByRole('button', { name: 'Refresh phase-9-repository-fixture' }).click();
+    await expect(window.getByText(`main | ${refreshedHead.slice(0, 10)}`)).toBeVisible();
+
+    window.once('dialog', (confirmation) => void confirmation.accept());
+    await window
+      .getByRole('button', { name: 'Remove phase-9-repository-fixture from Workspace' })
+      .click();
+    await expect(window.getByText('No repositories in this Workspace.')).toBeVisible();
+  } finally {
+    await electronApp.close();
+  }
+
+  expect(await git(repositoryRoot, ['status', '--porcelain'])).toBe('');
+  expect(await readFile(sourcePath, 'utf8')).toContain('export const refreshed = true;');
 });

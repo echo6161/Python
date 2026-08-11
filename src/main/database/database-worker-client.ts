@@ -51,6 +51,11 @@ import type {
   WorkspaceDataGateway,
 } from '../workspace/workspace-data-gateway';
 import type {
+  RepositoryDataGateway,
+  RepositoryObservationInput,
+} from '../repository/repository-data-gateway';
+import type { RepositoryRef, WorkspaceRepositoryRef } from '../../shared/contracts/repository';
+import type {
   DatabaseWorkerData,
   DatabaseWorkerRequest,
   DatabaseWorkerResponse,
@@ -63,6 +68,7 @@ interface PendingCall {
 
 export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly workspace: WorkspaceDataGateway;
+  public readonly repository: RepositoryDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -72,6 +78,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
     const workerData: DatabaseWorkerData = { databasePath };
     this.worker = new Worker(workerPath, { workerData });
     this.workspace = new WorkspaceWorkerGateway((method, payload) => this.call(method, payload));
+    this.repository = new RepositoryWorkerGateway((method, payload) => this.call(method, payload));
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
       const call = this.pending.get(response.id);
       if (!call) {
@@ -316,5 +323,50 @@ class WorkspaceWorkerGateway implements WorkspaceDataGateway {
     workspaceId: string,
   ): Promise<readonly StoredWorkspaceZoteroPaper[]> {
     return this.call('listWorkspaceZoteroPapers', { workspaceId });
+  }
+}
+
+class RepositoryWorkerGateway implements RepositoryDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public createOrUpdateRepository(input: RepositoryObservationInput): Promise<RepositoryRef> {
+    return this.call('createOrUpdateRepository', input);
+  }
+
+  public getRepository(id: string): Promise<RepositoryRef | null> {
+    return this.call('getRepository', { id });
+  }
+
+  public updateRepositoryObservation(
+    id: string,
+    input: Omit<RepositoryObservationInput, 'canonicalKey' | 'canonicalRoot' | 'displayName'>,
+  ): Promise<RepositoryRef> {
+    return this.call('updateRepositoryObservation', { id, observation: input });
+  }
+
+  public addWorkspaceRepository(
+    workspaceId: string,
+    repositoryId: string,
+  ): Promise<WorkspaceRepositoryRef> {
+    return this.call('addWorkspaceRepository', { workspaceId, repositoryId });
+  }
+
+  public removeWorkspaceRepository(workspaceId: string, repositoryId: string): Promise<boolean> {
+    return this.call('removeWorkspaceRepository', { workspaceId, repositoryId });
+  }
+
+  public listWorkspaceRepositories(
+    workspaceId: string,
+  ): Promise<readonly WorkspaceRepositoryRef[]> {
+    return this.call('listWorkspaceRepositories', { workspaceId });
+  }
+
+  public deleteRepository(id: string): Promise<boolean> {
+    return this.call('deleteRepository', { id });
   }
 }
