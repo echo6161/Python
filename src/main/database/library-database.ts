@@ -78,6 +78,22 @@ import type {
   CodeSymbolSearchResult,
   CodeTextSearchResult,
 } from '../../shared/contracts/code-intelligence';
+import type {
+  CreateResearchQuestionInput,
+  ArchiveResearchQuestionInput,
+  AddCodeEvidenceInput,
+  ResearchQuestion,
+  SetResearchQuestionStatusInput,
+  UpdateResearchQuestionInput,
+} from '../../shared/contracts/question';
+import type {
+  CreateStoredZoteroEvidenceInput,
+  QuestionDataGateway,
+  StoredCodeEvidence,
+  StoredEvidence,
+  StoredZoteroEvidence,
+} from '../question/question-data-gateway';
+import { QuestionRepository } from './question-repository';
 
 export class LibraryDatabase
   implements
@@ -85,7 +101,8 @@ export class LibraryDatabase
     AiDataGateway,
     WorkspaceDataGateway,
     RepositoryDataGateway,
-    CodeIndexDataGateway
+    CodeIndexDataGateway,
+    QuestionDataGateway
 {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
@@ -94,6 +111,7 @@ export class LibraryDatabase
   private workspaceRepository: WorkspaceRepository;
   private repositoryRepository: RepositoryRepository;
   private codeIndexRepository: CodeIndexRepository;
+  private questionRepository: QuestionRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -103,6 +121,7 @@ export class LibraryDatabase
     this.workspaceRepository = new WorkspaceRepository(this.database);
     this.repositoryRepository = new RepositoryRepository(this.database);
     this.codeIndexRepository = new CodeIndexRepository(this.database);
+    this.questionRepository = new QuestionRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -382,6 +401,78 @@ export class LibraryDatabase
     return this.run(() => this.codeIndexRepository.searchText(input));
   }
 
+  public createQuestion(input: CreateResearchQuestionInput): Promise<ResearchQuestion> {
+    return this.run(() => this.questionRepository.create(input));
+  }
+
+  public getQuestion(workspaceId: string, questionId: string): Promise<ResearchQuestion | null> {
+    return this.run(() => this.questionRepository.get(workspaceId, questionId));
+  }
+
+  public listQuestions(workspaceId: string): Promise<readonly ResearchQuestion[]> {
+    return this.run(() => this.questionRepository.list(workspaceId));
+  }
+
+  public updateQuestion(input: UpdateResearchQuestionInput): Promise<ResearchQuestion> {
+    return this.run(() => this.questionRepository.update(input));
+  }
+
+  public setQuestionStatus(input: SetResearchQuestionStatusInput): Promise<ResearchQuestion> {
+    return this.run(() => this.questionRepository.setStatus(input));
+  }
+
+  public archiveQuestion(input: ArchiveResearchQuestionInput): Promise<ResearchQuestion> {
+    return this.run(() => this.questionRepository.archive(input));
+  }
+
+  public deleteQuestion(workspaceId: string, questionId: string): Promise<boolean> {
+    return this.run(() => this.questionRepository.delete(workspaceId, questionId));
+  }
+
+  public listEvidence(workspaceId: string, questionId: string): Promise<readonly StoredEvidence[]> {
+    return this.run(() => this.questionRepository.listEvidence(workspaceId, questionId));
+  }
+
+  public addZoteroEvidence(input: CreateStoredZoteroEvidenceInput): Promise<StoredZoteroEvidence> {
+    return this.run(() => this.questionRepository.addZoteroEvidence(input));
+  }
+
+  public addCodeEvidence(input: AddCodeEvidenceInput): Promise<StoredCodeEvidence> {
+    return this.run(() => this.questionRepository.addCodeEvidence(input));
+  }
+
+  public removeEvidence(
+    workspaceId: string,
+    questionId: string,
+    evidenceId: string,
+  ): Promise<boolean> {
+    return this.run(() =>
+      this.questionRepository.removeEvidence(workspaceId, questionId, evidenceId),
+    );
+  }
+
+  public reorderEvidence(
+    workspaceId: string,
+    questionId: string,
+    evidenceIds: readonly string[],
+  ): Promise<void> {
+    return this.run(() =>
+      this.questionRepository.reorderEvidence(workspaceId, questionId, evidenceIds),
+    );
+  }
+
+  public getEvidence(
+    workspaceId: string,
+    questionId: string,
+    evidenceId: string,
+  ): Promise<StoredEvidence | null> {
+    return this.run(() => this.questionRepository.getEvidence(workspaceId, questionId, evidenceId));
+  }
+
+  public codeLocationExists(input: StoredCodeEvidence): Promise<boolean> {
+    return this.run(() => this.questionRepository.codeLocationExists(input));
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -424,6 +515,7 @@ export class LibraryDatabase
         this.workspaceRepository = new WorkspaceRepository(this.database);
         this.repositoryRepository = new RepositoryRepository(this.database);
         this.codeIndexRepository = new CodeIndexRepository(this.database);
+        this.questionRepository = new QuestionRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -434,6 +526,7 @@ export class LibraryDatabase
         this.workspaceRepository = new WorkspaceRepository(this.database);
         this.repositoryRepository = new RepositoryRepository(this.database);
         this.codeIndexRepository = new CodeIndexRepository(this.database);
+        this.questionRepository = new QuestionRepository(this.database);
         throw error;
       }
 

@@ -160,6 +160,46 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.searchCodeSymbols(request.payload);
     case 'searchCodeText':
       return database.searchCodeText(request.payload);
+    case 'createQuestion':
+      return database.createQuestion(request.payload);
+    case 'getQuestion':
+      return database.getQuestion(request.payload.workspaceId, request.payload.questionId);
+    case 'listQuestions':
+      return database.listQuestions(request.payload.workspaceId);
+    case 'updateQuestion':
+      return database.updateQuestion(request.payload);
+    case 'setQuestionStatus':
+      return database.setQuestionStatus(request.payload);
+    case 'archiveQuestion':
+      return database.archiveQuestion(request.payload);
+    case 'deleteQuestion':
+      return database.deleteQuestion(request.payload.workspaceId, request.payload.questionId);
+    case 'listEvidence':
+      return database.listEvidence(request.payload.workspaceId, request.payload.questionId);
+    case 'addZoteroEvidence':
+      return database.addZoteroEvidence(request.payload);
+    case 'addCodeEvidence':
+      return database.addCodeEvidence(request.payload);
+    case 'removeEvidence':
+      return database.removeEvidence(
+        request.payload.workspaceId,
+        request.payload.questionId,
+        request.payload.evidenceId,
+      );
+    case 'reorderEvidence':
+      return database.reorderEvidence(
+        request.payload.workspaceId,
+        request.payload.questionId,
+        request.payload.evidenceIds,
+      );
+    case 'getEvidence':
+      return database.getEvidence(
+        request.payload.workspaceId,
+        request.payload.questionId,
+        request.payload.evidenceId,
+      );
+    case 'codeLocationExists':
+      return database.codeLocationExists(request.payload);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

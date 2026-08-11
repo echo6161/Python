@@ -1,7 +1,6 @@
-import { Beaker, CircleHelp, ListChecks, LockKeyhole } from 'lucide-react';
+import { Beaker, ListChecks, LockKeyhole } from 'lucide-react';
 
 const futureSections = [
-  { icon: CircleHelp, title: 'Questions', phase: 'Coming later' },
   { icon: ListChecks, title: 'Reading Plan', phase: 'Coming later' },
   { icon: Beaker, title: 'Experiments', phase: 'Coming later' },
 ] as const;

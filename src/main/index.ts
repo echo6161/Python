@@ -22,6 +22,7 @@ import { registerReaderIpcHandlers } from './ipc/reader-ipc';
 import { registerRepositoryIpcHandlers } from './ipc/repository-ipc';
 import { registerCodeIntelligenceIpcHandlers } from './ipc/code-intelligence-ipc';
 import { registerWorkspaceIpcHandlers } from './ipc/workspace-ipc';
+import { registerQuestionIpcHandlers } from './ipc/question-ipc';
 import { registerZoteroIpcHandlers } from './ipc/zotero-ipc';
 import { PaperFileStorage } from './library/file-storage';
 import { getDefaultLibraryRoot, initializeLibraryPaths } from './library/library-paths';
@@ -41,6 +42,8 @@ import { createWindowOptions } from './window-options';
 import { WorkspaceService } from './workspace/workspace-service';
 import { ZoteroBridgeService } from './zotero/zotero-bridge-service';
 import { ZoteroLocalApiClient } from './zotero/zotero-local-api-client';
+import { QuestionService } from './question/question-service';
+import { ZoteroEvidenceLauncher } from './question/zotero-evidence-launcher';
 
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
@@ -113,29 +116,28 @@ async function initializeLibrary(): Promise<void> {
   registerWorkspaceIpcHandlers(new WorkspaceService(databaseClient.workspace, zoteroBridge));
   const gitRepositories = new GitRepositoryClient();
   const repositoryFiles = new RepositoryFileService(gitRepositories);
-  registerRepositoryIpcHandlers(
-    new RepositoryService(
-      databaseClient.repository,
-      gitRepositories,
-      repositoryFiles,
-      {
-        chooseDirectory: async () => {
-          const owner = mainWindow;
-          const result = owner
-            ? await dialog.showOpenDialog(owner, {
-                title: 'Select Git repository or source folder',
-                properties: ['openDirectory'],
-              })
-            : await dialog.showOpenDialog({
-                title: 'Select Git repository or source folder',
-                properties: ['openDirectory'],
-              });
-          return result.canceled ? null : (result.filePaths[0] ?? null);
-        },
+  const repositoryService = new RepositoryService(
+    databaseClient.repository,
+    gitRepositories,
+    repositoryFiles,
+    {
+      chooseDirectory: async () => {
+        const owner = mainWindow;
+        const result = owner
+          ? await dialog.showOpenDialog(owner, {
+              title: 'Select Git repository or source folder',
+              properties: ['openDirectory'],
+            })
+          : await dialog.showOpenDialog({
+              title: 'Select Git repository or source folder',
+              properties: ['openDirectory'],
+            });
+        return result.canceled ? null : (result.filePaths[0] ?? null);
       },
-      new RepositoryVscodeLauncher(shell),
-    ),
+    },
+    new RepositoryVscodeLauncher(shell),
   );
+  registerRepositoryIpcHandlers(repositoryService);
   const codeIntelligence = new CodeIntelligenceService(
     databaseClient.codeIndex,
     databaseClient.repository,
@@ -144,6 +146,16 @@ async function initializeLibrary(): Promise<void> {
   );
   await codeIntelligence.initialize();
   registerCodeIntelligenceIpcHandlers(codeIntelligence);
+  registerQuestionIpcHandlers(
+    new QuestionService(
+      databaseClient.question,
+      zoteroBridge,
+      databaseClient.repository,
+      codeIntelligence,
+      repositoryService,
+      new ZoteroEvidenceLauncher(shell),
+    ),
+  );
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()

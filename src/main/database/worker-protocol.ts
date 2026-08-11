@@ -27,6 +27,17 @@ import type {
 import type { ZoteroItemRef } from '../../shared/contracts/zotero';
 import type { CreateAiTurnInput, FinalizeAiMessageInput } from '../ai/ai-data-gateway';
 import type { ImportedPaperRecord, PaperTextExtractionRecord } from '../library/paper-data-gateway';
+import type {
+  AddCodeEvidenceInput,
+  ArchiveResearchQuestionInput,
+  CreateResearchQuestionInput,
+  SetResearchQuestionStatusInput,
+  UpdateResearchQuestionInput,
+} from '../../shared/contracts/question';
+import type {
+  CreateStoredZoteroEvidenceInput,
+  StoredCodeEvidence,
+} from '../question/question-data-gateway';
 
 export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'listPapers'; readonly payload: PaperListQuery }
@@ -299,6 +310,88 @@ export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'searchCodeFiles'; readonly payload: CodeSearchInput }
   | { readonly id: number; readonly method: 'searchCodeSymbols'; readonly payload: CodeSearchInput }
   | { readonly id: number; readonly method: 'searchCodeText'; readonly payload: CodeSearchInput }
+  | {
+      readonly id: number;
+      readonly method: 'createQuestion';
+      readonly payload: CreateResearchQuestionInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getQuestion';
+      readonly payload: { readonly workspaceId: string; readonly questionId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listQuestions';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateQuestion';
+      readonly payload: UpdateResearchQuestionInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'setQuestionStatus';
+      readonly payload: SetResearchQuestionStatusInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'archiveQuestion';
+      readonly payload: ArchiveResearchQuestionInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'deleteQuestion';
+      readonly payload: { readonly workspaceId: string; readonly questionId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listEvidence';
+      readonly payload: { readonly workspaceId: string; readonly questionId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'addZoteroEvidence';
+      readonly payload: CreateStoredZoteroEvidenceInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'addCodeEvidence';
+      readonly payload: AddCodeEvidenceInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'removeEvidence';
+      readonly payload: {
+        readonly questionId: string;
+        readonly workspaceId: string;
+        readonly evidenceId: string;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'reorderEvidence';
+      readonly payload: {
+        readonly questionId: string;
+        readonly workspaceId: string;
+        readonly evidenceIds: readonly string[];
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getEvidence';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly questionId: string;
+        readonly evidenceId: string;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'codeLocationExists';
+      readonly payload: StoredCodeEvidence;
+    }
   | {
       readonly id: number;
       readonly method: 'backupTo';

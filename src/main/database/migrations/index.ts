@@ -8,6 +8,7 @@ import { metadataOrganizationMigration } from './0003-metadata-organization';
 import { workspaceCoreMigration } from './0004-workspace-core';
 import { repositoryBridgeMigration } from './0005-repository-bridge';
 import { codeIntelligenceMigration } from './0006-code-intelligence';
+import { researchQuestionsEvidenceMigration } from './0007-research-questions-evidence';
 import type { DatabaseMigration } from './types';
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
@@ -17,6 +18,7 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   workspaceCoreMigration,
   repositoryBridgeMigration,
   codeIntelligenceMigration,
+  researchQuestionsEvidenceMigration,
 ];
 
 interface AppliedMigration {

@@ -97,6 +97,20 @@ import type {
   WorkspaceZoteroPaper,
   WorkspaceZoteroPaperInput,
 } from '../shared/contracts/workspace';
+import type {
+  AddCodeEvidenceInput,
+  AddZoteroEvidenceInput,
+  ArchiveResearchQuestionInput,
+  CreateResearchQuestionInput,
+  EvidenceIdentityInput,
+  OpenEvidenceResult,
+  QuestionIpcChannels,
+  ReorderEvidenceInput,
+  ResearchQuestion,
+  ResearchQuestionDetails,
+  SetResearchQuestionStatusInput,
+  UpdateResearchQuestionInput,
+} from '../shared/contracts/question';
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
@@ -182,8 +196,70 @@ const WORKSPACE_CHANNELS = {
   removePaper: 'workspaces:remove-zotero-paper',
   listPapers: 'workspaces:list-zotero-papers',
 } satisfies WorkspaceIpcChannels;
+const QUESTION_CHANNELS = {
+  create: 'questions:create',
+  get: 'questions:get',
+  list: 'questions:list',
+  update: 'questions:update',
+  setStatus: 'questions:set-status',
+  archive: 'questions:archive',
+  delete: 'questions:delete',
+  addZoteroEvidence: 'questions:add-zotero-evidence',
+  addCodeEvidence: 'questions:add-code-evidence',
+  removeEvidence: 'questions:remove-evidence',
+  reorderEvidence: 'questions:reorder-evidence',
+  openEvidence: 'questions:open-evidence',
+} satisfies QuestionIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
+  question: Object.freeze({
+    create: (input: CreateResearchQuestionInput) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.create, input) as Promise<ApiResult<ResearchQuestion>>,
+    get: (input: { readonly workspaceId: string; readonly questionId: string }) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.get, input) as Promise<
+        ApiResult<ResearchQuestionDetails>
+      >,
+    list: (workspaceId: string) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.list, workspaceId) as Promise<
+        ApiResult<readonly ResearchQuestion[]>
+      >,
+    update: (input: UpdateResearchQuestionInput) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.update, input) as Promise<ApiResult<ResearchQuestion>>,
+    setStatus: (input: SetResearchQuestionStatusInput) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.setStatus, input) as Promise<
+        ApiResult<ResearchQuestion>
+      >,
+    archive: (input: ArchiveResearchQuestionInput) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.archive, input) as Promise<ApiResult<ResearchQuestion>>,
+    delete: (input: {
+      readonly workspaceId: string;
+      readonly questionId: string;
+      readonly confirmation: 'DELETE_QUESTION';
+    }) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.delete, input) as Promise<
+        ApiResult<{ readonly id: string }>
+      >,
+    addZoteroEvidence: (input: AddZoteroEvidenceInput) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.addZoteroEvidence, input) as Promise<
+        ApiResult<ResearchQuestionDetails>
+      >,
+    addCodeEvidence: (input: AddCodeEvidenceInput) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.addCodeEvidence, input) as Promise<
+        ApiResult<ResearchQuestionDetails>
+      >,
+    removeEvidence: (input: EvidenceIdentityInput) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.removeEvidence, input) as Promise<
+        ApiResult<ResearchQuestionDetails>
+      >,
+    reorderEvidence: (input: ReorderEvidenceInput) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.reorderEvidence, input) as Promise<
+        ApiResult<ResearchQuestionDetails>
+      >,
+    openEvidence: (input: EvidenceIdentityInput) =>
+      ipcRenderer.invoke(QUESTION_CHANNELS.openEvidence, input) as Promise<
+        ApiResult<OpenEvidenceResult>
+      >,
+  }),
   codeIntelligence: Object.freeze({
     getStatus: (repositoryId: string) =>
       ipcRenderer.invoke(CODE_INTELLIGENCE_CHANNELS.getStatus, repositoryId) as Promise<

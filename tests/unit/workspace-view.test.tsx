@@ -107,7 +107,8 @@ describe('WorkspaceView', () => {
     expect(await screen.findByText('Workspace-specific paper')).toBeDefined();
     expect(screen.getByText('Stored PDF')).toBeDefined();
     expect(await screen.findByRole('heading', { name: 'Repositories' })).toBeDefined();
-    for (const section of ['Questions', 'Reading Plan', 'Experiments']) {
+    expect(await screen.findByRole('heading', { name: 'Research Questions' })).toBeDefined();
+    for (const section of ['Reading Plan', 'Experiments']) {
       expect(screen.getByLabelText(`${section}: Coming later`)).toBeDefined();
     }
 
@@ -248,6 +249,20 @@ function installApi(overrides: Partial<PaperMindApi['workspace']>) {
           ok: true,
           value: { requestId: crypto.randomUUID(), cancelled: false },
         }),
+      },
+      question: {
+        create: vi.fn(),
+        get: vi.fn(),
+        list: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+        update: vi.fn(),
+        setStatus: vi.fn(),
+        archive: vi.fn(),
+        delete: vi.fn(),
+        addZoteroEvidence: vi.fn(),
+        addCodeEvidence: vi.fn(),
+        removeEvidence: vi.fn(),
+        reorderEvidence: vi.fn(),
+        openEvidence: vi.fn(),
       },
     },
   });

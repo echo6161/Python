@@ -105,3 +105,22 @@ Phase 6 is read-oriented and additive:
    replacement.
 6. VS Code owns editing and execution. PaperMind can only make a user-triggered
    handoff to an already authorized root or file and legal line/column.
+
+## 9. Phase 11 Research Question and Evidence Rules
+
+1. A Research Question and its status, priority, archive state, user note on an
+   Evidence link, timestamps, and display order are PaperMind-owned within exactly
+   one Workspace.
+2. Paper Evidence stores a stable Zotero identity, item version, and optional
+   page/text anchor. Code Evidence stores a RepositoryRef, immutable commit/content
+   snapshot identity, relative file, optional symbol, lines, and content hash.
+3. Current external metadata, PDF content, source content, and snippets are resolved
+   transiently and remain owned by Zotero or the repository.
+4. External version/snapshot drift marks the historical Evidence stale; missing
+   identity, membership, source, or location marks it unavailable. PaperMind does
+   not rewrite or fuzzy-repair the recorded reference.
+5. Creation requires an exact same-Workspace Zotero/Repository association and, for
+   code, an exact trusted index match. Cross-Workspace references are rejected.
+6. Archiving preserves a Question. Confirmed deletion removes only the Question and
+   its PaperMind-owned Evidence rows; it never deletes external or other Workspace
+   data.

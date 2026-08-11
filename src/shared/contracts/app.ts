@@ -5,6 +5,7 @@ import type { CodeIntelligenceApi } from './code-intelligence';
 import type { AiApi } from './ai';
 import type { ZoteroApi } from './zotero';
 import type { WorkspaceApi } from './workspace';
+import type { QuestionApi } from './question';
 
 export const IPC_CHANNELS = Object.freeze({
   appGetInfo: 'app:get-info',
@@ -30,4 +31,5 @@ export interface PaperMindApi {
   readonly ai: AiApi;
   readonly zotero: ZoteroApi;
   readonly workspace: WorkspaceApi;
+  readonly question: QuestionApi;
 }

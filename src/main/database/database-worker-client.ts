@@ -74,6 +74,21 @@ import type {
   DatabaseWorkerRequest,
   DatabaseWorkerResponse,
 } from './worker-protocol';
+import type {
+  AddCodeEvidenceInput,
+  ArchiveResearchQuestionInput,
+  CreateResearchQuestionInput,
+  ResearchQuestion,
+  SetResearchQuestionStatusInput,
+  UpdateResearchQuestionInput,
+} from '../../shared/contracts/question';
+import type {
+  CreateStoredZoteroEvidenceInput,
+  QuestionDataGateway,
+  StoredCodeEvidence,
+  StoredEvidence,
+  StoredZoteroEvidence,
+} from '../question/question-data-gateway';
 
 interface PendingCall {
   readonly resolve: (value: unknown) => void;
@@ -84,6 +99,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly workspace: WorkspaceDataGateway;
   public readonly repository: RepositoryDataGateway;
   public readonly codeIndex: CodeIndexDataGateway;
+  public readonly question: QuestionDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -95,6 +111,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
     this.workspace = new WorkspaceWorkerGateway((method, payload) => this.call(method, payload));
     this.repository = new RepositoryWorkerGateway((method, payload) => this.call(method, payload));
     this.codeIndex = new CodeIndexWorkerGateway((method, payload) => this.call(method, payload));
+    this.question = new QuestionWorkerGateway((method, payload) => this.call(method, payload));
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
       const call = this.pending.get(response.id);
       if (!call) {
@@ -281,6 +298,83 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
       call.reject(reason);
     }
     this.pending.clear();
+  }
+}
+
+class QuestionWorkerGateway implements QuestionDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public createQuestion(input: CreateResearchQuestionInput): Promise<ResearchQuestion> {
+    return this.call('createQuestion', input);
+  }
+
+  public getQuestion(workspaceId: string, questionId: string): Promise<ResearchQuestion | null> {
+    return this.call('getQuestion', { workspaceId, questionId });
+  }
+
+  public listQuestions(workspaceId: string): Promise<readonly ResearchQuestion[]> {
+    return this.call('listQuestions', { workspaceId });
+  }
+
+  public updateQuestion(input: UpdateResearchQuestionInput): Promise<ResearchQuestion> {
+    return this.call('updateQuestion', input);
+  }
+
+  public setQuestionStatus(input: SetResearchQuestionStatusInput): Promise<ResearchQuestion> {
+    return this.call('setQuestionStatus', input);
+  }
+
+  public archiveQuestion(input: ArchiveResearchQuestionInput): Promise<ResearchQuestion> {
+    return this.call('archiveQuestion', input);
+  }
+
+  public deleteQuestion(workspaceId: string, questionId: string): Promise<boolean> {
+    return this.call('deleteQuestion', { workspaceId, questionId });
+  }
+
+  public listEvidence(workspaceId: string, questionId: string): Promise<readonly StoredEvidence[]> {
+    return this.call('listEvidence', { workspaceId, questionId });
+  }
+
+  public addZoteroEvidence(input: CreateStoredZoteroEvidenceInput): Promise<StoredZoteroEvidence> {
+    return this.call('addZoteroEvidence', input);
+  }
+
+  public addCodeEvidence(input: AddCodeEvidenceInput): Promise<StoredCodeEvidence> {
+    return this.call('addCodeEvidence', input);
+  }
+
+  public removeEvidence(
+    workspaceId: string,
+    questionId: string,
+    evidenceId: string,
+  ): Promise<boolean> {
+    return this.call('removeEvidence', { workspaceId, questionId, evidenceId });
+  }
+
+  public reorderEvidence(
+    workspaceId: string,
+    questionId: string,
+    evidenceIds: readonly string[],
+  ): Promise<void> {
+    return this.call('reorderEvidence', { workspaceId, questionId, evidenceIds });
+  }
+
+  public getEvidence(
+    workspaceId: string,
+    questionId: string,
+    evidenceId: string,
+  ): Promise<StoredEvidence | null> {
+    return this.call('getEvidence', { workspaceId, questionId, evidenceId });
+  }
+
+  public codeLocationExists(input: StoredCodeEvidence): Promise<boolean> {
+    return this.call('codeLocationExists', input);
   }
 }
 

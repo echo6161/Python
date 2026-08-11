@@ -152,6 +152,28 @@ transaction. A cancelled, failed, or interrupted task never promotes partial row
 to ready. See [code-intelligence.md](./code-intelligence.md) for parser versions,
 snapshot rules, stale behavior, query bounds, and resource ceilings.
 
+## Research Question and Evidence migration
+
+Migration `0007-research-questions-evidence.ts` is forward-only and creates:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Research Question | `research_questions` | Workspace-bound UUID, bounded title/description, research status, priority, independent archive timestamp, timestamps, and optimistic row version |
+| Typed Evidence | `question_evidence` | Composite Question/Workspace foreign key, stable sort order, user note, source snapshot identity, and an exclusive Zotero-paper or code-location payload |
+
+Zotero Evidence stores only stable server/library/item identity, observed item
+version, and optional bounded page/text anchor. Code Evidence stores only a
+RepositoryRef ID, indexed snapshot identity, repository-relative path, optional
+symbol, line range, and content hash. Current Zotero metadata, PDF bytes, repository
+files, and code snippets are not copied into these tables.
+
+Deleting a Question cascades only its Evidence. Deleting a Workspace cascades its
+Questions through the Workspace foreign key. The code evidence repository ID is not
+a destructive foreign key: deleting a PaperMind RepositoryRef preserves the
+historical Evidence row, which resolves as unavailable. See
+[research-questions-evidence.md](./research-questions-evidence.md) for provenance,
+stale, navigation, and security semantics.
+
 Conversation text is local plaintext content and may include a user-approved selected excerpt. A per-request opt-out keeps that turn entirely in memory. API keys and encrypted credential blobs are never accepted by this repository and are stored outside the library through the Main-process Secret Store.
 
 ## Import transaction boundary

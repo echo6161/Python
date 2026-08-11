@@ -640,7 +640,17 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
     await expect(
       window.getByText('Define the research goal, then add relevant papers from Zotero.'),
     ).toBeVisible();
-    await expect(window.getByLabel('Questions: Coming later')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Research Questions' })).toBeVisible();
+    await window.getByRole('button', { name: 'New Question' }).click();
+    const questionForm = window.locator('form').filter({ hasText: 'Question title' });
+    await questionForm.getByLabel('Question title').fill('Does the evidence support the claim?');
+    await questionForm
+      .getByLabel('Description')
+      .fill('Trace the claim to paper and code Evidence.');
+    await questionForm.getByRole('button', { name: 'Create', exact: true }).click();
+    await expect(window.getByLabel('Question', { exact: true })).toHaveValue(
+      'Does the evidence support the claim?',
+    );
     await window.screenshot({ path: testInfo.outputPath('papermind-workspace-overview.png') });
     await window.setViewportSize({ width: 1100, height: 680 });
     expect(
@@ -657,8 +667,15 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
     await window.waitForLoadState('domcontentloaded');
     await expect(window.getByRole('heading', { name: 'Evidence Workspace' })).toBeVisible();
     await expect(window.getByText('Compare reproducible evidence synthesis methods')).toBeVisible();
+    await expect(window.getByLabel('Question', { exact: true })).toHaveValue(
+      'Does the evidence support the claim?',
+    );
+    await window.getByLabel('Status').selectOption('closed');
+    await expect(
+      window.getByRole('navigation', { name: 'Research Questions' }).getByText(/closed/u),
+    ).toBeVisible();
 
-    await window.getByRole('button', { name: 'Archive' }).click();
+    await window.getByRole('button', { name: 'Archive', exact: true }).first().click();
     let confirmation = window.getByRole('alertdialog', { name: 'Archive Workspace?' });
     await expect(confirmation.getByRole('button', { name: 'Cancel' })).toBeFocused();
     await expect(confirmation).toContainText('Zotero links will be preserved');
@@ -670,7 +687,7 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
         .getByText('archived'),
     ).toBeVisible();
 
-    await window.getByRole('button', { name: 'Delete' }).click();
+    await window.getByRole('button', { name: 'Delete', exact: true }).click();
     confirmation = window.getByRole('alertdialog', { name: 'Delete Workspace?' });
     await expect(confirmation).toContainText(
       'Zotero items, PDFs, annotations, and legacy library data will not be deleted',
