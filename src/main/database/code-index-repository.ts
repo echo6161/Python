@@ -16,6 +16,7 @@ import type {
   CompleteCodeIndexInput,
   StoredCodeFileHash,
 } from '../code-intelligence/code-index-data-gateway';
+import type { StoredCodeKnowledgeChunk } from '../code-intelligence/code-index-data-gateway';
 
 interface CodeIndexStateRow {
   readonly repository_id: string;
@@ -340,6 +341,23 @@ export class CodeIndexRepository {
       limit,
       total,
     };
+  }
+
+  public listChunksForKnowledge(repositoryId: string): readonly StoredCodeKnowledgeChunk[] {
+    return this.database
+      .prepare(
+        `SELECT c.repository_id AS repositoryId, f.relative_path AS relativePath,
+                f.language, c.snapshot_identity AS snapshotIdentity,
+                c.content_hash AS contentHash, c.start_line AS startLine,
+                c.end_line AS endLine, s.name AS symbolName, c.content
+         FROM code_index_chunks c
+         JOIN code_index_files f ON f.id = c.file_id
+         LEFT JOIN code_index_symbols s ON s.id = c.symbol_id
+         WHERE c.repository_id = ?
+         ORDER BY f.relative_path, c.start_line, c.id
+         LIMIT 20000`,
+      )
+      .all(repositoryId) as StoredCodeKnowledgeChunk[];
   }
 
   private insertFile(

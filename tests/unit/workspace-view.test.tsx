@@ -109,8 +109,11 @@ describe('WorkspaceView', () => {
     expect(await screen.findByRole('heading', { name: 'Repositories' })).toBeDefined();
     expect(await screen.findByRole('heading', { name: 'Research Questions' })).toBeDefined();
     for (const section of ['Reading Plan', 'Experiments']) {
-      expect(screen.getByLabelText(`${section}: Coming later`)).toBeDefined();
+      expect(screen.getAllByLabelText(`${section}: Coming later`).length).toBeGreaterThan(0);
     }
+    expect(
+      screen.getByRole('button', { name: 'Experiments: Coming later' }).hasAttribute('disabled'),
+    ).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.change(screen.getByLabelText('Research Goal'), {
@@ -122,7 +125,7 @@ describe('WorkspaceView', () => {
         expect.objectContaining({ researchGoal: 'Updated research goal' }),
       ),
     );
-    expect(await screen.findByText('Updated research goal')).toBeDefined();
+    expect((await screen.findAllByText('Updated research goal')).length).toBeGreaterThan(0);
   });
 
   it('resets Workspace paper UI when switching and does not retain the previous paper', async () => {
@@ -200,6 +203,7 @@ describe('WorkspaceView', () => {
       ],
     });
     render(<WorkspaceView />);
+    fireEvent.click(await screen.findByRole('tab', { name: 'Papers' }));
     expect(await screen.findAllByText('Missing in Zotero')).toHaveLength(2);
     expect(screen.getAllByText('Different Zotero profile')).toHaveLength(2);
     fireEvent.click(

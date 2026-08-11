@@ -121,6 +121,18 @@ import type {
   PaperCodeLinkPaperQuery,
   UpdatePaperCodeLinkInput,
 } from '../shared/contracts/paper-code-link';
+import type {
+  KnowledgeIndexCancelResult,
+  KnowledgeIndexProgress,
+  KnowledgeIndexStatus,
+  KnowledgeIpcChannels,
+  KnowledgeSearchInput,
+  KnowledgeSearchPage,
+  OpenKnowledgeResult,
+  OpenKnowledgeResultInput,
+  RemoveKnowledgeIndexInput,
+  RunKnowledgeIndexInput,
+} from '../shared/contracts/knowledge';
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
@@ -231,8 +243,49 @@ const PAPER_CODE_LINK_CHANNELS = {
   openPaper: 'paper-code-links:open-paper',
   openCode: 'paper-code-links:open-code',
 } satisfies PaperCodeLinkIpcChannels;
+const KNOWLEDGE_CHANNELS = {
+  getStatus: 'knowledge:get-status',
+  runIndex: 'knowledge:run-index',
+  cancelIndex: 'knowledge:cancel-index',
+  removeIndex: 'knowledge:remove-index',
+  search: 'knowledge:search',
+  openResult: 'knowledge:open-result',
+  progress: 'knowledge:index-progress',
+} satisfies KnowledgeIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
+  knowledge: Object.freeze({
+    getStatus: (workspaceId: string) =>
+      ipcRenderer.invoke(KNOWLEDGE_CHANNELS.getStatus, workspaceId) as Promise<
+        ApiResult<KnowledgeIndexStatus>
+      >,
+    runIndex: (input: RunKnowledgeIndexInput) =>
+      ipcRenderer.invoke(KNOWLEDGE_CHANNELS.runIndex, input) as Promise<
+        ApiResult<KnowledgeIndexStatus>
+      >,
+    cancelIndex: (requestId: string) =>
+      ipcRenderer.invoke(KNOWLEDGE_CHANNELS.cancelIndex, requestId) as Promise<
+        ApiResult<KnowledgeIndexCancelResult>
+      >,
+    removeIndex: (input: RemoveKnowledgeIndexInput) =>
+      ipcRenderer.invoke(KNOWLEDGE_CHANNELS.removeIndex, input) as Promise<
+        ApiResult<{ readonly removed: boolean }>
+      >,
+    search: (input: KnowledgeSearchInput) =>
+      ipcRenderer.invoke(KNOWLEDGE_CHANNELS.search, input) as Promise<
+        ApiResult<KnowledgeSearchPage>
+      >,
+    openResult: (input: OpenKnowledgeResultInput) =>
+      ipcRenderer.invoke(KNOWLEDGE_CHANNELS.openResult, input) as Promise<
+        ApiResult<OpenKnowledgeResult>
+      >,
+    onProgress: (listener: (progress: KnowledgeIndexProgress) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: KnowledgeIndexProgress) =>
+        listener(progress);
+      ipcRenderer.on(KNOWLEDGE_CHANNELS.progress, handler);
+      return () => ipcRenderer.removeListener(KNOWLEDGE_CHANNELS.progress, handler);
+    },
+  }),
   paperCodeLink: Object.freeze({
     create: (input: CreatePaperCodeLinkInput) =>
       ipcRenderer.invoke(PAPER_CODE_LINK_CHANNELS.create, input) as Promise<

@@ -10,6 +10,7 @@ import { repositoryBridgeMigration } from './0005-repository-bridge';
 import { codeIntelligenceMigration } from './0006-code-intelligence';
 import { researchQuestionsEvidenceMigration } from './0007-research-questions-evidence';
 import { paperCodeLinksMigration } from './0008-paper-code-links';
+import { knowledgeEngineMigration } from './0009-knowledge-engine';
 import type { DatabaseMigration } from './types';
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
@@ -21,6 +22,7 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   codeIntelligenceMigration,
   researchQuestionsEvidenceMigration,
   paperCodeLinksMigration,
+  knowledgeEngineMigration,
 ];
 
 interface AppliedMigration {

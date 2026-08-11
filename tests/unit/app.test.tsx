@@ -212,10 +212,8 @@ describe('App', () => {
   it('renders Workspace as the root and keeps the secure legacy library available', async () => {
     render(<App />);
 
-    expect(screen.getByRole('navigation', { name: 'Primary' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Workspace' }).getAttribute('aria-current')).toBe(
-      'page',
-    );
+    expect(screen.getByRole('navigation', { name: 'PaperMind resources' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'New Workspace' })).toBeDefined();
     expect(
       await screen.findByRole('heading', { name: 'Create a research Workspace' }),
     ).toBeDefined();
@@ -273,7 +271,7 @@ describe('App', () => {
   it('opens the Zotero integration without changing the legacy library', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zotero Browser' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zotero Library' }));
 
     expect(screen.getByRole('heading', { name: 'Zotero Integration' })).toBeDefined();
     expect(await screen.findByText('Status: Not Running')).toBeDefined();

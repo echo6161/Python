@@ -43,6 +43,14 @@ import type {
   StoredPaperCodeLink,
 } from '../paper-code-link/paper-code-link-data-gateway';
 import type { UpdatePaperCodeLinkInput } from '../../shared/contracts/paper-code-link';
+import type { KnowledgeSourceType } from '../../shared/contracts/knowledge';
+import type {
+  BeginKnowledgeIndexInput,
+  CompleteKnowledgeIndexInput,
+  KnowledgeIndexFailureInput,
+  KnowledgeKeywordSearchInput,
+  UpdateKnowledgeIndexProgressInput,
+} from '../knowledge/knowledge-data-gateway';
 
 export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'listPapers'; readonly payload: PaperListQuery }
@@ -317,6 +325,11 @@ export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'searchCodeText'; readonly payload: CodeSearchInput }
   | {
       readonly id: number;
+      readonly method: 'listCodeChunksForKnowledge';
+      readonly payload: { readonly repositoryId: string };
+    }
+  | {
+      readonly id: number;
       readonly method: 'createQuestion';
       readonly payload: CreateResearchQuestionInput;
     }
@@ -426,6 +439,70 @@ export type DatabaseWorkerRequest =
       readonly id: number;
       readonly method: 'paperCodeLocationExists';
       readonly payload: StoredPaperCodeLink;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'recoverInterruptedKnowledgeIndexes';
+      readonly payload: { readonly updatedAt: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getKnowledgeIndexStatus';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listKnowledgeSourceFingerprints';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'beginKnowledgeIndex';
+      readonly payload: BeginKnowledgeIndexInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateKnowledgeIndexProgress';
+      readonly payload: UpdateKnowledgeIndexProgressInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'completeKnowledgeIndex';
+      readonly payload: CompleteKnowledgeIndexInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'cancelKnowledgeIndex';
+      readonly payload: KnowledgeIndexFailureInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'failKnowledgeIndex';
+      readonly payload: KnowledgeIndexFailureInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'removeKnowledgeIndex';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'searchKnowledgeKeyword';
+      readonly payload: KnowledgeKeywordSearchInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listKnowledgeSemanticCandidates';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly sourceTypes: readonly KnowledgeSourceType[];
+        readonly limit: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getKnowledgeChunk';
+      readonly payload: { readonly workspaceId: string; readonly chunkId: string };
     }
   | {
       readonly id: number;

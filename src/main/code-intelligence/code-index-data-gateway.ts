@@ -1,4 +1,5 @@
 import type {
+  CodeLanguage,
   CodeFileSearchResult,
   CodeIndexStatus,
   CodeSearchInput,
@@ -6,6 +7,18 @@ import type {
   CodeSymbolSearchResult,
   CodeTextSearchResult,
 } from '../../shared/contracts/code-intelligence';
+
+export interface StoredCodeKnowledgeChunk {
+  readonly repositoryId: string;
+  readonly relativePath: string;
+  readonly language: CodeLanguage;
+  readonly snapshotIdentity: string;
+  readonly contentHash: string;
+  readonly startLine: number;
+  readonly endLine: number;
+  readonly symbolName: string | null;
+  readonly content: string;
+}
 import type { ParsedCodeFile } from './code-parser';
 
 export interface StoredCodeFileHash {
@@ -58,4 +71,5 @@ export interface CodeIndexDataGateway {
   searchCodeFiles(input: CodeSearchInput): Promise<CodeSearchPage<CodeFileSearchResult>>;
   searchCodeSymbols(input: CodeSearchInput): Promise<CodeSearchPage<CodeSymbolSearchResult>>;
   searchCodeText(input: CodeSearchInput): Promise<CodeSearchPage<CodeTextSearchResult>>;
+  listCodeChunksForKnowledge(repositoryId: string): Promise<readonly StoredCodeKnowledgeChunk[]>;
 }

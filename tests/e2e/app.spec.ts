@@ -5,6 +5,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import BetterSqlite3 from 'better-sqlite3';
 
 import { writePdfFixture, writeStructuredPdfFixture } from '../helpers/pdf-fixture';
 
@@ -622,7 +623,7 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
     await dialog.getByRole('button', { name: 'Create Workspace' }).click();
     await expect(window.getByRole('heading', { name: 'Evidence Workspace' })).toBeVisible();
 
-    await window.getByRole('button', { name: 'Create Workspace', exact: true }).click();
+    await window.getByRole('button', { name: 'New Workspace', exact: true }).click();
     dialog = window.getByRole('dialog', { name: 'Create Workspace' });
     await dialog.getByLabel('Name').fill('Replication Workspace');
     await dialog.getByLabel('Research Goal').fill('Replicate the selected benchmark');
@@ -636,11 +637,14 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
       .getByLabel('Research Goal')
       .fill('Compare reproducible evidence synthesis methods');
     await window.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(window.getByText('Compare reproducible evidence synthesis methods')).toBeVisible();
+    await expect(
+      window.getByText('Compare reproducible evidence synthesis methods').first(),
+    ).toBeVisible();
     await expect(
       window.getByText('Define the research goal, then add relevant papers from Zotero.'),
     ).toBeVisible();
     await expect(window.getByRole('heading', { name: 'Research Questions' })).toBeVisible();
+    await window.getByRole('tab', { name: 'Questions' }).click();
     await window.getByRole('button', { name: 'New Question' }).click();
     const questionForm = window.locator('form').filter({ hasText: 'Question title' });
     await questionForm.getByLabel('Question title').fill('Does the evidence support the claim?');
@@ -651,6 +655,8 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
     await expect(window.getByLabel('Question', { exact: true })).toHaveValue(
       'Does the evidence support the claim?',
     );
+    await window.getByRole('tab', { name: 'Overview' }).click();
+    await expect(window.getByText('Does the evidence support the claim?')).toBeVisible();
     await window.screenshot({ path: testInfo.outputPath('papermind-workspace-overview.png') });
     await window.setViewportSize({ width: 1100, height: 680 });
     expect(
@@ -666,7 +672,10 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
     await expect(window.getByRole('heading', { name: 'Evidence Workspace' })).toBeVisible();
-    await expect(window.getByText('Compare reproducible evidence synthesis methods')).toBeVisible();
+    await expect(
+      window.getByText('Compare reproducible evidence synthesis methods').first(),
+    ).toBeVisible();
+    await window.getByRole('tab', { name: 'Questions' }).click();
     await expect(window.getByLabel('Question', { exact: true })).toHaveValue(
       'Does the evidence support the claim?',
     );
@@ -744,6 +753,7 @@ test('indexes, searches, refreshes, restores, and removes a read-only repository
     await dialog.getByLabel('Name').fill('Repository Workspace');
     await dialog.getByRole('button', { name: 'Create Workspace' }).click();
 
+    await window.getByRole('tab', { name: 'Code' }).click();
     await selectDirectoryInDialog(electronApp, repositoryRoot);
     await window.getByRole('button', { name: 'Add repository' }).click();
     await expect(
@@ -795,6 +805,7 @@ test('indexes, searches, refreshes, restores, and removes a read-only repository
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
     await expect(window.getByRole('heading', { name: 'Repository Workspace' })).toBeVisible();
+    await window.getByRole('tab', { name: 'Code' }).click();
     await expect(window.getByText(`main | ${initialHead.slice(0, 10)}`)).toBeVisible();
     await expect(window.getByText(/Stale \| 3 files \|/)).toBeVisible();
     await window.getByRole('button', { name: 'Update index' }).click();
@@ -820,3 +831,218 @@ test('indexes, searches, refreshes, restores, and removes a read-only repository
   expect(await git(repositoryRoot, ['status', '--porcelain'])).toBe('');
   expect(await readFile(sourcePath, 'utf8')).toContain('export const refreshed = true;');
 });
+
+test('renders dense responsive Workspace Knowledge results and provenance', async ({
+  browserName,
+}, testInfo) => {
+  expect(browserName).toBe('chromium');
+  const libraryRoot = testInfo.outputPath('PaperMind Knowledge Library');
+  let electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await window.getByRole('button', { name: 'Create Workspace', exact: true }).first().click();
+    const dialog = window.getByRole('dialog', { name: 'Create Workspace' });
+    await dialog.getByLabel('Name').fill('Knowledge Workspace');
+    await dialog.getByLabel('Research goal').fill('Audit clipping evidence across sources');
+    await dialog.getByRole('button', { name: 'Create Workspace' }).click();
+    await window.getByRole('tab', { name: 'Knowledge' }).click();
+    await window.setViewportSize({ width: 1280, height: 800 });
+    await expect(window.getByText('0 sources / 0 chunks / keyword only')).toBeVisible();
+    await window.screenshot({
+      path: testInfo.outputPath('knowledge-empty-provider-unavailable-1280x800.png'),
+    });
+  } finally {
+    await electronApp.close();
+  }
+
+  seedKnowledgeFixture(path.join(libraryRoot, 'library.sqlite3'));
+  electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await window.getByRole('tab', { name: 'Knowledge' }).click();
+    await window.getByLabel('Search Workspace Knowledge').fill('clipping');
+    await window.getByRole('button', { name: 'Search' }).click();
+    await expect(window.getByText('4 matches / keyword')).toBeVisible();
+    await window.getByText('PPO clipping objective').click();
+    await expect(window.getByRole('complementary', { name: 'Source provenance' })).toContainText(
+      'PPO paper, p. 3',
+    );
+
+    for (const viewport of [
+      { width: 1536, height: 1024 },
+      { width: 1280, height: 800 },
+      { width: 1024, height: 768 },
+    ]) {
+      await window.setViewportSize(viewport);
+      await expect(window.getByLabel('Search Workspace Knowledge')).toBeVisible();
+      await expect(
+        window.getByRole('button', { name: /Paper PPO clipping objective/u }),
+      ).toBeVisible();
+      await expect(window.getByRole('complementary', { name: 'Source provenance' })).toBeVisible();
+      const overflow = await window.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      }));
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+      await window.screenshot({
+        path: testInfo.outputPath(
+          `knowledge-mixed-${String(viewport.width)}x${String(viewport.height)}.png`,
+        ),
+      });
+    }
+  } finally {
+    await electronApp.close();
+  }
+});
+
+function seedKnowledgeFixture(databasePath: string): void {
+  const database = new BetterSqlite3(databasePath);
+  const workspace = database.prepare('SELECT id FROM workspaces LIMIT 1').get() as {
+    readonly id: string;
+  };
+  const now = '2026-08-11T08:00:00.000Z';
+  database
+    .prepare(
+      `INSERT INTO knowledge_index_states (
+         workspace_id, status, index_version, source_count, chunk_count,
+         processed_sources, total_sources, completed_at, updated_at
+       ) VALUES (?, 'ready', 'papermind-knowledge-v1', 4, 4, 4, 4, ?, ?)`,
+    )
+    .run(workspace.id, now, now);
+  const insertSource = database.prepare(
+    `INSERT INTO knowledge_sources (
+       id, workspace_id, source_type, source_identity, snapshot_identity, title,
+       fingerprint, provenance_json, unavailable_reason, indexed_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, '{}', NULL, ?)`,
+  );
+  const insertChunk = database.prepare(
+    `INSERT INTO knowledge_chunks (
+       id, source_id, workspace_id, source_type, ordinal, content_hash, content,
+       citation, provenance_json, embedding_json
+     ) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, NULL)`,
+  );
+  const rows = knowledgeScreenshotRows(now);
+  database.transaction(() => {
+    for (const row of rows) {
+      insertSource.run(
+        row.sourceId,
+        workspace.id,
+        row.sourceType,
+        row.sourceIdentity,
+        row.snapshotIdentity,
+        row.title,
+        createHash('sha256').update(row.content).digest('hex'),
+        now,
+      );
+      insertChunk.run(
+        row.chunkId,
+        row.sourceId,
+        workspace.id,
+        row.sourceType,
+        createHash('sha256').update(row.content).digest('hex'),
+        row.content,
+        row.citation,
+        JSON.stringify(row.provenance),
+      );
+    }
+  })();
+  database.close();
+}
+
+function knowledgeScreenshotRows(now: string) {
+  const itemRef = {
+    serverId: 'ServerIdentity01',
+    library: { type: 'user', id: '0' },
+    itemKey: 'PAPERAA2',
+  } as const;
+  return [
+    {
+      sourceId: '550e8400-e29b-41d4-a716-446655440101',
+      chunkId: '550e8400-e29b-41d4-a716-446655440201',
+      sourceType: 'paper',
+      sourceIdentity: 'zotero:paper',
+      snapshotIdentity: 'zotero:paper:v4',
+      title: 'PPO clipping objective',
+      content:
+        'The clipping objective constrains the policy ratio while preserving a tractable surrogate.',
+      citation: 'PPO paper, p. 3',
+      provenance: {
+        sourceType: 'paper',
+        sourceIdentity: 'zotero:paper',
+        snapshotIdentity: 'zotero:paper:v4',
+        indexedAt: now,
+        itemRef,
+        attachmentKey: 'PDFATT22',
+        pageNumber: 3,
+      },
+    },
+    {
+      sourceId: '550e8400-e29b-41d4-a716-446655440102',
+      chunkId: '550e8400-e29b-41d4-a716-446655440202',
+      sourceType: 'code',
+      sourceIdentity: 'repo:file:policy',
+      snapshotIdentity: 'commit:abc123',
+      title: 'src/policy.ts',
+      content:
+        'The clippedObjective function implements clipping with a bounded probability ratio.',
+      citation: 'repo/src/policy.ts:42-58',
+      provenance: {
+        sourceType: 'code',
+        sourceIdentity: 'repo:file:policy',
+        snapshotIdentity: 'commit:abc123',
+        indexedAt: now,
+        repositoryId: '550e8400-e29b-41d4-a716-446655440301',
+        repositoryName: 'ppo-reference',
+        language: 'typescript',
+        relativePath: 'src/policy.ts',
+        startLine: 42,
+        endLine: 58,
+      },
+    },
+    {
+      sourceId: '550e8400-e29b-41d4-a716-446655440103',
+      chunkId: '550e8400-e29b-41d4-a716-446655440203',
+      sourceType: 'question',
+      sourceIdentity: 'question:clipping',
+      snapshotIdentity: 'question:clipping:v2',
+      title: 'Does clipping constrain KL?',
+      content:
+        'Investigate whether clipping reliably constrains KL divergence across optimization epochs.',
+      citation: 'Research question: Does clipping constrain KL?',
+      provenance: {
+        sourceType: 'question',
+        sourceIdentity: 'question:clipping',
+        snapshotIdentity: 'question:clipping:v2',
+        indexedAt: now,
+        questionId: '550e8400-e29b-41d4-a716-446655440302',
+        status: 'investigating',
+      },
+    },
+    {
+      sourceId: '550e8400-e29b-41d4-a716-446655440104',
+      chunkId: '550e8400-e29b-41d4-a716-446655440204',
+      sourceType: 'link',
+      sourceIdentity: 'link:clipping',
+      snapshotIdentity: 'link:clipping:v1',
+      title: 'Objective to implementation',
+      content:
+        'Confirmed clipping correspondence between the paper objective and the policy implementation.',
+      citation: 'PPO p. 3 <-> src/policy.ts:42-58',
+      provenance: {
+        sourceType: 'link',
+        sourceIdentity: 'link:clipping',
+        snapshotIdentity: 'link:clipping:v1',
+        indexedAt: now,
+        linkId: '550e8400-e29b-41d4-a716-446655440303',
+        itemRef,
+        repositoryId: '550e8400-e29b-41d4-a716-446655440301',
+        relativePath: 'src/policy.ts',
+        startLine: 42,
+        endLine: 58,
+        pageNumber: 3,
+      },
+    },
+  ] as const;
+}

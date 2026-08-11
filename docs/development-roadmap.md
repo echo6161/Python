@@ -154,6 +154,13 @@ AI assistant was not adapted for candidate matching; no AI suggestion is persist
 
 Add bounded multi-paper extraction, chunking/indexing, retrieval, citation localization, freshness, and evidence comparison. Derived indexes are rebuildable; answers distinguish retrieved evidence from model inference.
 
+**Implementation status:** completed with additive migration 0009. Workspace-local
+keyword retrieval covers page-aware Zotero PDFs, Phase 10 code chunks, Questions,
+and confirmed Paper-Code Links with exact per-chunk provenance. Incremental,
+cancel/recovery/remove/rebuild lifecycles are implemented. Embeddings remain an
+optional provider boundary; production defaults to offline keyword retrieval. No
+answer generation or Agent behavior is included.
+
 ### Phase 14: ChatGPT/Codex Account Integration
 
 **Depends on:** established Workspace context and evidence boundaries.

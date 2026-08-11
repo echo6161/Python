@@ -6,6 +6,7 @@ import { LIBRARY_IPC_CHANNELS } from '../../src/shared/contracts/library';
 import { READER_IPC_CHANNELS } from '../../src/shared/contracts/reader';
 import { ZOTERO_IPC_CHANNELS } from '../../src/shared/contracts/zotero';
 import { WORKSPACE_IPC_CHANNELS } from '../../src/shared/contracts/workspace';
+import { KNOWLEDGE_IPC_CHANNELS } from '../../src/shared/contracts/knowledge';
 
 describe('IPC contract', () => {
   it('contains only fixed application, library, reader, and AI channels', () => {
@@ -80,5 +81,15 @@ describe('IPC contract', () => {
       listPapers: 'workspaces:list-zotero-papers',
     });
     expect(Object.isFrozen(WORKSPACE_IPC_CHANNELS)).toBe(true);
+    expect(KNOWLEDGE_IPC_CHANNELS).toEqual({
+      getStatus: 'knowledge:get-status',
+      runIndex: 'knowledge:run-index',
+      cancelIndex: 'knowledge:cancel-index',
+      removeIndex: 'knowledge:remove-index',
+      search: 'knowledge:search',
+      openResult: 'knowledge:open-result',
+      progress: 'knowledge:index-progress',
+    });
+    expect(Object.isFrozen(KNOWLEDGE_IPC_CHANNELS)).toBe(true);
   });
 });

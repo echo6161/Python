@@ -184,6 +184,22 @@ describe('ZoteroLocalApiClient', () => {
       client.requestTopItemsPage({ type: 'user', id: '0' }, SERVER_ID, 0, 20),
     ).rejects.toMatchObject({ code: 'ZOTERO_INVALID_RESPONSE' });
   });
+
+  it('resolves only Zotero-provided local file URLs for Main-process extraction', async () => {
+    const client = new ZoteroLocalApiClient({
+      fetch: vi.fn<ZoteroFetch>().mockResolvedValue(response('file:///C:/Zotero/paper.pdf')),
+    });
+    await expect(
+      client.resolveAttachmentFilePath({ type: 'user', id: '0' }, 'AAAAAAA2', SERVER_ID),
+    ).resolves.toMatch(/Zotero[\\/]paper\.pdf$/u);
+
+    const invalid = new ZoteroLocalApiClient({
+      fetch: vi.fn<ZoteroFetch>().mockResolvedValue(response('http://127.0.0.1/private.pdf')),
+    });
+    await expect(
+      invalid.resolveAttachmentFilePath({ type: 'user', id: '0' }, 'AAAAAAA2', SERVER_ID),
+    ).rejects.toMatchObject({ code: 'ZOTERO_INVALID_RESPONSE' });
+  });
 });
 
 function rawItem(key: string) {

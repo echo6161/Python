@@ -43,12 +43,14 @@ export function App() {
     setActiveView(view);
   };
 
+  if (activeView === 'workspace') {
+    return <WorkspaceView appVersion={appVersion} onNavigateApp={navigate} />;
+  }
+
   return (
     <div className="flex h-screen min-h-[680px] min-w-[1100px] overflow-hidden bg-zinc-100 text-zinc-900">
       <Sidebar activeView={activeView} appVersion={appVersion} onNavigate={navigate} />
-      {activeView === 'workspace' ? (
-        <WorkspaceView />
-      ) : activeView === 'library' ? (
+      {activeView === 'library' ? (
         <LibraryWorkspace
           onDirtyChange={setHasUnsavedPaperDetails}
           onOpenSettings={() => navigate('settings')}

@@ -160,6 +160,8 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.searchCodeSymbols(request.payload);
     case 'searchCodeText':
       return database.searchCodeText(request.payload);
+    case 'listCodeChunksForKnowledge':
+      return database.listCodeChunksForKnowledge(request.payload.repositoryId);
     case 'createQuestion':
       return database.createQuestion(request.payload);
     case 'getQuestion':
@@ -212,6 +214,34 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.deletePaperCodeLink(request.payload.workspaceId, request.payload.id);
     case 'paperCodeLocationExists':
       return database.paperCodeLocationExists(request.payload);
+    case 'recoverInterruptedKnowledgeIndexes':
+      return database.recoverInterruptedKnowledgeIndexes(request.payload.updatedAt);
+    case 'getKnowledgeIndexStatus':
+      return database.getKnowledgeIndexStatus(request.payload.workspaceId);
+    case 'listKnowledgeSourceFingerprints':
+      return database.listKnowledgeSourceFingerprints(request.payload.workspaceId);
+    case 'beginKnowledgeIndex':
+      return database.beginKnowledgeIndex(request.payload);
+    case 'updateKnowledgeIndexProgress':
+      return database.updateKnowledgeIndexProgress(request.payload);
+    case 'completeKnowledgeIndex':
+      return database.completeKnowledgeIndex(request.payload);
+    case 'cancelKnowledgeIndex':
+      return database.cancelKnowledgeIndex(request.payload);
+    case 'failKnowledgeIndex':
+      return database.failKnowledgeIndex(request.payload);
+    case 'removeKnowledgeIndex':
+      return database.removeKnowledgeIndex(request.payload.workspaceId);
+    case 'searchKnowledgeKeyword':
+      return database.searchKnowledgeKeyword(request.payload);
+    case 'listKnowledgeSemanticCandidates':
+      return database.listKnowledgeSemanticCandidates(
+        request.payload.workspaceId,
+        request.payload.sourceTypes,
+        request.payload.limit,
+      );
+    case 'getKnowledgeChunk':
+      return database.getKnowledgeChunk(request.payload.workspaceId, request.payload.chunkId);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

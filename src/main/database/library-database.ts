@@ -69,6 +69,7 @@ import type {
   CodeIndexFailureInput,
   CompleteCodeIndexInput,
   StoredCodeFileHash,
+  StoredCodeKnowledgeChunk,
 } from '../code-intelligence/code-index-data-gateway';
 import type {
   CodeFileSearchResult,
@@ -101,6 +102,18 @@ import type {
   StoredPaperCodeLink,
 } from '../paper-code-link/paper-code-link-data-gateway';
 import type { UpdatePaperCodeLinkInput } from '../../shared/contracts/paper-code-link';
+import type { KnowledgeIndexStatus, KnowledgeSourceType } from '../../shared/contracts/knowledge';
+import type {
+  BeginKnowledgeIndexInput,
+  CompleteKnowledgeIndexInput,
+  KnowledgeDataGateway,
+  KnowledgeIndexFailureInput,
+  KnowledgeKeywordSearchInput,
+  KnowledgeSourceFingerprint,
+  StoredKnowledgeChunk,
+  UpdateKnowledgeIndexProgressInput,
+} from '../knowledge/knowledge-data-gateway';
+import { KnowledgeRepository } from './knowledge-repository';
 
 export class LibraryDatabase
   implements
@@ -110,7 +123,8 @@ export class LibraryDatabase
     RepositoryDataGateway,
     CodeIndexDataGateway,
     QuestionDataGateway,
-    PaperCodeLinkDataGateway
+    PaperCodeLinkDataGateway,
+    KnowledgeDataGateway
 {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
@@ -121,6 +135,7 @@ export class LibraryDatabase
   private codeIndexRepository: CodeIndexRepository;
   private questionRepository: QuestionRepository;
   private paperCodeLinkRepository: PaperCodeLinkRepository;
+  private knowledgeRepository: KnowledgeRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -132,6 +147,7 @@ export class LibraryDatabase
     this.codeIndexRepository = new CodeIndexRepository(this.database);
     this.questionRepository = new QuestionRepository(this.database);
     this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
+    this.knowledgeRepository = new KnowledgeRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -411,6 +427,12 @@ export class LibraryDatabase
     return this.run(() => this.codeIndexRepository.searchText(input));
   }
 
+  public listCodeChunksForKnowledge(
+    repositoryId: string,
+  ): Promise<readonly StoredCodeKnowledgeChunk[]> {
+    return this.run(() => this.codeIndexRepository.listChunksForKnowledge(repositoryId));
+  }
+
   public createQuestion(input: CreateResearchQuestionInput): Promise<ResearchQuestion> {
     return this.run(() => this.questionRepository.create(input));
   }
@@ -507,6 +529,69 @@ export class LibraryDatabase
     return this.run(() => this.paperCodeLinkRepository.codeLocationExists(input));
   }
 
+  public recoverInterruptedKnowledgeIndexes(updatedAt: string): Promise<number> {
+    return this.run(() => this.knowledgeRepository.recoverInterrupted(updatedAt));
+  }
+
+  public getKnowledgeIndexStatus(workspaceId: string): Promise<KnowledgeIndexStatus | null> {
+    return this.run(() => this.knowledgeRepository.getStatus(workspaceId));
+  }
+
+  public listKnowledgeSourceFingerprints(
+    workspaceId: string,
+  ): Promise<readonly KnowledgeSourceFingerprint[]> {
+    return this.run(() => this.knowledgeRepository.listFingerprints(workspaceId));
+  }
+
+  public beginKnowledgeIndex(input: BeginKnowledgeIndexInput): Promise<KnowledgeIndexStatus> {
+    return this.run(() => this.knowledgeRepository.begin(input));
+  }
+
+  public updateKnowledgeIndexProgress(
+    input: UpdateKnowledgeIndexProgressInput,
+  ): Promise<KnowledgeIndexStatus> {
+    return this.run(() => this.knowledgeRepository.updateProgress(input));
+  }
+
+  public completeKnowledgeIndex(input: CompleteKnowledgeIndexInput): Promise<KnowledgeIndexStatus> {
+    return this.run(() => this.knowledgeRepository.complete(input));
+  }
+
+  public cancelKnowledgeIndex(input: KnowledgeIndexFailureInput): Promise<KnowledgeIndexStatus> {
+    return this.run(() => this.knowledgeRepository.cancel(input));
+  }
+
+  public failKnowledgeIndex(input: KnowledgeIndexFailureInput): Promise<KnowledgeIndexStatus> {
+    return this.run(() => this.knowledgeRepository.fail(input));
+  }
+
+  public removeKnowledgeIndex(workspaceId: string): Promise<boolean> {
+    return this.run(() => this.knowledgeRepository.remove(workspaceId));
+  }
+
+  public searchKnowledgeKeyword(
+    input: KnowledgeKeywordSearchInput,
+  ): Promise<readonly StoredKnowledgeChunk[]> {
+    return this.run(() => this.knowledgeRepository.searchKeyword(input));
+  }
+
+  public listKnowledgeSemanticCandidates(
+    workspaceId: string,
+    sourceTypes: readonly KnowledgeSourceType[],
+    limit: number,
+  ): Promise<readonly StoredKnowledgeChunk[]> {
+    return this.run(() =>
+      this.knowledgeRepository.listSemanticCandidates(workspaceId, sourceTypes, limit),
+    );
+  }
+
+  public getKnowledgeChunk(
+    workspaceId: string,
+    chunkId: string,
+  ): Promise<StoredKnowledgeChunk | null> {
+    return this.run(() => this.knowledgeRepository.getChunk(workspaceId, chunkId));
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -551,6 +636,7 @@ export class LibraryDatabase
         this.codeIndexRepository = new CodeIndexRepository(this.database);
         this.questionRepository = new QuestionRepository(this.database);
         this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
+        this.knowledgeRepository = new KnowledgeRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -563,6 +649,7 @@ export class LibraryDatabase
         this.codeIndexRepository = new CodeIndexRepository(this.database);
         this.questionRepository = new QuestionRepository(this.database);
         this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
+        this.knowledgeRepository = new KnowledgeRepository(this.database);
         throw error;
       }
 

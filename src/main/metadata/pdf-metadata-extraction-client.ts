@@ -70,7 +70,7 @@ export class PdfMetadataExtractionClient {
     this.extractionLimits = options.extractionLimits;
   }
 
-  public extract(filePath: string): Promise<ExtractedPaperData> {
+  public extract(filePath: string, signal?: AbortSignal): Promise<ExtractedPaperData> {
     if (this.closed) {
       return Promise.resolve(cancelledExtraction());
     }
@@ -95,6 +95,7 @@ export class PdfMetadataExtractionClient {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
+        signal?.removeEventListener('abort', cancel);
         this.workers.delete(worker);
         worker.removeAllListeners();
         if (terminate) void worker.terminate();
@@ -111,6 +112,12 @@ export class PdfMetadataExtractionClient {
               }),
         );
       }, this.timeoutMs);
+      const cancel = (): void => finish(cancelledExtraction());
+      if (signal?.aborted) {
+        cancel();
+        return;
+      }
+      signal?.addEventListener('abort', cancel, { once: true });
 
       worker.once('message', (message: unknown) => {
         finish(

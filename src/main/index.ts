@@ -46,6 +46,10 @@ import { QuestionService } from './question/question-service';
 import { ZoteroEvidenceLauncher } from './question/zotero-evidence-launcher';
 import { PaperCodeLinkService } from './paper-code-link/paper-code-link-service';
 import { registerPaperCodeLinkIpcHandlers } from './ipc/paper-code-link-ipc';
+import { KNOWLEDGE_IPC_CHANNELS } from '../shared/contracts/knowledge';
+import { registerKnowledgeIpcHandlers } from './ipc/knowledge-ipc';
+import { KnowledgeEngineService } from './knowledge/knowledge-engine-service';
+import { WorkspaceKnowledgeSourceProvider } from './knowledge/workspace-knowledge-source-provider';
 
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
@@ -169,6 +173,42 @@ async function initializeLibrary(): Promise<void> {
       zoteroEvidenceLauncher,
     ),
   );
+  const knowledge = new KnowledgeEngineService(
+    databaseClient.knowledge,
+    new WorkspaceKnowledgeSourceProvider(
+      databaseClient.workspace,
+      databaseClient.repository,
+      databaseClient.codeIndex,
+      databaseClient.question,
+      databaseClient.paperCodeLink,
+      zoteroBridge,
+      metadataExtractionClient,
+    ),
+    undefined,
+    (progress) => {
+      if (mainWindow && !mainWindow.webContents.isDestroyed()) {
+        mainWindow.webContents.send(KNOWLEDGE_IPC_CHANNELS.progress, progress);
+      }
+    },
+    {
+      openPaper: async (itemRef, attachmentKey, page) =>
+        zoteroEvidenceLauncher.openPdf({ ...itemRef, itemKey: attachmentKey }, page),
+      openCode: async (repositoryId, relativePath, line, snapshotIdentity) => {
+        const status = await codeIntelligence.getStatus(repositoryId);
+        if (status.status !== 'ready' || status.currentSnapshotIdentity !== snapshotIdentity) {
+          return {
+            opened: false,
+            reason:
+              'The repository snapshot changed. Refresh the Knowledge index before opening this citation.',
+          };
+        }
+        await repositoryService.openInVscode({ repositoryId, relativePath, line });
+        return { opened: true, reason: null };
+      },
+    },
+  );
+  await knowledge.initialize();
+  registerKnowledgeIpcHandlers(knowledge);
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()

@@ -68,6 +68,7 @@ import type {
   CodeIndexFailureInput,
   CompleteCodeIndexInput,
   StoredCodeFileHash,
+  StoredCodeKnowledgeChunk,
 } from '../code-intelligence/code-index-data-gateway';
 import type {
   DatabaseWorkerData,
@@ -95,6 +96,17 @@ import type {
   StoredPaperCodeLink,
 } from '../paper-code-link/paper-code-link-data-gateway';
 import type { UpdatePaperCodeLinkInput } from '../../shared/contracts/paper-code-link';
+import type { KnowledgeIndexStatus, KnowledgeSourceType } from '../../shared/contracts/knowledge';
+import type {
+  BeginKnowledgeIndexInput,
+  CompleteKnowledgeIndexInput,
+  KnowledgeDataGateway,
+  KnowledgeIndexFailureInput,
+  KnowledgeKeywordSearchInput,
+  KnowledgeSourceFingerprint,
+  StoredKnowledgeChunk,
+  UpdateKnowledgeIndexProgressInput,
+} from '../knowledge/knowledge-data-gateway';
 
 interface PendingCall {
   readonly resolve: (value: unknown) => void;
@@ -107,6 +119,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly codeIndex: CodeIndexDataGateway;
   public readonly question: QuestionDataGateway;
   public readonly paperCodeLink: PaperCodeLinkDataGateway;
+  public readonly knowledge: KnowledgeDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -122,6 +135,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
     this.paperCodeLink = new PaperCodeLinkWorkerGateway((method, payload) =>
       this.call(method, payload),
     );
+    this.knowledge = new KnowledgeWorkerGateway((method, payload) => this.call(method, payload));
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
       const call = this.pending.get(response.id);
       if (!call) {
@@ -604,5 +618,81 @@ class CodeIndexWorkerGateway implements CodeIndexDataGateway {
 
   public searchCodeText(input: CodeSearchInput): Promise<CodeSearchPage<CodeTextSearchResult>> {
     return this.call('searchCodeText', input);
+  }
+
+  public listCodeChunksForKnowledge(
+    repositoryId: string,
+  ): Promise<readonly StoredCodeKnowledgeChunk[]> {
+    return this.call('listCodeChunksForKnowledge', { repositoryId });
+  }
+}
+
+class KnowledgeWorkerGateway implements KnowledgeDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public recoverInterruptedKnowledgeIndexes(updatedAt: string): Promise<number> {
+    return this.call('recoverInterruptedKnowledgeIndexes', { updatedAt });
+  }
+
+  public getKnowledgeIndexStatus(workspaceId: string): Promise<KnowledgeIndexStatus | null> {
+    return this.call('getKnowledgeIndexStatus', { workspaceId });
+  }
+
+  public listKnowledgeSourceFingerprints(
+    workspaceId: string,
+  ): Promise<readonly KnowledgeSourceFingerprint[]> {
+    return this.call('listKnowledgeSourceFingerprints', { workspaceId });
+  }
+
+  public beginKnowledgeIndex(input: BeginKnowledgeIndexInput): Promise<KnowledgeIndexStatus> {
+    return this.call('beginKnowledgeIndex', input);
+  }
+
+  public updateKnowledgeIndexProgress(
+    input: UpdateKnowledgeIndexProgressInput,
+  ): Promise<KnowledgeIndexStatus> {
+    return this.call('updateKnowledgeIndexProgress', input);
+  }
+
+  public completeKnowledgeIndex(input: CompleteKnowledgeIndexInput): Promise<KnowledgeIndexStatus> {
+    return this.call('completeKnowledgeIndex', input);
+  }
+
+  public cancelKnowledgeIndex(input: KnowledgeIndexFailureInput): Promise<KnowledgeIndexStatus> {
+    return this.call('cancelKnowledgeIndex', input);
+  }
+
+  public failKnowledgeIndex(input: KnowledgeIndexFailureInput): Promise<KnowledgeIndexStatus> {
+    return this.call('failKnowledgeIndex', input);
+  }
+
+  public removeKnowledgeIndex(workspaceId: string): Promise<boolean> {
+    return this.call('removeKnowledgeIndex', { workspaceId });
+  }
+
+  public searchKnowledgeKeyword(
+    input: KnowledgeKeywordSearchInput,
+  ): Promise<readonly StoredKnowledgeChunk[]> {
+    return this.call('searchKnowledgeKeyword', input);
+  }
+
+  public listKnowledgeSemanticCandidates(
+    workspaceId: string,
+    sourceTypes: readonly KnowledgeSourceType[],
+    limit: number,
+  ): Promise<readonly StoredKnowledgeChunk[]> {
+    return this.call('listKnowledgeSemanticCandidates', { workspaceId, sourceTypes, limit });
+  }
+
+  public getKnowledgeChunk(
+    workspaceId: string,
+    chunkId: string,
+  ): Promise<StoredKnowledgeChunk | null> {
+    return this.call('getKnowledgeChunk', { workspaceId, chunkId });
   }
 }

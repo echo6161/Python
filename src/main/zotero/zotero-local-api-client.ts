@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { fileURLToPath } from 'node:url';
 
 import type {
   ZoteroConnectionError,
@@ -285,6 +286,32 @@ export class ZoteroLocalApiClient {
         return false;
       }
       throw error;
+    }
+  }
+
+  /** Main-process-only resolver for an attachment already authorized by a Zotero item ref. */
+  public async resolveAttachmentFilePath(
+    library: ZoteroLibraryRef,
+    attachmentKey: string,
+    serverId: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const response = await this.request(
+      `${this.libraryPath(library)}/items/${attachmentKey}/file/view/url`,
+      { expectedServerId: serverId, signal },
+    );
+    const value = response.body.trim();
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'file:' || (url.hostname && url.hostname !== 'localhost')) {
+        throw new Error('unsupported attachment location');
+      }
+      return fileURLToPath(url);
+    } catch {
+      throw new ZoteroBridgeError(
+        'ZOTERO_INVALID_RESPONSE',
+        'Zotero returned an invalid local attachment location.',
+      );
     }
   }
 

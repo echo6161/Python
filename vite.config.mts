@@ -16,5 +16,19 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/renderer'),
     emptyOutDir: false,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          maxSize: 450_000,
+          minSize: 20_000,
+          groups: [
+            { name: 'pdf', test: /node_modules[\\/]pdfjs-dist[\\/]/u },
+            { name: 'react', test: /node_modules[\\/](?:react|react-dom|scheduler)[\\/]/u },
+            { name: 'code-parser', test: /node_modules[\\/]@lezer[\\/]/u },
+            { name: 'vendor', test: /node_modules[\\/]/u },
+          ],
+        },
+      },
+    },
   },
 });

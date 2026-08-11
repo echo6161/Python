@@ -191,6 +191,22 @@ Workspace repository association or deleting its PaperMind RepositoryRef preserv
 the historical link, which resolves as unavailable. See
 [paper-code-links.md](./paper-code-links.md).
 
+## Research Knowledge Engine migration
+
+Migration `0009-knowledge-engine.ts` is forward-only and creates:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Index lifecycle | `knowledge_index_states` | One crash-safe, versioned status per Workspace with progress, provider identity, counts, bounded error, and timestamps |
+| Derived source | `knowledge_sources` | Workspace/type/stable-identity unique row with snapshot, SHA-256 fingerprint, source-level provenance, availability, and index time |
+| Derived chunk | `knowledge_chunks` | Source/Workspace-bound bounded text, SHA-256, exact citation and chunk-level provenance, plus optional provider vector |
+| Keyword search | `knowledge_chunks_fts` | Trigger-maintained FTS5 projection filtered by Workspace and finite source type |
+
+The migration does not alter or remove Phase 1-12 tables. Deleting a Workspace
+cascades its derived Knowledge rows. Removing or rebuilding the index never deletes
+a Zotero item/PDF, repository/source file, Question, Evidence, Paper-Code Link, or
+legacy Paper. See [research-knowledge-engine.md](./research-knowledge-engine.md).
+
 Conversation text is local plaintext content and may include a user-approved selected excerpt. A per-request opt-out keeps that turn entirely in memory. API keys and encrypted credential blobs are never accepted by this repository and are stored outside the library through the Main-process Secret Store.
 
 ## Import transaction boundary

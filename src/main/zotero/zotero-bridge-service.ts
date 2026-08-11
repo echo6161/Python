@@ -89,6 +89,23 @@ export class ZoteroBridgeService {
     return this.resolveRawAttachmentPdf(rawAttachment, ref.serverId, ref.library);
   }
 
+  /** Resolves a primary PDF for bounded Main-process extraction; never exposed through IPC. */
+  public async resolvePrimaryPdfFile(
+    ref: ZoteroItemRef,
+    signal?: AbortSignal,
+  ): Promise<{ readonly attachment: ZoteroAttachment; readonly filePath: string } | null> {
+    await this.requireIdentity(ref.serverId, signal);
+    const attachment = await this.findPrimaryPdfInternal(ref, signal);
+    if (attachment?.pdf.state !== 'available') return null;
+    const filePath = await this.client.resolveAttachmentFilePath(
+      attachment.ref.library,
+      attachment.ref.itemKey,
+      attachment.ref.serverId,
+      signal,
+    );
+    return { attachment, filePath };
+  }
+
   private async loadItemsPage(
     input: ZoteroPageRequest,
     query: string | null,

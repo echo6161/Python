@@ -1,18 +1,32 @@
 import { useState } from 'react';
-import { Archive, Pause, Play, Trash2 } from 'lucide-react';
+import {
+  Archive,
+  CircleHelp,
+  FileCode2,
+  FileText,
+  LayoutDashboard,
+  Link2,
+  Search,
+  Network,
+  NotebookPen,
+  Pause,
+  Play,
+  TestTube2,
+  Trash2,
+} from 'lucide-react';
 
 import type {
   UpdateWorkspaceInput,
   Workspace,
   WorkspaceStatus,
 } from '../../../shared/contracts/workspace';
-import { ComingLaterSections } from './ComingLaterSections';
-import { WorkspaceDetailsEditor } from './WorkspaceDetailsEditor';
+import { PaperCodeLinkSection } from './paper-code-link/PaperCodeLinkSection';
+import { WorkspaceRepositorySection } from './repository/WorkspaceRepositorySection';
+import { WorkspaceDashboard, type WorkspaceTab } from './WorkspaceDashboard';
 import { WorkspaceLifecycleDialog } from './WorkspaceLifecycleDialog';
 import { WorkspacePaperSection } from './WorkspacePaperSection';
-import { WorkspaceRepositorySection } from './repository/WorkspaceRepositorySection';
 import { WorkspaceQuestionSection } from './question/WorkspaceQuestionSection';
-import { PaperCodeLinkSection } from './paper-code-link/PaperCodeLinkSection';
+import { WorkspaceKnowledgePage } from './knowledge/WorkspaceKnowledgePage';
 
 interface WorkspaceOverviewProps {
   readonly busy: boolean;
@@ -22,6 +36,21 @@ interface WorkspaceOverviewProps {
   readonly onUpdate: (input: UpdateWorkspaceInput) => Promise<boolean>;
 }
 
+const activeTabs = [
+  { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
+  { id: 'papers', icon: FileText, label: 'Papers' },
+  { id: 'code', icon: FileCode2, label: 'Code' },
+  { id: 'questions', icon: CircleHelp, label: 'Questions' },
+  { id: 'links', icon: Link2, label: 'Links' },
+  { id: 'knowledge', icon: Search, label: 'Knowledge' },
+] as const;
+
+const futureTabs = [
+  { icon: NotebookPen, label: 'Notes' },
+  { icon: TestTube2, label: 'Experiments' },
+  { icon: Network, label: 'Graph' },
+] as const;
+
 export function WorkspaceOverview({
   busy,
   workspace,
@@ -29,29 +58,34 @@ export function WorkspaceOverview({
   onSetStatus,
   onUpdate,
 }: WorkspaceOverviewProps) {
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview');
   const [confirmation, setConfirmation] = useState<'archive' | 'delete' | null>(null);
   const archived = workspace.status === 'archived';
   const paused = workspace.status === 'paused';
 
   return (
-    <div className="mx-auto max-w-6xl px-7 py-7">
-      <header className="mb-7 flex items-start justify-between gap-6">
+    <div className="workspace-shell flex h-full min-w-0 flex-col bg-[#0b1017] text-zinc-200">
+      <header className="flex min-h-16 items-center justify-between gap-5 border-b border-zinc-800 bg-[#0d131c] px-5">
         <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <h1 className="truncate text-2xl font-semibold text-zinc-950">{workspace.name}</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="truncate text-lg font-semibold text-zinc-50">{workspace.name}</h1>
             <span
-              className={`rounded px-2 py-1 text-xs font-semibold capitalize ${statusClass(workspace.status)}`}
+              className={`rounded px-2 py-0.5 text-xs font-semibold capitalize ${statusClass(workspace.status)}`}
             >
               {workspace.status}
             </span>
           </div>
-          <p className="mt-2 text-sm text-zinc-500">Research Workspace</p>
+          <p className="mt-0.5 truncate text-xs text-zinc-500">
+            {workspace.researchGoal || 'Research goal not defined'}
+          </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           {!archived ? (
             <button
-              className="text-button inline-flex items-center gap-1 border border-zinc-300"
+              aria-label={paused ? 'Resume Workspace' : 'Pause Workspace'}
+              className="icon-button"
               disabled={busy}
+              title={paused ? 'Resume Workspace' : 'Pause Workspace'}
               type="button"
               onClick={() => void onSetStatus(paused ? 'active' : 'paused')}
             >
@@ -60,40 +94,96 @@ export function WorkspaceOverview({
               ) : (
                 <Pause aria-hidden="true" className="size-4" />
               )}
-              {paused ? 'Resume' : 'Pause'}
             </button>
           ) : null}
           {!archived ? (
             <button
-              className="text-button inline-flex items-center gap-1 border border-zinc-300"
+              aria-label="Archive"
+              className="icon-button"
               disabled={busy}
+              title="Archive Workspace"
               type="button"
               onClick={() => setConfirmation('archive')}
             >
               <Archive aria-hidden="true" className="size-4" />
-              Archive
             </button>
           ) : null}
           <button
-            className="text-button inline-flex items-center gap-1 text-red-700"
+            aria-label="Delete"
+            className="icon-button text-red-400"
             disabled={busy}
+            title="Delete Workspace"
             type="button"
             onClick={() => setConfirmation('delete')}
           >
             <Trash2 aria-hidden="true" className="size-4" />
-            Delete
           </button>
         </div>
       </header>
 
-      <div className="space-y-7">
-        <WorkspaceDetailsEditor busy={busy} workspace={workspace} onUpdate={onUpdate} />
-        <WorkspacePaperSection workspace={workspace} />
-        <WorkspaceRepositorySection workspace={workspace} />
-        <PaperCodeLinkSection workspace={workspace} />
-        <WorkspaceQuestionSection workspace={workspace} />
-        <ComingLaterSections />
-      </div>
+      <nav
+        aria-label="Workspace sections"
+        className="workspace-tabs flex h-11 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-zinc-800 bg-[#0d131c] px-4"
+        role="tablist"
+      >
+        {activeTabs.map(({ id, icon: Icon, label }) => (
+          <button
+            aria-controls={`workspace-panel-${id}`}
+            aria-selected={activeTab === id}
+            className="workspace-tab"
+            id={`workspace-tab-${id}`}
+            key={id}
+            role="tab"
+            type="button"
+            onClick={() => setActiveTab(id)}
+          >
+            <Icon aria-hidden="true" className="size-3.5" /> {label}
+          </button>
+        ))}
+        <span aria-hidden="true" className="my-2 ml-1 w-px shrink-0 bg-zinc-800" />
+        {futureTabs.map(({ icon: Icon, label }) => (
+          <button
+            aria-label={`${label}: Coming later`}
+            className="workspace-tab"
+            disabled
+            key={label}
+            title={`${label} - Coming later`}
+            type="button"
+          >
+            <Icon aria-hidden="true" className="size-3.5" /> {label}
+          </button>
+        ))}
+      </nav>
+
+      <section
+        aria-labelledby={`workspace-tab-${activeTab}`}
+        className="min-h-0 flex-1 overflow-y-auto"
+        id={`workspace-panel-${activeTab}`}
+        role="tabpanel"
+      >
+        {activeTab === 'overview' ? (
+          <WorkspaceDashboard
+            busy={busy}
+            workspace={workspace}
+            onNavigate={setActiveTab}
+            onUpdate={onUpdate}
+          />
+        ) : (
+          <div
+            className={
+              activeTab === 'knowledge' ? 'h-full' : 'mx-auto w-full max-w-[1600px] p-4 xl:p-5'
+            }
+          >
+            {activeTab === 'papers' ? <WorkspacePaperSection workspace={workspace} /> : null}
+            {activeTab === 'code' ? <WorkspaceRepositorySection workspace={workspace} /> : null}
+            {activeTab === 'questions' ? <WorkspaceQuestionSection workspace={workspace} /> : null}
+            {activeTab === 'links' ? <PaperCodeLinkSection workspace={workspace} /> : null}
+            {activeTab === 'knowledge' ? (
+              <WorkspaceKnowledgePage workspace={workspace} onNavigate={setActiveTab} />
+            ) : null}
+          </div>
+        )}
+      </section>
 
       {confirmation ? (
         <WorkspaceLifecycleDialog
@@ -113,7 +203,7 @@ export function WorkspaceOverview({
 }
 
 function statusClass(status: WorkspaceStatus): string {
-  if (status === 'active') return 'bg-emerald-100 text-emerald-800';
-  if (status === 'paused') return 'bg-amber-100 text-amber-800';
-  return 'bg-zinc-200 text-zinc-700';
+  if (status === 'active') return 'bg-emerald-950 text-emerald-300';
+  if (status === 'paused') return 'bg-amber-950 text-amber-300';
+  return 'bg-zinc-800 text-zinc-400';
 }
