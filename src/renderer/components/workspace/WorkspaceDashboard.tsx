@@ -22,7 +22,8 @@ import { rendererLogger } from '../../logger';
 import { zoteroCreatorNames, zoteroPdfLabel } from '../../workspace/zotero-display';
 import { WorkspaceDetailsEditor } from './WorkspaceDetailsEditor';
 
-export type WorkspaceTab = 'code' | 'knowledge' | 'links' | 'overview' | 'papers' | 'questions';
+export type WorkspaceTab =
+  'chat' | 'code' | 'knowledge' | 'links' | 'overview' | 'papers' | 'questions';
 
 interface WorkspaceDashboardProps {
   readonly busy: boolean;

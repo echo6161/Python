@@ -149,6 +149,7 @@ describe('App', () => {
             value: {
               providerId: 'openai',
               settings: {
+                providerId: 'openai',
                 baseUrl: 'https://api.openai.com/v1',
                 model: 'gpt-5.6',
                 temperature: 0.2,
@@ -156,9 +157,47 @@ describe('App', () => {
                 saveHistoryByDefault: true,
               },
               credential: { configured: false, persistence: 'secure', backend: 'dpapi' },
+              providers: [
+                {
+                  id: 'openai',
+                  name: 'OpenAI API',
+                  status: 'not_configured',
+                  available: true,
+                  configured: false,
+                  version: null,
+                  plan: null,
+                  models: [],
+                  capabilities: ['Streaming'],
+                  limitations: [],
+                  lastError: null,
+                },
+                {
+                  id: 'codex',
+                  name: 'ChatGPT account via Codex',
+                  status: 'offline',
+                  available: false,
+                  configured: false,
+                  version: null,
+                  plan: null,
+                  models: [],
+                  capabilities: [],
+                  limitations: [],
+                  lastError: 'Unavailable',
+                },
+              ],
+              gate: {
+                verdict: 'supported',
+                checkedAt: '2026-08-12',
+                integration: 'official-codex-app-server',
+              },
               selectionOnlyByDefault: true,
             },
           }),
+          refreshProviders: vi.fn(),
+          selectProvider: vi.fn(),
+          startCodexLogin: vi.fn(),
+          cancelCodexLogin: vi.fn(),
+          logoutCodex: vi.fn(),
           updateSettings: vi.fn(),
           setApiKey: vi.fn(),
           deleteApiKey: vi.fn(),
@@ -256,15 +295,19 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /Remove record and managed copy/ })).toBeDefined();
   });
 
-  it('opens the settings placeholder from the sidebar', async () => {
+  it('opens the AI provider settings from the sidebar', async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
-    expect(screen.getByRole('heading', { name: 'Settings' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'OpenAI provider' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'AI providers' })).toBeDefined();
+    expect(await screen.findByText('Official integration supported')).toBeDefined();
     await waitFor(() =>
-      expect(screen.getByTestId('api-key-status').textContent).toBe('Not configured'),
+      expect(
+        screen
+          .getAllByTestId('provider-status-openai')
+          .every(({ textContent }) => textContent.includes('Not connected')),
+      ).toBe(true),
     );
   });
 

@@ -114,6 +114,19 @@ import type {
   UpdateKnowledgeIndexProgressInput,
 } from '../knowledge/knowledge-data-gateway';
 import { KnowledgeRepository } from './knowledge-repository';
+import { ResearchChatRepository } from './research-chat-repository';
+import type {
+  CreateResearchChatTurnInput,
+  CreateResearchChatTurnResult,
+  FinalizeResearchChatMessageInput,
+  ResearchChatDataGateway,
+  StoredResearchChatTurn,
+} from '../research-chat/research-chat-data-gateway';
+import type {
+  ResearchChatContextSource,
+  ResearchChatConversation,
+  ResearchChatMessage,
+} from '../../shared/contracts/research-chat';
 
 export class LibraryDatabase
   implements
@@ -124,7 +137,8 @@ export class LibraryDatabase
     CodeIndexDataGateway,
     QuestionDataGateway,
     PaperCodeLinkDataGateway,
-    KnowledgeDataGateway
+    KnowledgeDataGateway,
+    ResearchChatDataGateway
 {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
@@ -136,6 +150,7 @@ export class LibraryDatabase
   private questionRepository: QuestionRepository;
   private paperCodeLinkRepository: PaperCodeLinkRepository;
   private knowledgeRepository: KnowledgeRepository;
+  private researchChatRepository: ResearchChatRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -148,6 +163,7 @@ export class LibraryDatabase
     this.questionRepository = new QuestionRepository(this.database);
     this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
     this.knowledgeRepository = new KnowledgeRepository(this.database);
+    this.researchChatRepository = new ResearchChatRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -268,6 +284,59 @@ export class LibraryDatabase
 
   public markStaleAiMessages(): Promise<number> {
     return this.run(() => this.aiRepository.markStaleMessages());
+  }
+
+  public createResearchChatTurn(
+    input: CreateResearchChatTurnInput,
+  ): Promise<CreateResearchChatTurnResult> {
+    return this.run(() => this.researchChatRepository.createTurn(input));
+  }
+
+  public finalizeResearchChatMessage(
+    input: FinalizeResearchChatMessageInput,
+  ): Promise<ResearchChatMessage> {
+    return this.run(() => this.researchChatRepository.finalizeMessage(input));
+  }
+
+  public getLatestResearchChatConversation(
+    workspaceId: string,
+    questionId: string | null,
+  ): Promise<ResearchChatConversation | null> {
+    return this.run(() =>
+      this.researchChatRepository.getLatestConversation(workspaceId, questionId),
+    );
+  }
+
+  public getResearchChatConversation(
+    workspaceId: string,
+    conversationId: string,
+  ): Promise<ResearchChatConversation | null> {
+    return this.run(() => this.researchChatRepository.getConversation(workspaceId, conversationId));
+  }
+
+  public getResearchChatTurn(
+    workspaceId: string,
+    conversationId: string,
+    assistantMessageId: string,
+  ): Promise<StoredResearchChatTurn | null> {
+    return this.run(() =>
+      this.researchChatRepository.getTurn(workspaceId, conversationId, assistantMessageId),
+    );
+  }
+
+  public getResearchChatCitationSource(
+    workspaceId: string,
+    conversationId: string,
+    messageId: string,
+    alias: string,
+  ): Promise<ResearchChatContextSource | null> {
+    return this.run(() =>
+      this.researchChatRepository.getCitationSource(workspaceId, conversationId, messageId, alias),
+    );
+  }
+
+  public markStaleResearchChatMessages(): Promise<number> {
+    return this.run(() => this.researchChatRepository.markStaleMessages());
   }
 
   public createWorkspace(input: CreateWorkspaceInput): Promise<Workspace> {
@@ -637,6 +706,7 @@ export class LibraryDatabase
         this.questionRepository = new QuestionRepository(this.database);
         this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
         this.knowledgeRepository = new KnowledgeRepository(this.database);
+        this.researchChatRepository = new ResearchChatRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -650,6 +720,7 @@ export class LibraryDatabase
         this.questionRepository = new QuestionRepository(this.database);
         this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
         this.knowledgeRepository = new KnowledgeRepository(this.database);
+        this.researchChatRepository = new ResearchChatRepository(this.database);
         throw error;
       }
 

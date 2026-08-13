@@ -12,6 +12,7 @@ import {
   AI_IPC_CHANNELS,
   type AiCapabilities,
   type AiChatGptBridgeResult,
+  type AiCodexLoginResult,
   type AiConversation,
   type AiCredentialState,
   type AiTaskInput,
@@ -27,9 +28,12 @@ import {
   aiChatGptBridgeInputSchema,
   aiChatGptBridgeResultSchema,
   aiCapabilitiesSchema,
+  aiCodexLoginIdSchema,
+  aiCodexLoginResultSchema,
   aiConversationSchema,
   aiCredentialStateSchema,
-  aiProviderSettingsSchema,
+  aiProviderSettingsInputSchema,
+  aiProviderIdSchema,
   aiRequestIdSchema,
   aiTaskAcceptedSchema,
   aiTaskInputSchema,
@@ -42,7 +46,63 @@ export function registerAiIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
 ): void {
   ipcMain.handle(AI_IPC_CHANNELS.getCapabilities, (event): Promise<ApiResult<AiCapabilities>> =>
-    invokeValidated(event, aiCapabilitiesSchema, () => assistant.getCapabilities()),
+    invokeValidated(event, aiCapabilitiesSchema, () => {
+      ensureMainWindowSender(event, getMainWindow);
+      return assistant.getCapabilities();
+    }),
+  );
+
+  ipcMain.handle(AI_IPC_CHANNELS.refreshProviders, (event): Promise<ApiResult<AiCapabilities>> =>
+    invokeValidated(event, aiCapabilitiesSchema, () => {
+      ensureMainWindowSender(event, getMainWindow);
+      return assistant.refreshProviders();
+    }),
+  );
+
+  ipcMain.handle(
+    AI_IPC_CHANNELS.selectProvider,
+    (event, input: unknown): Promise<ApiResult<AiCapabilities>> =>
+      invokeValidated(event, aiCapabilitiesSchema, () => {
+        ensureMainWindowSender(event, getMainWindow);
+        return assistant.selectProvider(aiProviderIdSchema.parse(input));
+      }),
+  );
+
+  ipcMain.handle(AI_IPC_CHANNELS.startCodexLogin, (event): Promise<ApiResult<AiCodexLoginResult>> =>
+    invokeValidated(
+      event,
+      aiCodexLoginResultSchema,
+      async () => {
+        ensureMainWindowSender(event, getMainWindow);
+        const login = await assistant.startCodexLogin();
+        try {
+          await shell.openExternal(login.authUrl);
+        } catch (error) {
+          await assistant.cancelCodexLogin(login.loginId).catch(() => undefined);
+          throw new LibraryError('PERMISSION_DENIED', 'The system browser could not be opened.', {
+            cause: error,
+          });
+        }
+        return { loginId: login.loginId, opened: true };
+      },
+      'The Codex login response was invalid.',
+    ),
+  );
+
+  ipcMain.handle(
+    AI_IPC_CHANNELS.cancelCodexLogin,
+    (event, input: unknown): Promise<ApiResult<AiCapabilities>> =>
+      invokeValidated(event, aiCapabilitiesSchema, () => {
+        ensureMainWindowSender(event, getMainWindow);
+        return assistant.cancelCodexLogin(aiCodexLoginIdSchema.parse(input));
+      }),
+  );
+
+  ipcMain.handle(AI_IPC_CHANNELS.logoutCodex, (event): Promise<ApiResult<AiCapabilities>> =>
+    invokeValidated(event, aiCapabilitiesSchema, () => {
+      ensureMainWindowSender(event, getMainWindow);
+      return assistant.logoutCodex();
+    }),
   );
 
   ipcMain.handle(
@@ -50,7 +110,7 @@ export function registerAiIpcHandlers(
     (event, input: unknown): Promise<ApiResult<AiCapabilities>> =>
       invokeValidated(event, aiCapabilitiesSchema, async () => {
         ensureMainWindowSender(event, getMainWindow);
-        const settings = aiProviderSettingsSchema.parse(input);
+        const settings = aiProviderSettingsInputSchema.parse(input);
         const normalizedBaseUrl = normalizeAiBaseUrl(settings.baseUrl);
         const current = await assistant.getCapabilities();
         if (
@@ -162,7 +222,10 @@ async function confirmAndStartTask(
   emit: Parameters<AiAssistantService['startTask']>[2],
 ): Promise<AiTaskAccepted> {
   const capabilities = await assistant.getCapabilities();
-  const hostname = new URL(capabilities.settings.baseUrl).hostname;
+  const destination =
+    capabilities.providerId === 'codex'
+      ? 'your ChatGPT account through the official Codex runtime'
+      : new URL(capabilities.settings.baseUrl).hostname;
   const scope = task.selection
     ? [
         `Selected PDF text: page ${String(task.selection.pageNumber)}, offsets ${String(task.selection.textStart)}-${String(task.selection.textEnd)}, ${String(task.selection.selectedText.length)} characters.`,
@@ -179,7 +242,7 @@ async function confirmAndStartTask(
   const options = {
     type: 'question' as const,
     title: 'Confirm AI request',
-    message: `Send this request to ${hostname}?`,
+    message: `Send this request to ${destination}?`,
     detail: `${scope}${question}${history}\n\nThe PDF file, file path, annotations, notes, and other papers stay local.`,
     buttons: ['Cancel', 'Send request'],
     defaultId: 0,

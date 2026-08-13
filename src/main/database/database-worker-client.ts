@@ -107,6 +107,18 @@ import type {
   StoredKnowledgeChunk,
   UpdateKnowledgeIndexProgressInput,
 } from '../knowledge/knowledge-data-gateway';
+import type {
+  CreateResearchChatTurnInput,
+  CreateResearchChatTurnResult,
+  FinalizeResearchChatMessageInput,
+  ResearchChatDataGateway,
+  StoredResearchChatTurn,
+} from '../research-chat/research-chat-data-gateway';
+import type {
+  ResearchChatContextSource,
+  ResearchChatConversation,
+  ResearchChatMessage,
+} from '../../shared/contracts/research-chat';
 
 interface PendingCall {
   readonly resolve: (value: unknown) => void;
@@ -120,6 +132,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly question: QuestionDataGateway;
   public readonly paperCodeLink: PaperCodeLinkDataGateway;
   public readonly knowledge: KnowledgeDataGateway;
+  public readonly researchChat: ResearchChatDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -136,6 +149,9 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
       this.call(method, payload),
     );
     this.knowledge = new KnowledgeWorkerGateway((method, payload) => this.call(method, payload));
+    this.researchChat = new ResearchChatWorkerGateway((method, payload) =>
+      this.call(method, payload),
+    );
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
       const call = this.pending.get(response.id);
       if (!call) {
@@ -694,5 +710,66 @@ class KnowledgeWorkerGateway implements KnowledgeDataGateway {
     chunkId: string,
   ): Promise<StoredKnowledgeChunk | null> {
     return this.call('getKnowledgeChunk', { workspaceId, chunkId });
+  }
+}
+
+class ResearchChatWorkerGateway implements ResearchChatDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public createResearchChatTurn(
+    input: CreateResearchChatTurnInput,
+  ): Promise<CreateResearchChatTurnResult> {
+    return this.call('createResearchChatTurn', input);
+  }
+
+  public finalizeResearchChatMessage(
+    input: FinalizeResearchChatMessageInput,
+  ): Promise<ResearchChatMessage> {
+    return this.call('finalizeResearchChatMessage', input);
+  }
+
+  public getLatestResearchChatConversation(
+    workspaceId: string,
+    questionId: string | null,
+  ): Promise<ResearchChatConversation | null> {
+    return this.call('getLatestResearchChatConversation', { workspaceId, questionId });
+  }
+
+  public getResearchChatConversation(
+    workspaceId: string,
+    conversationId: string,
+  ): Promise<ResearchChatConversation | null> {
+    return this.call('getResearchChatConversation', { workspaceId, conversationId });
+  }
+
+  public getResearchChatTurn(
+    workspaceId: string,
+    conversationId: string,
+    assistantMessageId: string,
+  ): Promise<StoredResearchChatTurn | null> {
+    return this.call('getResearchChatTurn', { workspaceId, conversationId, assistantMessageId });
+  }
+
+  public getResearchChatCitationSource(
+    workspaceId: string,
+    conversationId: string,
+    messageId: string,
+    alias: string,
+  ): Promise<ResearchChatContextSource | null> {
+    return this.call('getResearchChatCitationSource', {
+      workspaceId,
+      conversationId,
+      messageId,
+      alias,
+    });
+  }
+
+  public markStaleResearchChatMessages(): Promise<number> {
+    return this.call('markStaleResearchChatMessages', null);
   }
 }

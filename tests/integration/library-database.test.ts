@@ -142,11 +142,13 @@ describe('local paper library integration', () => {
 
   it('applies migrations repeatedly and creates every current entity table', async () => {
     const harness = await createHarness();
-    expect(await harness.database.getMigrationVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(await harness.database.getMigrationVersions()).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+    ]);
     await harness.database.close();
 
     const reopened = new LibraryDatabase(harness.paths.database);
-    expect(await reopened.getMigrationVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(await reopened.getMigrationVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     await reopened.close();
 
     const database = new BetterSqlite3(harness.paths.database, { readonly: true });
@@ -191,6 +193,10 @@ describe('local paper library integration', () => {
         'knowledge_sources',
         'knowledge_chunks',
         'knowledge_chunks_fts',
+        'research_chat_conversations',
+        'research_chat_messages',
+        'research_chat_contexts',
+        'research_chat_context_sources',
       ]),
     );
   });
@@ -308,7 +314,7 @@ describe('local paper library integration', () => {
     phaseTwoDatabase.close();
 
     const upgraded = new LibraryDatabase(databasePath);
-    expect(await upgraded.getMigrationVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(await upgraded.getMigrationVersions()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     const upgradedLegacy = await upgraded.getPaper(legacyPaperId);
     expect(upgradedLegacy).toMatchObject({
       title: 'User corrected legacy title',

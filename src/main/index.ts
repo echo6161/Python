@@ -15,6 +15,7 @@ import { IPC_CHANNELS, type AppInfo, type DesktopPlatform } from '../shared/cont
 import { createConsoleLogger } from '../shared/logging';
 import { DatabaseWorkerClient } from './database/database-worker-client';
 import { AiAssistantService } from './ai/ai-assistant-service';
+import { CodexAppServerClient } from './ai/codex-app-server-client';
 import { AiSecretStore } from './ai/secret-store';
 import { registerAiIpcHandlers } from './ipc/ai-ipc';
 import { registerLibraryIpcHandlers } from './ipc/library-ipc';
@@ -50,6 +51,8 @@ import { KNOWLEDGE_IPC_CHANNELS } from '../shared/contracts/knowledge';
 import { registerKnowledgeIpcHandlers } from './ipc/knowledge-ipc';
 import { KnowledgeEngineService } from './knowledge/knowledge-engine-service';
 import { WorkspaceKnowledgeSourceProvider } from './knowledge/workspace-knowledge-source-provider';
+import { ResearchChatService } from './research-chat/research-chat-service';
+import { registerResearchChatIpcHandlers } from './ipc/research-chat-ipc';
 
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
@@ -57,6 +60,7 @@ let databaseClient: DatabaseWorkerClient | null = null;
 let metadataExtractionClient: PdfMetadataExtractionClient | null = null;
 let metadataBackfillPromise: Promise<void> | null = null;
 let aiAssistant: AiAssistantService | null = null;
+let researchChat: ResearchChatService | null = null;
 let shutdownPromise: Promise<void> | null = null;
 
 protocol.registerSchemesAsPrivileged([
@@ -94,14 +98,31 @@ async function initializeLibrary(): Promise<void> {
     userDataPath: app.getPath('userData'),
     safeStorage,
   });
+  const codexRoot = path.join(app.getPath('userData'), 'codex-integration');
+  const codexWorkingDirectory = path.join(codexRoot, 'empty-workspace');
+  const useMockProvider =
+    !app.isPackaged &&
+    process.env.NODE_ENV === 'test' &&
+    process.env.PAPERMIND_AI_PROVIDER === 'mock';
+  const codexOptions = useMockProvider
+    ? {}
+    : {
+        codexClient: new CodexAppServerClient({
+          codexHome: path.join(codexRoot, 'home'),
+          workingDirectory: codexWorkingDirectory,
+          runtimeVersion: '0.147.0',
+        }),
+      };
   aiAssistant = new AiAssistantService(databaseClient, secrets, {
-    useMockProvider:
-      !app.isPackaged &&
-      process.env.NODE_ENV === 'test' &&
-      process.env.PAPERMIND_AI_PROVIDER === 'mock',
+    useMockProvider,
+    ...(process.env.PAPERMIND_CODEX_MOCK_STATUS === 'not_configured' ||
+    process.env.PAPERMIND_CODEX_MOCK_STATUS === 'expired'
+      ? { mockCodexStatus: process.env.PAPERMIND_CODEX_MOCK_STATUS }
+      : {}),
     mockProviderOptions: {
       delayMs: Number(process.env.PAPERMIND_AI_MOCK_DELAY_MS ?? 15),
     },
+    ...codexOptions,
   });
   await aiAssistant.initialize();
   const metadataWorkerPath = path.join(__dirname, 'metadata/pdf-metadata-extraction-worker.js');
@@ -209,6 +230,14 @@ async function initializeLibrary(): Promise<void> {
   );
   await knowledge.initialize();
   registerKnowledgeIpcHandlers(knowledge);
+  researchChat = new ResearchChatService(
+    databaseClient.researchChat,
+    knowledge,
+    databaseClient.question,
+    aiAssistant,
+  );
+  await researchChat.initialize();
+  registerResearchChatIpcHandlers(researchChat);
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()
@@ -238,6 +267,7 @@ async function createMainWindow(): Promise<void> {
   restrictWindowNavigation(window.webContents);
   window.webContents.once('destroyed', () => {
     aiAssistant?.cancelOwnerRequests(windowOwnerId);
+    researchChat?.cancelOwnerRequests(windowOwnerId);
   });
   window.once('ready-to-show', () => window.show());
   window.on('closed', () => {
@@ -300,7 +330,7 @@ app.on('second-instance', () => {
 });
 
 app.on('before-quit', (event) => {
-  if (!databaseClient && !metadataExtractionClient && !aiAssistant) {
+  if (!databaseClient && !metadataExtractionClient && !aiAssistant && !researchChat) {
     return;
   }
 
@@ -313,6 +343,7 @@ app.on('before-quit', (event) => {
       .then(async () => {
         await metadata?.close();
         await backfill;
+        await researchChat?.shutdown();
         await aiAssistant?.shutdown();
         await database?.close();
       })
@@ -324,6 +355,7 @@ app.on('before-quit', (event) => {
         metadataExtractionClient = null;
         metadataBackfillPromise = null;
         aiAssistant = null;
+        researchChat = null;
         app.quit();
       });
   }

@@ -69,7 +69,7 @@ class MemoryAiData implements AiDataGateway {
       id,
       paperId: input.paperId,
       title: input.title,
-      providerId: 'openai',
+      providerId: input.providerId,
       model: input.model,
       messages: [...(prior?.messages ?? []), user, assistant],
       createdAt: prior?.createdAt ?? now,
@@ -220,6 +220,22 @@ describe('AiAssistantService', () => {
     expect((await service.getCapabilities()).credential.configured).toBe(false);
   });
 
+  it('switches between connected providers without changing credential ownership', async () => {
+    const data = new MemoryAiData();
+    const service = new AiAssistantService(data, await createSecretStore(), {
+      useMockProvider: true,
+    });
+    await expect(service.selectProvider('codex')).resolves.toMatchObject({
+      providerId: 'codex',
+      settings: { providerId: 'codex', model: 'gpt-5.6-sol' },
+    });
+    await expect(service.selectProvider('openai')).resolves.toMatchObject({
+      providerId: 'openai',
+      settings: { providerId: 'openai', model: 'gpt-5.6' },
+    });
+    expect(data.settings?.providerId).toBe('openai');
+  });
+
   it('reports one safe storage error when terminal persistence fails', async () => {
     const data = new MemoryAiData();
     data.failFinalize = true;
@@ -263,7 +279,9 @@ describe('AiAssistantService', () => {
     const first = await service.getConversation(task.paperId);
     expect(first).not.toBeNull();
     data.settings = {
+      providerId: 'openai',
       baseUrl: 'https://api.openai.com/v1',
+      codexProxyUrl: null,
       model: 'gpt-5.6-sol',
       temperature: 0.2,
       maxOutputTokens: 512,

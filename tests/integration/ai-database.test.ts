@@ -61,16 +61,20 @@ describe('AI database integration', () => {
     const { database, databasePath, paperId } = await createHarness();
     const apiKeySentinel = 'phase5-database-secret-sentinel';
     const settingsWithUnexpectedSecret = {
+      providerId: 'openai',
       baseUrl: 'https://api.openai.com/v1',
+      codexProxyUrl: null,
       model: 'gpt-5-mini',
       temperature: 0.2,
       maxOutputTokens: 800,
       saveHistoryByDefault: true,
       apiKey: apiKeySentinel,
-    } as AiProviderSettings;
+    } as unknown as AiProviderSettings;
 
     await expect(database.saveAiSettings(settingsWithUnexpectedSecret)).resolves.toEqual({
+      providerId: 'openai',
       baseUrl: 'https://api.openai.com/v1',
+      codexProxyUrl: null,
       model: 'gpt-5-mini',
       temperature: 0.2,
       maxOutputTokens: 800,
@@ -122,7 +126,9 @@ describe('AI database integration', () => {
     const reopened = new LibraryDatabase(databasePath);
     expect(await reopened.markStaleAiMessages()).toBe(1);
     expect(await reopened.getAiSettings()).toEqual({
+      providerId: 'openai',
       baseUrl: 'https://api.openai.com/v1',
+      codexProxyUrl: null,
       model: 'gpt-5-mini',
       temperature: 0.2,
       maxOutputTokens: 800,

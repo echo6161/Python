@@ -51,6 +51,10 @@ import type {
   KnowledgeKeywordSearchInput,
   UpdateKnowledgeIndexProgressInput,
 } from '../knowledge/knowledge-data-gateway';
+import type {
+  CreateResearchChatTurnInput,
+  FinalizeResearchChatMessageInput,
+} from '../research-chat/research-chat-data-gateway';
 
 export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'listPapers'; readonly payload: PaperListQuery }
@@ -175,6 +179,50 @@ export type DatabaseWorkerRequest =
       readonly payload: { readonly conversationId: string };
     }
   | { readonly id: number; readonly method: 'markStaleAiMessages'; readonly payload: null }
+  | {
+      readonly id: number;
+      readonly method: 'createResearchChatTurn';
+      readonly payload: CreateResearchChatTurnInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'finalizeResearchChatMessage';
+      readonly payload: FinalizeResearchChatMessageInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getLatestResearchChatConversation';
+      readonly payload: { readonly workspaceId: string; readonly questionId: string | null };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getResearchChatConversation';
+      readonly payload: { readonly workspaceId: string; readonly conversationId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getResearchChatTurn';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly conversationId: string;
+        readonly assistantMessageId: string;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getResearchChatCitationSource';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly conversationId: string;
+        readonly messageId: string;
+        readonly alias: string;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'markStaleResearchChatMessages';
+      readonly payload: null;
+    }
   | {
       readonly id: number;
       readonly method: 'createWorkspace';

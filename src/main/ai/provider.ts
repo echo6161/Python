@@ -1,4 +1,9 @@
-import type { AiError, AiMessageRole, AiProviderSettings } from '../../shared/contracts/ai';
+import type {
+  AiError,
+  AiMessageRole,
+  AiProviderId,
+  AiProviderSettings,
+} from '../../shared/contracts/ai';
 
 export interface AiProviderMessage {
   readonly role: AiMessageRole;
@@ -21,7 +26,7 @@ export type AiProviderEvent =
     };
 
 export interface AiProvider {
-  readonly id: 'openai' | 'mock';
+  readonly id: AiProviderId | 'mock';
   stream(request: AiProviderRequest, signal: AbortSignal): AsyncIterable<AiProviderEvent>;
 }
 

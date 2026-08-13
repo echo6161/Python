@@ -48,7 +48,7 @@ export function App() {
   }
 
   return (
-    <div className="flex h-screen min-h-[680px] min-w-[1100px] overflow-hidden bg-zinc-100 text-zinc-900">
+    <div className="flex h-screen min-h-[680px] min-w-0 overflow-hidden bg-zinc-100 text-zinc-900">
       <Sidebar activeView={activeView} appVersion={appVersion} onNavigate={navigate} />
       {activeView === 'library' ? (
         <LibraryWorkspace

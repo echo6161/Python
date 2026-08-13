@@ -4,7 +4,9 @@ import { paperIdSchema } from './library-schemas';
 
 export const aiProviderSettingsSchema = z
   .object({
+    providerId: z.enum(['openai', 'codex']),
     baseUrl: z.string().trim().min(1).max(2_048),
+    codexProxyUrl: z.string().trim().max(200).nullable(),
     model: z
       .string()
       .trim()
@@ -17,6 +19,16 @@ export const aiProviderSettingsSchema = z
   })
   .strict();
 
+export const aiProviderSettingsInputSchema = aiProviderSettingsSchema.extend({
+  codexProxyUrl: z
+    .string()
+    .trim()
+    .max(200)
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
+});
+
 export const aiCredentialStateSchema = z
   .object({
     configured: z.boolean(),
@@ -27,12 +39,74 @@ export const aiCredentialStateSchema = z
 
 export const aiCapabilitiesSchema = z
   .object({
-    providerId: z.literal('openai'),
+    providerId: z.enum(['openai', 'codex']),
     settings: aiProviderSettingsSchema,
     credential: aiCredentialStateSchema,
+    providers: z.array(
+      z
+        .object({
+          id: z.enum(['openai', 'codex']),
+          name: z.string().min(1).max(80),
+          status: z.enum([
+            'connected',
+            'not_configured',
+            'offline',
+            'expired',
+            'version_mismatch',
+            'login_pending',
+            'login_cancelled',
+            'error',
+          ]),
+          available: z.boolean(),
+          configured: z.boolean(),
+          version: z.string().max(80).nullable(),
+          plan: z.string().max(80).nullable(),
+          models: z.array(
+            z
+              .object({
+                id: z.string().min(1).max(120),
+                displayName: z.string().min(1).max(120),
+                isDefault: z.boolean(),
+              })
+              .strict(),
+          ),
+          capabilities: z.array(z.string().min(1).max(120)).max(20),
+          limitations: z.array(z.string().min(1).max(240)).max(20),
+          lastError: z.string().max(500).nullable(),
+        })
+        .strict(),
+    ),
+    gate: z
+      .object({
+        verdict: z.literal('supported'),
+        checkedAt: z.literal('2026-08-12'),
+        integration: z.literal('official-codex-app-server'),
+      })
+      .strict(),
     selectionOnlyByDefault: z.literal(true),
   })
   .strict();
+
+export const aiProviderIdSchema = z.enum(['openai', 'codex']);
+export const aiCodexLoginIdSchema = z
+  .string()
+  .min(1)
+  .max(512)
+  .refine(
+    (value) => !hasControlCharacter(value) && !value.includes('://'),
+    'The Codex login identifier is invalid.',
+  );
+export const aiCodexLoginResultSchema = z
+  .object({ loginId: aiCodexLoginIdSchema, opened: z.literal(true) })
+  .strict();
+
+function hasControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint < 32 || codePoint === 127) return true;
+  }
+  return false;
+}
 
 export const aiSelectionScopeSchema = z
   .object({
@@ -118,7 +192,7 @@ export const aiConversationSchema = z
     id: paperIdSchema,
     paperId: paperIdSchema,
     title: z.string().min(1).max(500),
-    providerId: z.literal('openai'),
+    providerId: z.enum(['openai', 'codex']),
     model: z.string().min(1).max(120),
     messages: z.array(aiMessageSchema).max(500),
     createdAt: z.iso.datetime(),

@@ -112,3 +112,10 @@ Configure the OpenAI API key and non-secret provider settings in the application
 The official `https://api.openai.com/v1` endpoint is the default. A different Base URL requires a native warning confirmation and must use public HTTPS on the standard port; local-network targets and redirects are rejected. Requests use the OpenAI Responses API with server-side response storage disabled. Automated tests use the deterministic Mock Provider and never call a paid API. A real API request must be separately and explicitly authorized.
 
 Without an API key, review any selected-text AI task and choose **Copy & open ChatGPT**. Main copies only the selected excerpt, optional question, and fixed task instructions, then opens the fixed `https://chatgpt.com/` URL. No conversation history, PDF file, file path, annotation, note, cookie, or ChatGPT session token is exposed to PaperMind. Nothing is uploaded until the user manually pastes and submits the prompt in ChatGPT.
+
+PaperMind also supports official ChatGPT account sign-in through its isolated bundled Codex
+runtime. If browser sign-in succeeds but generation times out because a desktop proxy is not
+registered as the Windows system proxy, set **Settings > ChatGPT account via Codex > Local
+proxy** to that proxy's loopback HTTP endpoint, for example `http://127.0.0.1:7897`. Only
+credential-free `127.0.0.1` or `::1` URLs with an explicit port are accepted; the value is passed
+only to the Codex child process.

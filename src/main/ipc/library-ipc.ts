@@ -233,6 +233,7 @@ export async function invokeValidated<T>(
   event: IpcMainInvokeEvent,
   outputSchema: ZodType<T>,
   operation: () => Promise<T>,
+  fallbackMessage = 'The library request was invalid.',
 ): Promise<ApiResult<T>> {
   try {
     ensureTrustedSender(event);
@@ -242,7 +243,7 @@ export async function invokeValidated<T>(
     const safeError = toApiError(
       error instanceof LibraryError || !(error instanceof Error)
         ? error
-        : new LibraryError('INVALID_INPUT', 'The library request was invalid.', { cause: error }),
+        : new LibraryError('INVALID_INPUT', fallbackMessage, { cause: error }),
     );
     logger.warn('Library request rejected', { code: safeError.code });
     return { ok: false, error: safeError };

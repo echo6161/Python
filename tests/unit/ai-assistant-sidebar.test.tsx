@@ -19,13 +19,44 @@ const assistantMessageId = '550e8400-e29b-41d4-a716-446655440012';
 const capabilities: AiCapabilities = {
   providerId: 'openai',
   settings: {
+    providerId: 'openai',
     baseUrl: 'https://api.openai.com/v1',
+    codexProxyUrl: null,
     model: 'gpt-5.6',
     temperature: 0.2,
     maxOutputTokens: 2_000,
     saveHistoryByDefault: true,
   },
   credential: { configured: true, persistence: 'secure', backend: 'dpapi' },
+  providers: [
+    {
+      id: 'openai',
+      name: 'OpenAI API',
+      status: 'connected',
+      available: true,
+      configured: true,
+      version: null,
+      plan: null,
+      models: [],
+      capabilities: ['Streaming'],
+      limitations: [],
+      lastError: null,
+    },
+    {
+      id: 'codex',
+      name: 'ChatGPT account via Codex',
+      status: 'not_configured',
+      available: true,
+      configured: false,
+      version: '0.147.0',
+      plan: null,
+      models: [],
+      capabilities: ['Official ChatGPT sign-in'],
+      limitations: [],
+      lastError: null,
+    },
+  ],
+  gate: { verdict: 'supported', checkedAt: '2026-08-12', integration: 'official-codex-app-server' },
   selectionOnlyByDefault: true,
 };
 
@@ -82,6 +113,11 @@ function installAiApi(overrides: Partial<AiApi> = {}) {
   });
   const api: AiApi = {
     getCapabilities: vi.fn().mockResolvedValue({ ok: true, value: capabilities }),
+    refreshProviders: vi.fn(),
+    selectProvider: vi.fn(),
+    startCodexLogin: vi.fn(),
+    cancelCodexLogin: vi.fn(),
+    logoutCodex: vi.fn(),
     updateSettings: vi.fn(),
     setApiKey: vi.fn(),
     deleteApiKey: vi.fn(),

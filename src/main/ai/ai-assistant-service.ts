@@ -4,6 +4,7 @@ import type {
   AiCapabilities,
   AiConversation,
   AiMessage,
+  AiProviderConnection,
   AiProviderSettings,
   AiStreamEvent,
   AiTaskAccepted,
@@ -13,6 +14,9 @@ import type { AiDataGateway } from './ai-data-gateway';
 import { normalizeAiBaseUrl } from './base-url-policy';
 import { MockAiProvider, type MockProviderOptions } from './mock-provider';
 import { OpenAiProvider } from './openai-provider';
+import { CodexProvider } from './codex-provider';
+import { normalizeCodexProxyUrl } from './codex-proxy-policy';
+import type { CodexAppServerClient } from './codex-app-server-client';
 import {
   AI_SYSTEM_INSTRUCTIONS,
   buildProviderMessages,
@@ -24,7 +28,9 @@ import type { AiSecretStore } from './secret-store';
 import { LibraryError } from '../library/errors';
 
 const DEFAULT_SETTINGS: AiProviderSettings = Object.freeze({
+  providerId: 'openai',
   baseUrl: 'https://api.openai.com/v1',
+  codexProxyUrl: null,
   model: 'gpt-5.6',
   temperature: 0.2,
   maxOutputTokens: 2_048,
@@ -48,8 +54,15 @@ interface ActiveRequest {
 
 export interface AiAssistantServiceOptions {
   readonly useMockProvider?: boolean;
+  readonly mockCodexStatus?: AiProviderConnection['status'];
   readonly mockProviderOptions?: MockProviderOptions;
   readonly providerFactory?: (apiKey: string) => AiProvider;
+  readonly codexClient?: CodexAppServerClient;
+}
+
+export interface AiProviderSession {
+  readonly provider: AiProvider;
+  readonly settings: AiProviderSettings;
 }
 
 export class AiAssistantService {
@@ -71,19 +84,80 @@ export class AiAssistantService {
   }
 
   public async getCapabilities(): Promise<AiCapabilities> {
+    const settings = await this.getSettings();
+    await this.options.codexClient?.configureProxy(settings.codexProxyUrl);
+    const credential = this.options.useMockProvider
+      ? { configured: true, persistence: 'unavailable' as const, backend: 'test-mock' }
+      : await this.secrets.getState();
+    const providers: readonly AiProviderConnection[] = this.options.useMockProvider
+      ? [mockConnection(), mockCodexConnection(this.options.mockCodexStatus)]
+      : [openAiConnection(credential.configured), await this.getCodexStatus()];
     return {
-      providerId: 'openai',
-      settings: await this.getSettings(),
-      credential: this.options.useMockProvider
-        ? { configured: true, persistence: 'unavailable', backend: 'test-mock' }
-        : await this.secrets.getState(),
+      providerId: settings.providerId,
+      settings,
+      credential,
+      providers,
+      gate: {
+        verdict: 'supported',
+        checkedAt: '2026-08-12',
+        integration: 'official-codex-app-server',
+      },
       selectionOnlyByDefault: true,
     };
   }
 
+  public refreshProviders(): Promise<AiCapabilities> {
+    return this.getCapabilities();
+  }
+
+  public async selectProvider(providerId: 'openai' | 'codex'): Promise<AiCapabilities> {
+    const capabilities = await this.getCapabilities();
+    const target = capabilities.providers.find(({ id }) => id === providerId);
+    if (!target?.available) {
+      throw new LibraryError('CONFLICT', `${target?.name ?? 'The provider'} is unavailable.`);
+    }
+    if (providerId === 'codex' && !target.configured) {
+      throw new LibraryError('PERMISSION_DENIED', 'Sign in with ChatGPT before selecting Codex.');
+    }
+    await this.data.saveAiSettings({
+      ...capabilities.settings,
+      providerId,
+      model: providerId === 'codex' ? defaultModel(target) : 'gpt-5.6',
+    });
+    return this.getCapabilities();
+  }
+
+  public async startCodexLogin() {
+    if (!this.options.codexClient) throw new LibraryError('NOT_FOUND', 'Codex is unavailable.');
+    return this.options.codexClient.startLogin();
+  }
+
+  public async cancelCodexLogin(loginId: string): Promise<AiCapabilities> {
+    if (!this.options.codexClient) throw new LibraryError('NOT_FOUND', 'Codex is unavailable.');
+    await this.options.codexClient.cancelLogin(loginId);
+    return this.getCapabilities();
+  }
+
+  public async logoutCodex(): Promise<AiCapabilities> {
+    if (!this.options.codexClient) throw new LibraryError('NOT_FOUND', 'Codex is unavailable.');
+    await this.options.codexClient.logout();
+    const settings = await this.getSettings();
+    if (settings.providerId === 'codex') {
+      await this.data.saveAiSettings({ ...settings, providerId: 'openai', model: 'gpt-5.6' });
+    }
+    return this.getCapabilities();
+  }
+
+  public async createProviderSession(): Promise<AiProviderSession> {
+    const [provider, settings] = await Promise.all([this.createProvider(), this.getSettings()]);
+    return { provider, settings };
+  }
+
   public async updateSettings(settings: AiProviderSettings): Promise<AiCapabilities> {
     const normalized = validateAiSettings(settings, 'INVALID_INPUT');
-    await this.data.saveAiSettings(normalized);
+    const current = await this.getSettings();
+    await this.data.saveAiSettings({ ...normalized, providerId: current.providerId });
+    await this.options.codexClient?.configureProxy(normalized.codexProxyUrl);
     return this.getCapabilities();
   }
 
@@ -136,6 +210,7 @@ export class AiAssistantService {
     emit: (event: AiStreamEvent) => void,
   ): Promise<AiTaskAccepted> {
     const settings = await this.getSettings();
+    await this.options.codexClient?.configureProxy(settings.codexProxyUrl);
     const provider = await this.createProvider();
     const requestedConversation = input.conversationId
       ? await this.findConversation(input.conversationId)
@@ -145,6 +220,7 @@ export class AiAssistantService {
     }
     const priorConversation =
       requestedConversation?.model === settings.model &&
+      requestedConversation.providerId === settings.providerId &&
       !(input.saveHistory && !requestedConversation.persisted)
         ? requestedConversation
         : null;
@@ -166,11 +242,17 @@ export class AiAssistantService {
             conversationId: priorConversation?.persisted ? priorConversation.id : null,
             paperId: input.paperId,
             title: conversationTitle(input),
-            providerId: 'openai',
+            providerId: settings.providerId,
             model: settings.model,
             userContent,
           })
-        : this.createEphemeralTurn(input, priorConversation, settings.model, userContent);
+        : this.createEphemeralTurn(
+            input,
+            priorConversation,
+            settings.providerId,
+            settings.model,
+            userContent,
+          );
     } catch (error) {
       if (priorConversation) this.lockedConversations.delete(priorConversation.id);
       throw error;
@@ -239,11 +321,22 @@ export class AiAssistantService {
       }
     }
     await Promise.allSettled(this.requestTasks.values());
+    await this.options.codexClient?.close();
   }
 
   private async createProvider(): Promise<AiProvider> {
     if (this.options.useMockProvider) {
       return new MockAiProvider(this.options.mockProviderOptions);
+    }
+    const settings = await this.getSettings();
+    if (settings.providerId === 'codex') {
+      if (!this.options.codexClient) throw new LibraryError('NOT_FOUND', 'Codex is unavailable.');
+      await this.options.codexClient.configureProxy(settings.codexProxyUrl);
+      const status = await this.options.codexClient.getConnectionStatus();
+      if (!status.configured) {
+        throw new LibraryError('PERMISSION_DENIED', 'Sign in with ChatGPT in Settings first.');
+      }
+      return new CodexProvider(this.options.codexClient);
     }
     const apiKey = await this.secrets.getApiKeyForMain();
     if (!apiKey) {
@@ -260,6 +353,25 @@ export class AiAssistantService {
     return stored ? validateAiSettings(stored, 'DATABASE_ERROR') : DEFAULT_SETTINGS;
   }
 
+  private async getCodexStatus(): Promise<AiProviderConnection> {
+    if (!this.options.codexClient) {
+      return {
+        id: 'codex',
+        name: 'ChatGPT account via Codex',
+        status: 'offline',
+        available: false,
+        configured: false,
+        version: null,
+        plan: null,
+        models: [],
+        capabilities: ['Official ChatGPT sign-in', 'Streaming', 'Cancellation'],
+        limitations: ['The official Codex runtime is unavailable'],
+        lastError: 'The official Codex runtime is unavailable.',
+      };
+    }
+    return this.options.codexClient.getConnectionStatus();
+  }
+
   private async findConversation(conversationId: string): Promise<AiConversation | null> {
     return (
       this.ephemeralConversations.get(conversationId) ??
@@ -270,6 +382,7 @@ export class AiAssistantService {
   private createEphemeralTurn(
     input: AiTaskInput,
     prior: AiConversation | null,
+    providerId: 'openai' | 'codex',
     model: string,
     userContent: string,
   ): { readonly conversation: AiConversation; readonly assistantMessageId: string } {
@@ -293,7 +406,7 @@ export class AiAssistantService {
       id: conversationId,
       paperId: input.paperId,
       title: prior?.title ?? conversationTitle(input),
-      providerId: 'openai',
+      providerId,
       model,
       messages: [...(prior?.messages ?? []), userMessage, assistantMessage],
       createdAt: prior?.createdAt ?? now.toISOString(),
@@ -412,7 +525,14 @@ export class AiAssistantService {
         active.cancelledByUser || (!active.timedOut && active.controller.signal.aborted);
       const timedOut = active.timedOut;
       const safeError = timedOut
-        ? { code: 'TIMEOUT' as const, message: 'The AI request timed out.', retryable: true }
+        ? {
+            code: 'TIMEOUT' as const,
+            message:
+              settings.providerId === 'codex'
+                ? 'The Codex service could not be reached before timeout. Check its local proxy setting and network access.'
+                : 'The AI request timed out.',
+            retryable: true,
+          }
         : cancelled
           ? {
               code: 'CANCELLED' as const,
@@ -549,10 +669,59 @@ function validateAiSettings(
     throw new LibraryError(errorCode, 'The saved AI provider settings are invalid.');
   }
   return {
+    providerId: settings.providerId,
     baseUrl: normalizeAiBaseUrl(settings.baseUrl),
+    codexProxyUrl: normalizeCodexProxyUrl(settings.codexProxyUrl),
     model,
     temperature: settings.temperature,
     maxOutputTokens: settings.maxOutputTokens,
     saveHistoryByDefault: settings.saveHistoryByDefault,
   };
+}
+
+function openAiConnection(configured: boolean): AiProviderConnection {
+  return {
+    id: 'openai',
+    name: 'OpenAI API',
+    status: configured ? 'connected' : 'not_configured',
+    available: true,
+    configured,
+    version: null,
+    plan: null,
+    models: [],
+    capabilities: ['Streaming', 'Cancellation', 'Custom HTTPS endpoint'],
+    limitations: ['Uses separate OpenAI Platform API billing', 'Requires an API key'],
+    lastError: null,
+  };
+}
+
+function mockConnection(): AiProviderConnection {
+  return { ...openAiConnection(true), version: 'test-mock' };
+}
+
+function mockCodexConnection(
+  status: AiProviderConnection['status'] = 'connected',
+): AiProviderConnection {
+  const connected = status === 'connected';
+  return {
+    id: 'codex',
+    name: 'ChatGPT account via Codex',
+    status,
+    available: true,
+    configured: connected,
+    version: 'test-mock',
+    plan: connected ? 'Plus fixture' : null,
+    models: connected ? [{ id: 'gpt-5.6-sol', displayName: 'GPT-5.6-Sol', isDefault: true }] : [],
+    capabilities: ['Official ChatGPT sign-in', 'Streaming', 'Cancellation'],
+    limitations: ['Text generation only; PaperMind exposes no Codex tools'],
+    lastError: null,
+  };
+}
+
+function defaultModel(connection: AiProviderConnection): string {
+  return (
+    connection.models.find(({ isDefault }) => isDefault)?.id ??
+    connection.models[0]?.id ??
+    'gpt-5.6-sol'
+  );
 }

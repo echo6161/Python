@@ -244,7 +244,7 @@ export class AiRepository {
   }
 
   private mapConversation(row: ConversationRow): AiConversation {
-    if (row.provider_id !== 'openai') {
+    if (row.provider_id !== 'openai' && row.provider_id !== 'codex') {
       throw new LibraryError('DATABASE_ERROR', 'The AI conversation provider is unsupported.');
     }
     const messages = this.database
@@ -288,7 +288,9 @@ export class AiRepository {
 
   private sanitizeSettings(settings: AiProviderSettings): AiProviderSettings {
     return {
+      providerId: settings.providerId,
       baseUrl: settings.baseUrl,
+      codexProxyUrl: settings.codexProxyUrl ?? null,
       model: settings.model,
       temperature: settings.temperature,
       maxOutputTokens: settings.maxOutputTokens,
@@ -300,7 +302,13 @@ export class AiRepository {
     if (!value || typeof value !== 'object') throw new Error('Expected an object.');
     const candidate = value as Record<string, unknown>;
     if (
+      (candidate.providerId !== undefined &&
+        candidate.providerId !== 'openai' &&
+        candidate.providerId !== 'codex') ||
       typeof candidate.baseUrl !== 'string' ||
+      (candidate.codexProxyUrl !== undefined &&
+        candidate.codexProxyUrl !== null &&
+        typeof candidate.codexProxyUrl !== 'string') ||
       typeof candidate.model !== 'string' ||
       typeof candidate.temperature !== 'number' ||
       typeof candidate.maxOutputTokens !== 'number' ||
@@ -309,7 +317,9 @@ export class AiRepository {
       throw new Error('AI settings have an invalid shape.');
     }
     return {
+      providerId: candidate.providerId === 'codex' ? 'codex' : 'openai',
       baseUrl: candidate.baseUrl,
+      codexProxyUrl: typeof candidate.codexProxyUrl === 'string' ? candidate.codexProxyUrl : null,
       model: candidate.model,
       temperature: candidate.temperature,
       maxOutputTokens: candidate.maxOutputTokens,

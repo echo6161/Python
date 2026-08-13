@@ -36,9 +36,21 @@ export class MockAiProvider implements AiProvider {
         selected = null;
       }
     }
-    const output = selected
-      ? `## Mock response\n\nSelection: ${selected}`
-      : 'Mock response for a question without paper context.';
+    const sources = [
+      ...(request.messages
+        .at(-1)
+        ?.content.matchAll(
+          /<source alias="([A-Z][A-Z0-9]+)" type="(paper|code|question|link)">/gu,
+        ) ?? []),
+    ].flatMap((match) => (match[1] && match[2] ? [{ alias: match[1], type: match[2] }] : []));
+    const paper = sources.find(({ type }) => type === 'paper');
+    const code = sources.find(({ type }) => type === 'code');
+    const first = sources[0];
+    const output = sources.length
+      ? `## Evidence summary\n\nThe selected evidence supports a bounded comparison across the Workspace.${paper ? ` The paper excerpt states the research mechanism [${paper.alias}].` : ''}${code ? ` The code excerpt shows the corresponding implementation surface [${code.alias}].` : ''}\n\n## Synthesis\n\nRead together, the sources connect the conceptual claim to an inspectable implementation without extending beyond the supplied excerpts${first ? ` [${first.alias}]` : ''}.\n\n## Limits\n\nThis answer uses only the selected bounded context and does not infer access to the full paper or repository.`
+      : selected
+        ? `## Mock response\n\nSelection: ${selected}`
+        : 'No selected sources were available, so the bounded context is insufficient.';
     for (const chunk of output.match(/[\s\S]{1,16}/gu) ?? []) {
       await wait(this.options.delayMs ?? 2, signal);
       yield { type: 'delta', delta: chunk };
@@ -53,6 +65,13 @@ export class MockAiProvider implements AiProvider {
 }
 
 async function wait(delayMs: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) {
+    throw new AiProviderError({
+      code: 'CANCELLED',
+      message: 'The AI request was cancelled.',
+      retryable: false,
+    });
+  }
   await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(resolve, delayMs);
     signal.addEventListener(

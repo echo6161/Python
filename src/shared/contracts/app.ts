@@ -8,6 +8,7 @@ import type { WorkspaceApi } from './workspace';
 import type { QuestionApi } from './question';
 import type { PaperCodeLinkApi } from './paper-code-link';
 import type { KnowledgeApi } from './knowledge';
+import type { ResearchChatApi } from './research-chat';
 
 export const IPC_CHANNELS = Object.freeze({
   appGetInfo: 'app:get-info',
@@ -36,4 +37,5 @@ export interface PaperMindApi {
   readonly question: QuestionApi;
   readonly paperCodeLink: PaperCodeLinkApi;
   readonly knowledge: KnowledgeApi;
+  readonly researchChat: ResearchChatApi;
 }

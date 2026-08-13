@@ -181,8 +181,9 @@ export function AiAssistantSidebar({
 
   const startDraft = async (saveHistory: boolean) => {
     if (!draft || !paperId) return;
-    if (!capabilities?.credential.configured) {
-      setError('Add an OpenAI API key in Settings before using AI tools.');
+    const activeProvider = capabilities?.providers.find(({ id }) => id === capabilities.providerId);
+    if (!activeProvider?.configured) {
+      setError('Connect the current AI provider in Settings before using AI tools.');
       closeDraft();
       return;
     }
@@ -284,7 +285,8 @@ export function AiAssistantSidebar({
   };
 
   const messages = conversation?.messages ?? [];
-  const isConfigured = capabilities?.credential.configured ?? false;
+  const activeProvider = capabilities?.providers.find(({ id }) => id === capabilities.providerId);
+  const isConfigured = activeProvider?.configured ?? false;
 
   return (
     <section
@@ -302,7 +304,7 @@ export function AiAssistantSidebar({
           </h2>
           <p className="mt-0.5 truncate text-xs text-zinc-500">
             {capabilities
-              ? `${capabilities.settings.model} · ${isConfigured ? 'Ready' : 'Not configured'}`
+              ? `${activeProvider?.name ?? 'AI provider'} · ${isConfigured ? 'Ready' : 'Not configured'}`
               : 'Loading provider status...'}
           </p>
         </div>
@@ -452,7 +454,11 @@ export function AiAssistantSidebar({
           apiConfigured={isConfigured}
           defaultSaveHistory={capabilities?.settings.saveHistoryByDefault ?? true}
           destinationHost={
-            capabilities ? new URL(capabilities.settings.baseUrl).hostname : 'AI provider'
+            capabilities?.providerId === 'codex'
+              ? 'ChatGPT via official Codex'
+              : capabilities
+                ? new URL(capabilities.settings.baseUrl).hostname
+                : 'AI provider'
           }
           history={messages}
           historyPersisted={conversation?.persisted ?? true}

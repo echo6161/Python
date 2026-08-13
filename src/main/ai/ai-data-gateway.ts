@@ -2,6 +2,7 @@ import type {
   AiConversation,
   AiMessage,
   AiMessageStatus,
+  AiProviderId,
   AiProviderSettings,
 } from '../../shared/contracts/ai';
 
@@ -11,7 +12,7 @@ export interface CreateAiTurnInput {
   readonly conversationId: string | null;
   readonly paperId: string;
   readonly title: string;
-  readonly providerId: 'openai';
+  readonly providerId: AiProviderId;
   readonly model: string;
   readonly userContent: string;
 }

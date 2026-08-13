@@ -15,6 +15,7 @@ import type {
 } from '../shared/contracts/code-intelligence';
 import type {
   AiCapabilities,
+  AiCodexLoginResult,
   AiChatGptBridgeInput,
   AiChatGptBridgeResult,
   AiConversation,
@@ -24,6 +25,7 @@ import type {
   AiTaskAccepted,
   AiTaskInput,
   AiProviderSettings,
+  AiProviderId,
 } from '../shared/contracts/ai';
 import type {
   ApiResult,
@@ -133,6 +135,17 @@ import type {
   RemoveKnowledgeIndexInput,
   RunKnowledgeIndexInput,
 } from '../shared/contracts/knowledge';
+import type {
+  OpenResearchChatCitationInput,
+  PrepareResearchChatContextInput,
+  ResearchChatContextPreview,
+  ResearchChatConversation,
+  ResearchChatIpcChannels,
+  ResearchChatStreamEvent,
+  ResearchChatTurnAccepted,
+  RetryResearchChatTurnInput,
+  StartResearchChatTurnInput,
+} from '../shared/contracts/research-chat';
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
@@ -184,6 +197,11 @@ const REPOSITORY_CHANNELS = {
 } satisfies RepositoryIpcChannels;
 const AI_CHANNELS = {
   getCapabilities: 'ai:get-capabilities',
+  refreshProviders: 'ai:refresh-providers',
+  selectProvider: 'ai:select-provider',
+  startCodexLogin: 'ai:codex-login-start',
+  cancelCodexLogin: 'ai:codex-login-cancel',
+  logoutCodex: 'ai:codex-logout',
   updateSettings: 'settings:update-ai',
   setApiKey: 'secrets:set-provider-key',
   deleteApiKey: 'secrets:delete-provider-key',
@@ -252,8 +270,50 @@ const KNOWLEDGE_CHANNELS = {
   openResult: 'knowledge:open-result',
   progress: 'knowledge:index-progress',
 } satisfies KnowledgeIpcChannels;
+const RESEARCH_CHAT_CHANNELS = {
+  getLatestConversation: 'research-chat:get-latest-conversation',
+  prepareContext: 'research-chat:prepare-context',
+  startTurn: 'research-chat:start-turn',
+  retryTurn: 'research-chat:retry-turn',
+  cancelTurn: 'research-chat:cancel-turn',
+  openCitation: 'research-chat:open-citation',
+  streamEvent: 'research-chat:stream-event',
+} satisfies ResearchChatIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
+  researchChat: Object.freeze({
+    getLatestConversation: (workspaceId: string, questionId: string | null) =>
+      ipcRenderer.invoke(RESEARCH_CHAT_CHANNELS.getLatestConversation, {
+        workspaceId,
+        questionId,
+      }) as Promise<ApiResult<ResearchChatConversation | null>>,
+    prepareContext: (input: PrepareResearchChatContextInput) =>
+      ipcRenderer.invoke(RESEARCH_CHAT_CHANNELS.prepareContext, input) as Promise<
+        ApiResult<ResearchChatContextPreview>
+      >,
+    startTurn: (input: StartResearchChatTurnInput) =>
+      ipcRenderer.invoke(RESEARCH_CHAT_CHANNELS.startTurn, input) as Promise<
+        ApiResult<ResearchChatTurnAccepted>
+      >,
+    retryTurn: (input: RetryResearchChatTurnInput) =>
+      ipcRenderer.invoke(RESEARCH_CHAT_CHANNELS.retryTurn, input) as Promise<
+        ApiResult<ResearchChatTurnAccepted>
+      >,
+    cancelTurn: (requestId: string) =>
+      ipcRenderer.invoke(RESEARCH_CHAT_CHANNELS.cancelTurn, requestId) as Promise<
+        ApiResult<{ readonly requestId: string }>
+      >,
+    openCitation: (input: OpenResearchChatCitationInput) =>
+      ipcRenderer.invoke(RESEARCH_CHAT_CHANNELS.openCitation, input) as Promise<
+        ApiResult<OpenKnowledgeResult>
+      >,
+    onStreamEvent: (listener: (event: ResearchChatStreamEvent) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, streamEvent: ResearchChatStreamEvent) =>
+        listener(streamEvent);
+      ipcRenderer.on(RESEARCH_CHAT_CHANNELS.streamEvent, handler);
+      return () => ipcRenderer.removeListener(RESEARCH_CHAT_CHANNELS.streamEvent, handler);
+    },
+  }),
   knowledge: Object.freeze({
     getStatus: (workspaceId: string) =>
       ipcRenderer.invoke(KNOWLEDGE_CHANNELS.getStatus, workspaceId) as Promise<
@@ -526,6 +586,20 @@ const api: PaperMindApi = Object.freeze({
   ai: Object.freeze({
     getCapabilities: () =>
       ipcRenderer.invoke(AI_CHANNELS.getCapabilities) as Promise<ApiResult<AiCapabilities>>,
+    refreshProviders: () =>
+      ipcRenderer.invoke(AI_CHANNELS.refreshProviders) as Promise<ApiResult<AiCapabilities>>,
+    selectProvider: (providerId: AiProviderId) =>
+      ipcRenderer.invoke(AI_CHANNELS.selectProvider, providerId) as Promise<
+        ApiResult<AiCapabilities>
+      >,
+    startCodexLogin: () =>
+      ipcRenderer.invoke(AI_CHANNELS.startCodexLogin) as Promise<ApiResult<AiCodexLoginResult>>,
+    cancelCodexLogin: (loginId: string) =>
+      ipcRenderer.invoke(AI_CHANNELS.cancelCodexLogin, loginId) as Promise<
+        ApiResult<AiCapabilities>
+      >,
+    logoutCodex: () =>
+      ipcRenderer.invoke(AI_CHANNELS.logoutCodex) as Promise<ApiResult<AiCapabilities>>,
     updateSettings: (settings: AiProviderSettings) =>
       ipcRenderer.invoke(AI_CHANNELS.updateSettings, settings) as Promise<
         ApiResult<AiCapabilities>

@@ -2,6 +2,11 @@ import type { ApiResult } from './library';
 
 export const AI_IPC_CHANNELS = Object.freeze({
   getCapabilities: 'ai:get-capabilities',
+  refreshProviders: 'ai:refresh-providers',
+  selectProvider: 'ai:select-provider',
+  startCodexLogin: 'ai:codex-login-start',
+  cancelCodexLogin: 'ai:codex-login-cancel',
+  logoutCodex: 'ai:codex-logout',
   updateSettings: 'settings:update-ai',
   setApiKey: 'secrets:set-provider-key',
   deleteApiKey: 'secrets:delete-provider-key',
@@ -20,6 +25,16 @@ export type AiTaskKind = 'translate' | 'explain' | 'term' | 'chat' | 'follow_up'
 export type AiMessageRole = 'user' | 'assistant';
 export type AiMessageStatus = 'streaming' | 'complete' | 'failed' | 'cancelled';
 export type AiCredentialPersistence = 'secure' | 'session_only' | 'unavailable';
+export type AiProviderId = 'openai' | 'codex';
+export type AiProviderConnectionStatus =
+  | 'connected'
+  | 'not_configured'
+  | 'offline'
+  | 'expired'
+  | 'version_mismatch'
+  | 'login_pending'
+  | 'login_cancelled'
+  | 'error';
 export type AiErrorCode =
   | 'AUTHENTICATION'
   | 'CANCELLED'
@@ -33,11 +48,39 @@ export type AiErrorCode =
   | 'TIMEOUT';
 
 export interface AiProviderSettings {
+  readonly providerId: AiProviderId;
   readonly baseUrl: string;
+  readonly codexProxyUrl: string | null;
   readonly model: string;
   readonly temperature: number;
   readonly maxOutputTokens: number;
   readonly saveHistoryByDefault: boolean;
+}
+
+export interface AiProviderModel {
+  readonly id: string;
+  readonly displayName: string;
+  readonly isDefault: boolean;
+}
+
+export interface AiProviderConnection {
+  readonly id: AiProviderId;
+  readonly name: string;
+  readonly status: AiProviderConnectionStatus;
+  readonly available: boolean;
+  readonly configured: boolean;
+  readonly version: string | null;
+  readonly plan: string | null;
+  readonly models: readonly AiProviderModel[];
+  readonly capabilities: readonly string[];
+  readonly limitations: readonly string[];
+  readonly lastError: string | null;
+}
+
+export interface AiIntegrationGate {
+  readonly verdict: 'supported';
+  readonly checkedAt: '2026-08-12';
+  readonly integration: 'official-codex-app-server';
 }
 
 export interface AiCredentialState {
@@ -47,10 +90,17 @@ export interface AiCredentialState {
 }
 
 export interface AiCapabilities {
-  readonly providerId: 'openai';
+  readonly providerId: AiProviderId;
   readonly settings: AiProviderSettings;
   readonly credential: AiCredentialState;
+  readonly providers: readonly AiProviderConnection[];
+  readonly gate: AiIntegrationGate;
   readonly selectionOnlyByDefault: true;
+}
+
+export interface AiCodexLoginResult {
+  readonly loginId: string;
+  readonly opened: boolean;
 }
 
 export interface AiSelectionScope {
@@ -115,7 +165,7 @@ export interface AiConversation {
   readonly id: string;
   readonly paperId: string;
   readonly title: string;
-  readonly providerId: 'openai';
+  readonly providerId: AiProviderId;
   readonly model: string;
   readonly messages: readonly AiMessage[];
   readonly createdAt: string;
@@ -159,6 +209,11 @@ export type AiStreamEvent =
 
 export interface AiApi {
   getCapabilities(): Promise<ApiResult<AiCapabilities>>;
+  refreshProviders(): Promise<ApiResult<AiCapabilities>>;
+  selectProvider(providerId: AiProviderId): Promise<ApiResult<AiCapabilities>>;
+  startCodexLogin(): Promise<ApiResult<AiCodexLoginResult>>;
+  cancelCodexLogin(loginId: string): Promise<ApiResult<AiCapabilities>>;
+  logoutCodex(): Promise<ApiResult<AiCapabilities>>;
   updateSettings(settings: AiProviderSettings): Promise<ApiResult<AiCapabilities>>;
   setApiKey(apiKey: string): Promise<ApiResult<AiCredentialState>>;
   deleteApiKey(): Promise<ApiResult<AiCredentialState>>;

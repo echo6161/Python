@@ -36,3 +36,5 @@ Thumbs.db
 .tools/
 .cache/
 .vite/
+.tmp-codex-probe/
+.tmp-codex-schema/

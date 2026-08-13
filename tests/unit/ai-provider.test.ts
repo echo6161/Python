@@ -37,7 +37,9 @@ const selectionTask: AiTaskInput = {
 };
 
 const settings = {
+  providerId: 'openai',
   baseUrl: 'https://api.openai.com/v1',
+  codexProxyUrl: null,
   model: 'gpt-5.6',
   temperature: 0.2,
   maxOutputTokens: 512,

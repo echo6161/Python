@@ -61,7 +61,7 @@ const provenanceBase = {
   snapshotIdentity: z.string().min(1).max(1_000),
   indexedAt: z.iso.datetime(),
 };
-const provenance = z.discriminatedUnion('sourceType', [
+export const knowledgeProvenanceSchema = z.discriminatedUnion('sourceType', [
   z
     .object({
       ...provenanceBase,
@@ -117,7 +117,7 @@ const searchResult = z
     semanticScore: z.number().min(0).max(1).nullable(),
     stale: z.boolean(),
     unavailableReason: z.string().max(500).nullable(),
-    provenance,
+    provenance: knowledgeProvenanceSchema,
   })
   .strict();
 export const knowledgeSearchPageSchema = z

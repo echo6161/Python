@@ -115,6 +115,30 @@
 - Confirmed `DELETE_LINK` removes only one PaperMind relationship. It has no Zotero,
   PDF, repository, source-file, Git, annotation, Question, or Evidence mutation path.
 
+## Phase 15 Official Codex Controls
+
+- PaperMind uses only the documented Codex App Server protocol over child-process
+  stdio. It does not embed or scrape ChatGPT, inspect browser profiles or cookies,
+  invoke private endpoints, or convert subscription access into an API key.
+- Codex receives a PaperMind-specific `CODEX_HOME`; credentials use the OS keyring.
+  Account email and login URLs are discarded in Main and never cross preload.
+- The child environment is allowlisted and excludes API-key/token variables.
+  Prompt history persistence, telemetry, update checks, MCP servers, agents, and
+  web search are disabled through strict runtime configuration.
+- Each turn uses an empty working directory, approval `never`, and the generated
+  `papermind-research-read-only` permission profile. The profile denies broad
+  filesystem and temporary-directory access, allows reads only for minimal runtime
+  paths and the isolated empty workspace, blocks local network binding, and allows
+  outbound network only to the official `chatgpt.com` Codex service. When direct
+  access is unavailable, the user may configure a credential-free HTTP proxy on
+  `127.0.0.1` or `::1`; Main validates it, persists only that non-secret endpoint,
+  and injects it only into the isolated Codex child. Renderer cannot set another
+  host, a remote proxy, proxy credentials, or a generic request URL. Any command,
+  file-change, MCP, dynamic-tool, collaboration, web-search, or image-view item
+  interrupts the turn.
+- IPC exposes fixed provider status/select/login/cancel/logout methods. Inputs
+  cannot carry a URL, host, port, cookie, credential, shell command, or path.
+
 - 文档状态：Phase 0 基线草案
 - 安全目标：限制不可信内容的权限，最小化外发数据，保护凭据，避免破坏用户文件和 Git 历史
 

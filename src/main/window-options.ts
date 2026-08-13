@@ -4,7 +4,7 @@ export function createWindowOptions(preloadPath: string): BrowserWindowConstruct
   return {
     width: 1440,
     height: 900,
-    minWidth: 1100,
+    minWidth: 1024,
     minHeight: 680,
     show: false,
     title: 'PaperMind',

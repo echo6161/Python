@@ -151,6 +151,33 @@ items and 500 persisted associations per Workspace.
 The Phase 7 verification panel has been superseded by the Phase 8 Workspace
 shell described below.
 
+## Phase 15 Official Codex Provider
+
+Phase 15 preserves the existing privileged path and adds no Renderer network or
+process authority:
+
+```text
+Research Chat / Settings
+  -> typed AI preload methods
+  -> whitelisted AI IPC with strict validation
+  -> AiAssistantService / AiGateway
+  -> CodexProvider
+  -> CodexAppServerClient
+  -> official Codex App Server over stdio
+```
+
+The Main process owns process lifecycle, request correlation, timeout, login,
+logout, model discovery, streaming, cancellation, and safe error mapping. The
+official browser login URL is validated and opened by Main; it never crosses
+preload. Generation is scoped to an empty directory with the generated
+`papermind-research-read-only` profile: broad filesystem and temporary-directory
+access is denied, only minimal runtime paths and the isolated workspace are
+readable, local network binding is blocked, outbound access is limited to the
+official `chatgpt.com` Codex service, and an optional credential-free loopback HTTP
+proxy is injected only into the Codex child. Approvals are `never`, and every tool
+item is rejected fail-closed. OpenAI API-key access remains a separate provider and
+billing model.
+
 ## Phase 8 Implemented Workspace UX
 
 Phase 8 makes Workspace the Renderer navigation root without changing the

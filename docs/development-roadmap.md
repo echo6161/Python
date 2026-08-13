@@ -4,6 +4,12 @@
 - Rule: start a phase only after explicit user approval; complete and report it before entering another phase
 - Product direction: AI-native Research Workspace and Research Control Plane
 
+> **Phase numbering update (2026-08-12):** Explicitly approved phase requests
+> supersede the older post-Phase-12 labels below: Phase 13 is Research Knowledge
+> Engine, Phase 14 is Research Chat & Context Builder, and Phase 15 is Official
+> ChatGPT Account / Codex Integration. No Phase 16 scope is approved by this
+> update.
+
 ## 1. Roadmap Principles
 
 1. `Workspace` is the future root domain. Existing Paper/PDF features remain a compatibility subsystem.
@@ -39,14 +45,10 @@ Phase 6  Zotero Bridge
   -> Phase 10 Code Intelligence
   -> Phase 11 Research Questions
   -> Phase 12 Paper <-> Code Links
-  -> Phase 13 Multi-Paper Knowledge Engine
-  -> Phase 14 ChatGPT/Codex Account Integration
-  -> Phase 15 Research Notes & Memory
-  -> Phase 16 Adaptive Reading Plan
-  -> Phase 17 Research Agent
-  -> Phase 18 Experiments
-  -> Phase 19 Research Graph & Cross-Tool Integration
-  -> Phase 20 V1 Hardening
+  -> Phase 13 Research Knowledge Engine
+  -> Phase 14 Research Chat & Context Builder
+  -> Phase 15 Official ChatGPT Account / Codex Integration
+  -> Future phases require a new explicit request
 ```
 
 The sequence is dependency-driven. A later phase may be planned but must not be implemented early.
@@ -161,47 +163,23 @@ cancel/recovery/remove/rebuild lifecycles are implemented. Embeddings remain an
 optional provider boundary; production defaults to offline keyword retrieval. No
 answer generation or Agent behavior is included.
 
-### Phase 14: ChatGPT/Codex Account Integration
+### Phase 14: Research Chat & Context Builder
 
-**Depends on:** established Workspace context and evidence boundaries.
+**Depends on:** Phase 13 retrieval and citation provenance.
 
-Evaluate and implement only supported account integration or explicit handoff mechanisms. Do not reuse ChatGPT Plus session cookies, automate the consumer UI, or claim Plus includes API access. Maintain the existing manual handoff as fallback.
+Build bounded Workspace/Question context packages and cited, streaming,
+cancellable Research Chat without tools or automatic domain writes.
 
-### Phase 15: Research Notes & Memory
+### Phase 15: Official ChatGPT Account / Codex Integration
 
-**Depends on:** questions, evidence, and provenance.
+**Depends on:** the existing AiGateway, ContextBuilder, Research Chat, provider
+settings, and credential/process boundaries.
 
-Add Workspace-owned research notes and durable memory, revision/provenance rules, and explicit non-overwriting Obsidian export/linking. Obsidian remains authoritative for the user's long-term external vault.
-
-### Phase 16: Adaptive Reading Plan
-
-**Depends on:** questions, multi-paper evidence, and memory.
-
-Generate and maintain reviewable reading priorities from open questions, coverage, recency, and user constraints. Plans are suggestions and never silently change source collections.
-
-### Phase 17: Research Agent
-
-**Depends on:** stable domain services, provenance, reading plans, and approval policy.
-
-Introduce an agent planner/executor using only typed, validated, bounded domain tools. Add budgets, cancellation, audit events, prompt-injection defenses, approval gates, and deterministic test harnesses. No generic shell, SQL, filesystem, or network tool.
-
-### Phase 18: Experiments
-
-**Depends on:** repository identity, questions, agent boundary, and provenance.
-
-Add experiment plans, metadata, code/environment references, run handoffs, results, evidence, and conclusions. Execution remains in authorized external tooling unless a later explicit sandbox design is approved.
-
-### Phase 19: Research Graph & Cross-Tool Integration
-
-**Depends on:** stable links across questions, papers, code, experiments, evidence, and memory.
-
-Materialize/query the research graph and add explicit cross-tool handoffs. This phase is not a general bidirectional sync engine and must respect each system's source of truth.
-
-### Phase 20: V1 Hardening
-
-**Depends on:** approved V1 feature set.
-
-Complete migration/recovery testing, performance/accessibility, privacy review, threat modeling, dependency/license audit, telemetry opt-in decision, cross-platform packaging/signing/notarization, update/release channels, rollback, and user documentation.
+Gate official public support first. The accepted Phase 15 path uses the documented
+Codex App Server in Main with official browser login, OS-keyring credentials,
+provider switching, streaming/cancellation, and an honest compact status UI. Web
+scraping, embedded ChatGPT login, cookies, private endpoints, and token extraction
+remain prohibited.
 
 ## 5. Dependency and Change Rules
 
@@ -210,9 +188,7 @@ Complete migration/recovery testing, performance/accessibility, privacy review, 
 - Phase 9 must establish immutable repository/revision references before code intelligence or evidence links depend on code.
 - Phase 11 precedes the knowledge engine so retrieval has an explicit research purpose.
 - Phase 13 precedes the Research Agent so the agent consumes tested evidence services rather than inventing retrieval behavior.
-- Phase 15 precedes adaptive plans and the agent so durable memory has explicit ownership and provenance.
-- Phase 17 precedes experiment orchestration so approval, audit, limits, and cancellation are established first.
-- Phase 19 waits until real relationship types exist; no speculative knowledge graph schema is added early.
+- Any phase after Phase 15 requires an explicit approved scope and dependency review.
 
 ## 6. Quality Gates for Every Implementation Phase
 

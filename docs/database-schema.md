@@ -207,6 +207,30 @@ cascades its derived Knowledge rows. Removing or rebuilding the index never dele
 a Zotero item/PDF, repository/source file, Question, Evidence, Paper-Code Link, or
 legacy Paper. See [research-knowledge-engine.md](./research-knowledge-engine.md).
 
+## Research Chat migration
+
+Migration `0010-research-chat.ts` is forward-only and creates:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Workspace conversation | `research_chat_conversations` | Workspace-bound, optional Question-bound conversation with fixed provider/model identity and timestamps |
+| Message | `research_chat_messages` | User/assistant content, streaming terminal state, bounded safe error, provider accounting, and retry lineage |
+| Turn context audit | `research_chat_contexts` | Exact query, finite scope, retrieval version/mode, budget, deduplication/truncation counts, and timestamp for one assistant attempt |
+| Sent source snapshot | `research_chat_context_sources` | Ordered `S1`-style alias, Phase 13 chunk ID, bounded snippet/citation, score, stale state, and exact provenance sent for that attempt |
+
+The tables are separate from legacy paper-scoped AI conversations. The bounded
+source rows are historical request snapshots for audit and retry, not current
+Zotero/Git authority. Workspace deletion cascades only PaperMind-owned chat data.
+No API key, provider credential, PDF, repository file, tool call, or automatic
+Question/Link/Plan/Memory write is stored. See
+[research-chat-context-builder.md](./research-chat-context-builder.md).
+
+Migration `0011-ai-provider-selection.ts` adds the constrained
+`generation_provider_id` column to Workspace conversations. It defaults existing
+rows to `openai` and records `openai` or `codex` for new turns without rebuilding
+the parent table or disturbing message/context foreign keys. Credentials and
+account identity remain outside SQLite.
+
 Conversation text is local plaintext content and may include a user-approved selected excerpt. A per-request opt-out keeps that turn entirely in memory. API keys and encrypted credential blobs are never accepted by this repository and are stored outside the library through the Main-process Secret Store.
 
 ## Import transaction boundary

@@ -7,6 +7,7 @@ import { READER_IPC_CHANNELS } from '../../src/shared/contracts/reader';
 import { ZOTERO_IPC_CHANNELS } from '../../src/shared/contracts/zotero';
 import { WORKSPACE_IPC_CHANNELS } from '../../src/shared/contracts/workspace';
 import { KNOWLEDGE_IPC_CHANNELS } from '../../src/shared/contracts/knowledge';
+import { RESEARCH_CHAT_IPC_CHANNELS } from '../../src/shared/contracts/research-chat';
 
 describe('IPC contract', () => {
   it('contains only fixed application, library, reader, and AI channels', () => {
@@ -44,6 +45,11 @@ describe('IPC contract', () => {
     expect(Object.isFrozen(READER_IPC_CHANNELS)).toBe(true);
     expect(AI_IPC_CHANNELS).toEqual({
       getCapabilities: 'ai:get-capabilities',
+      refreshProviders: 'ai:refresh-providers',
+      selectProvider: 'ai:select-provider',
+      startCodexLogin: 'ai:codex-login-start',
+      cancelCodexLogin: 'ai:codex-login-cancel',
+      logoutCodex: 'ai:codex-logout',
       updateSettings: 'settings:update-ai',
       setApiKey: 'secrets:set-provider-key',
       deleteApiKey: 'secrets:delete-provider-key',
@@ -91,5 +97,15 @@ describe('IPC contract', () => {
       progress: 'knowledge:index-progress',
     });
     expect(Object.isFrozen(KNOWLEDGE_IPC_CHANNELS)).toBe(true);
+    expect(RESEARCH_CHAT_IPC_CHANNELS).toEqual({
+      getLatestConversation: 'research-chat:get-latest-conversation',
+      prepareContext: 'research-chat:prepare-context',
+      startTurn: 'research-chat:start-turn',
+      retryTurn: 'research-chat:retry-turn',
+      cancelTurn: 'research-chat:cancel-turn',
+      openCitation: 'research-chat:open-citation',
+      streamEvent: 'research-chat:stream-event',
+    });
+    expect(Object.isFrozen(RESEARCH_CHAT_IPC_CHANNELS)).toBe(true);
   });
 });

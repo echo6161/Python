@@ -11,7 +11,10 @@ import { writePdfFixture, writeStructuredPdfFixture } from '../helpers/pdf-fixtu
 
 const execFileAsync = promisify(execFile);
 
-function electronEnvironment(libraryRoot: string): Record<string, string> {
+function electronEnvironment(
+  libraryRoot: string,
+  extraEnvironment: Readonly<Record<string, string>> = {},
+): Record<string, string> {
   const environment: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined) {
@@ -23,15 +26,19 @@ function electronEnvironment(libraryRoot: string): Record<string, string> {
   environment.PAPERMIND_USER_DATA_ROOT = path.join(libraryRoot, '.electron-user-data');
   environment.PAPERMIND_AI_PROVIDER = 'mock';
   environment.PAPERMIND_AI_MOCK_DELAY_MS = '50';
+  Object.assign(environment, extraEnvironment);
   delete environment.ELECTRON_RUN_AS_NODE;
   return environment;
 }
 
-async function launch(libraryRoot: string): Promise<ElectronApplication> {
+async function launch(
+  libraryRoot: string,
+  extraEnvironment: Readonly<Record<string, string>> = {},
+): Promise<ElectronApplication> {
   // The managed test host cannot initialize Chromium's Windows process sandbox.
   return electron.launch({
     args: ['.', '--disable-gpu', '--disable-gpu-sandbox', '--no-sandbox'],
-    env: electronEnvironment(libraryRoot),
+    env: electronEnvironment(libraryRoot, extraEnvironment),
   });
 }
 
@@ -884,14 +891,152 @@ test('renders dense responsive Workspace Knowledge results and provenance', asyn
       const overflow = await window.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
         scrollWidth: document.documentElement.scrollWidth,
+        compact: globalThis.matchMedia('(max-width: 1279px)').matches,
       }));
       expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+      expect(overflow.compact).toBe(viewport.width < 1280);
       await window.screenshot({
         path: testInfo.outputPath(
           `knowledge-mixed-${String(viewport.width)}x${String(viewport.height)}.png`,
         ),
       });
     }
+  } finally {
+    await electronApp.close();
+  }
+});
+
+test('renders responsive Research Chat with bounded paper and code citations', async ({
+  browserName,
+}, testInfo) => {
+  expect(browserName).toBe('chromium');
+  const libraryRoot = testInfo.outputPath('PaperMind Research Chat Library');
+  let electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await window.getByRole('button', { name: 'Create Workspace', exact: true }).first().click();
+    const dialog = window.getByRole('dialog', { name: 'Create Workspace' });
+    await dialog.getByLabel('Name').fill('Research Chat Workspace');
+    await dialog.getByLabel('Research goal').fill('Audit clipping evidence across paper and code');
+    await dialog.getByRole('button', { name: 'Create Workspace' }).click();
+  } finally {
+    await electronApp.close();
+  }
+
+  seedKnowledgeFixture(path.join(libraryRoot, 'library.sqlite3'));
+  electronApp = await launch(libraryRoot);
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await window.setViewportSize({ width: 1280, height: 800 });
+    await window.getByRole('tab', { name: 'Chat' }).click();
+    await window.getByRole('checkbox', { name: 'Questions' }).uncheck({ force: true });
+    await window.getByRole('checkbox', { name: 'Links' }).uncheck({ force: true });
+    await window
+      .getByLabel('Ask Research Chat')
+      .fill('How does clipping in the paper correspond to code?');
+    await window.getByRole('button', { name: 'Review sources' }).click();
+    await expect(window.getByText('PPO clipping objective')).toBeVisible();
+    await expect(window.getByText('src/policy.ts', { exact: true })).toBeVisible();
+    await window.getByRole('button', { name: 'Send' }).click();
+    await expect(window.getByRole('button', { name: 'Cancel' })).toBeVisible();
+    await window.screenshot({ path: testInfo.outputPath('research-chat-streaming-1280x800.png') });
+    await expect(window.getByText('## Evidence summary')).toBeVisible();
+    await expect(window.getByRole('button', { name: /Open citation S1/u }).first()).toBeVisible();
+    await expect(window.getByRole('button', { name: /Open citation S2/u })).toBeVisible();
+
+    for (const viewport of [
+      { width: 1536, height: 1024 },
+      { width: 1280, height: 800 },
+      { width: 1024, height: 768 },
+    ]) {
+      await window.setViewportSize(viewport);
+      await expect(window.getByLabel('Ask Research Chat')).toBeVisible();
+      await expect(window.getByText('## Evidence summary')).toBeVisible();
+      await expect(window.getByRole('button', { name: /Open citation S1/u }).first()).toBeVisible();
+      if (viewport.width < 1280) {
+        await expect(
+          window.getByRole('complementary', { name: 'Research Chat sources' }),
+        ).not.toHaveClass(/is-open/u);
+        await window.waitForTimeout(250);
+      }
+      const overflow = await window.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        compact: globalThis.matchMedia('(max-width: 1279px)').matches,
+      }));
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+      expect(overflow.compact).toBe(viewport.width < 1280);
+      await window.screenshot({
+        path: testInfo.outputPath(
+          `research-chat-complete-${String(viewport.width)}x${String(viewport.height)}.png`,
+        ),
+      });
+    }
+  } finally {
+    await electronApp.close();
+  }
+});
+
+test('renders responsive official provider status and recovery states', async ({
+  browserName,
+}, testInfo) => {
+  expect(browserName).toBe('chromium');
+  const screenshotDirectory = path.resolve('docs/screenshots/phase-15');
+  await mkdir(screenshotDirectory, { recursive: true });
+
+  let electronApp = await launch(testInfo.outputPath('PaperMind Provider Connected'));
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await window.getByRole('button', { name: 'Settings' }).first().click();
+    await expect(window.getByRole('heading', { name: 'AI providers' })).toBeVisible();
+    await expect(window.getByText('Official integration supported')).toBeVisible();
+    await expect(window.getByText('ChatGPT account via Codex')).toBeVisible();
+
+    for (const viewport of [
+      { width: 1536, height: 1024 },
+      { width: 1280, height: 800 },
+      { width: 1024, height: 768 },
+    ]) {
+      await window.setViewportSize(viewport);
+      await expect(window.getByText('Current provider')).toBeVisible();
+      const overflow = await window.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      }));
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+      await window.screenshot({
+        path: path.join(
+          screenshotDirectory,
+          `provider-connected-${String(viewport.width)}x${String(viewport.height)}.png`,
+        ),
+      });
+    }
+  } finally {
+    await electronApp.close();
+  }
+
+  electronApp = await launch(testInfo.outputPath('PaperMind Provider Session Expired'), {
+    PAPERMIND_CODEX_MOCK_STATUS: 'expired',
+  });
+  try {
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+    await window.setViewportSize({ width: 1280, height: 800 });
+    await window.getByRole('button', { name: 'Settings' }).first().click();
+    await window.getByRole('button', { name: 'Configure' }).click();
+    await expect(window.getByTestId('provider-status-codex').first()).toContainText(
+      'Session expired',
+    );
+    await expect(window.getByRole('button', { name: 'Sign in with ChatGPT' })).toBeVisible();
+    await expect(
+      window.getByText(/never reads browser cookies, ChatGPT web storage/u),
+    ).toBeVisible();
+    await window.screenshot({
+      path: path.join(screenshotDirectory, 'provider-session-expired-1280x800.png'),
+    });
   } finally {
     await electronApp.close();
   }

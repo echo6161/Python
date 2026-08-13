@@ -11,6 +11,8 @@ import { codeIntelligenceMigration } from './0006-code-intelligence';
 import { researchQuestionsEvidenceMigration } from './0007-research-questions-evidence';
 import { paperCodeLinksMigration } from './0008-paper-code-links';
 import { knowledgeEngineMigration } from './0009-knowledge-engine';
+import { researchChatMigration } from './0010-research-chat';
+import { aiProviderSelectionMigration } from './0011-ai-provider-selection';
 import type { DatabaseMigration } from './types';
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
@@ -23,6 +25,8 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   researchQuestionsEvidenceMigration,
   paperCodeLinksMigration,
   knowledgeEngineMigration,
+  researchChatMigration,
+  aiProviderSelectionMigration,
 ];
 
 interface AppliedMigration {

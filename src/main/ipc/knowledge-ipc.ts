@@ -6,6 +6,7 @@ import type { ApiResult } from '../../shared/contracts/library';
 import { createConsoleLogger } from '../../shared/logging';
 import type { KnowledgeEngineService } from '../knowledge/knowledge-engine-service';
 import { LibraryError, toApiError } from '../library/errors';
+import { toZoteroApiError, ZoteroBridgeError } from '../zotero/zotero-errors';
 import { ensureTrustedSender } from './library-ipc';
 import {
   knowledgeCancelSchema,
@@ -23,29 +24,29 @@ const logger = createConsoleLogger('knowledge-ipc');
 
 export function registerKnowledgeIpcHandlers(service: KnowledgeEngineService): void {
   ipcMain.handle(KNOWLEDGE_IPC_CHANNELS.getStatus, (event, input: unknown) =>
-    invokeKnowledge(event, knowledgeIndexStatusSchema, () =>
+    invokeKnowledgeValidated(event, knowledgeIndexStatusSchema, () =>
       service.getStatus(knowledgeWorkspaceIdSchema.parse(input)),
     ),
   );
   ipcMain.handle(KNOWLEDGE_IPC_CHANNELS.runIndex, (event, input: unknown) =>
-    invokeKnowledge(event, knowledgeIndexStatusSchema, () =>
+    invokeKnowledgeValidated(event, knowledgeIndexStatusSchema, () =>
       service.runIndex(runKnowledgeIndexSchema.parse(input)),
     ),
   );
   ipcMain.handle(KNOWLEDGE_IPC_CHANNELS.cancelIndex, (event, input: unknown) =>
-    invokeKnowledge(event, knowledgeCancelSchema, async () => {
+    invokeKnowledgeValidated(event, knowledgeCancelSchema, async () => {
       const requestId = runKnowledgeIndexSchema.shape.requestId.parse(input);
       return { requestId, cancelled: await service.cancelIndex(requestId) };
     }),
   );
   ipcMain.handle(KNOWLEDGE_IPC_CHANNELS.removeIndex, (event, input: unknown) =>
-    invokeKnowledge(event, zRemoved, async () => {
+    invokeKnowledgeValidated(event, zRemoved, async () => {
       const parsed = removeKnowledgeIndexSchema.parse(input);
       return { removed: await service.removeIndex(parsed.workspaceId) };
     }),
   );
   ipcMain.handle(KNOWLEDGE_IPC_CHANNELS.search, (event, input: unknown) =>
-    invokeKnowledge(event, knowledgeSearchPageSchema, () => {
+    invokeKnowledgeValidated(event, knowledgeSearchPageSchema, () => {
       const parsed = knowledgeSearchInputSchema.parse(input);
       return service.search({
         workspaceId: parsed.workspaceId,
@@ -57,7 +58,7 @@ export function registerKnowledgeIpcHandlers(service: KnowledgeEngineService): v
     }),
   );
   ipcMain.handle(KNOWLEDGE_IPC_CHANNELS.openResult, (event, input: unknown) =>
-    invokeKnowledge(event, openKnowledgeResultOutputSchema, () => {
+    invokeKnowledgeValidated(event, openKnowledgeResultOutputSchema, () => {
       const parsed = openKnowledgeResultSchema.parse(input);
       return service.openResult(parsed.workspaceId, parsed.chunkId);
     }),
@@ -66,7 +67,7 @@ export function registerKnowledgeIpcHandlers(service: KnowledgeEngineService): v
 
 const zRemoved = z.object({ removed: z.boolean() }).strict();
 
-async function invokeKnowledge<T>(
+export async function invokeKnowledgeValidated<T>(
   event: IpcMainInvokeEvent,
   outputSchema: ZodType<T>,
   operation: () => Promise<T>,
@@ -75,13 +76,16 @@ async function invokeKnowledge<T>(
     ensureTrustedSender(event);
     return { ok: true, value: outputSchema.parse(await operation()) };
   } catch (error) {
-    const safe = toApiError(
-      error instanceof LibraryError || !(error instanceof Error)
-        ? error
-        : new LibraryError('INVALID_INPUT', 'The Knowledge request could not be completed.', {
-            cause: error,
-          }),
-    );
+    const safe =
+      error instanceof ZoteroBridgeError
+        ? toZoteroApiError(error)
+        : toApiError(
+            error instanceof LibraryError || !(error instanceof Error)
+              ? error
+              : new LibraryError('INVALID_INPUT', 'The Knowledge request could not be completed.', {
+                  cause: error,
+                }),
+          );
     logger.warn('Knowledge request rejected', { code: safe.code });
     return { ok: false, error: safe };
   }

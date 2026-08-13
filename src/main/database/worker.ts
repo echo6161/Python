@@ -79,6 +79,35 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.getAiConversation(request.payload.conversationId);
     case 'markStaleAiMessages':
       return database.markStaleAiMessages();
+    case 'createResearchChatTurn':
+      return database.createResearchChatTurn(request.payload);
+    case 'finalizeResearchChatMessage':
+      return database.finalizeResearchChatMessage(request.payload);
+    case 'getLatestResearchChatConversation':
+      return database.getLatestResearchChatConversation(
+        request.payload.workspaceId,
+        request.payload.questionId,
+      );
+    case 'getResearchChatConversation':
+      return database.getResearchChatConversation(
+        request.payload.workspaceId,
+        request.payload.conversationId,
+      );
+    case 'getResearchChatTurn':
+      return database.getResearchChatTurn(
+        request.payload.workspaceId,
+        request.payload.conversationId,
+        request.payload.assistantMessageId,
+      );
+    case 'getResearchChatCitationSource':
+      return database.getResearchChatCitationSource(
+        request.payload.workspaceId,
+        request.payload.conversationId,
+        request.payload.messageId,
+        request.payload.alias,
+      );
+    case 'markStaleResearchChatMessages':
+      return database.markStaleResearchChatMessages();
     case 'createWorkspace':
       return database.createWorkspace(request.payload);
     case 'getWorkspace':
