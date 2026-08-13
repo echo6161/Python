@@ -271,6 +271,37 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       );
     case 'getKnowledgeChunk':
       return database.getKnowledgeChunk(request.payload.workspaceId, request.payload.chunkId);
+    case 'listResearchContent':
+      return database.listResearchContent(request.payload);
+    case 'getResearchContent':
+      return database.getResearchContent(request.payload);
+    case 'createResearchContent':
+      return database.createResearchContent(request.payload);
+    case 'updateResearchContent':
+      return database.updateResearchContent(request.payload);
+    case 'deleteResearchContent':
+      return database.deleteResearchContent(request.payload);
+    case 'addResearchReference':
+      return database.addResearchReference(request.payload);
+    case 'removeResearchReference':
+      return database.removeResearchReference(request.payload);
+    case 'getResearchReference':
+      return database.getResearchReference(request.payload);
+    case 'createResearchMemoryProposal':
+      return database.createResearchMemoryProposal(request.payload);
+    case 'listResearchMemoryProposals':
+      return database.listResearchMemoryProposals(request.payload.workspaceId);
+    case 'getResearchMemoryProposal':
+      return database.getResearchMemoryProposal(
+        request.payload.workspaceId,
+        request.payload.proposalId,
+      );
+    case 'confirmResearchMemoryProposal':
+      return database.confirmResearchMemoryProposal(request.payload);
+    case 'rejectResearchMemoryProposal':
+      return database.rejectResearchMemoryProposal(request.payload);
+    case 'recordResearchExport':
+      return database.recordResearchExport(request.payload);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

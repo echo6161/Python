@@ -55,6 +55,18 @@ import type {
   CreateResearchChatTurnInput,
   FinalizeResearchChatMessageInput,
 } from '../research-chat/research-chat-data-gateway';
+import type {
+  ConfirmStoredProposalInput,
+  CreateStoredProposalInput,
+  RecordResearchExportInput,
+  StoredResearchReferenceInput,
+} from '../research-memory/research-memory-data-gateway';
+import type {
+  CreateResearchContentInput,
+  ListResearchContentInput,
+  ResearchContentIdentityInput,
+  UpdateResearchContentInput,
+} from '../../shared/contracts/research-memory';
 
 export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'listPapers'; readonly payload: PaperListQuery }
@@ -551,6 +563,80 @@ export type DatabaseWorkerRequest =
       readonly id: number;
       readonly method: 'getKnowledgeChunk';
       readonly payload: { readonly workspaceId: string; readonly chunkId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listResearchContent';
+      readonly payload: ListResearchContentInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getResearchContent';
+      readonly payload: ResearchContentIdentityInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createResearchContent';
+      readonly payload: CreateResearchContentInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateResearchContent';
+      readonly payload: UpdateResearchContentInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'deleteResearchContent';
+      readonly payload: ResearchContentIdentityInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'addResearchReference';
+      readonly payload: StoredResearchReferenceInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'removeResearchReference' | 'getResearchReference';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly ownerType: 'memory' | 'note';
+        readonly ownerId: string;
+        readonly referenceId: string;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createResearchMemoryProposal';
+      readonly payload: CreateStoredProposalInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listResearchMemoryProposals';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getResearchMemoryProposal';
+      readonly payload: { readonly workspaceId: string; readonly proposalId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'confirmResearchMemoryProposal';
+      readonly payload: ConfirmStoredProposalInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'rejectResearchMemoryProposal';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly proposalId: string;
+        readonly rowVersion: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'recordResearchExport';
+      readonly payload: RecordResearchExportInput;
     }
   | {
       readonly id: number;

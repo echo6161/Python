@@ -127,6 +127,25 @@ import type {
   ResearchChatConversation,
   ResearchChatMessage,
 } from '../../shared/contracts/research-chat';
+import type {
+  CreateResearchContentInput,
+  ListResearchContentInput,
+  ResearchContentIdentityInput,
+  ResearchContentItem,
+  ResearchContentSummary,
+  ResearchMemoryEntry,
+  ResearchMemoryProposal,
+  ResearchReference,
+  UpdateResearchContentInput,
+} from '../../shared/contracts/research-memory';
+import type {
+  ConfirmStoredProposalInput,
+  CreateStoredProposalInput,
+  RecordResearchExportInput,
+  ResearchMemoryDataGateway,
+  StoredResearchReferenceInput,
+} from '../research-memory/research-memory-data-gateway';
+import { ResearchMemoryRepository } from './research-memory-repository';
 
 export class LibraryDatabase
   implements
@@ -138,7 +157,8 @@ export class LibraryDatabase
     QuestionDataGateway,
     PaperCodeLinkDataGateway,
     KnowledgeDataGateway,
-    ResearchChatDataGateway
+    ResearchChatDataGateway,
+    ResearchMemoryDataGateway
 {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
@@ -151,6 +171,7 @@ export class LibraryDatabase
   private paperCodeLinkRepository: PaperCodeLinkRepository;
   private knowledgeRepository: KnowledgeRepository;
   private researchChatRepository: ResearchChatRepository;
+  private researchMemoryRepository: ResearchMemoryRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -164,6 +185,7 @@ export class LibraryDatabase
     this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
     this.knowledgeRepository = new KnowledgeRepository(this.database);
     this.researchChatRepository = new ResearchChatRepository(this.database);
+    this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -661,6 +683,83 @@ export class LibraryDatabase
     return this.run(() => this.knowledgeRepository.getChunk(workspaceId, chunkId));
   }
 
+  public listResearchContent(
+    input: ListResearchContentInput,
+  ): Promise<readonly ResearchContentSummary[]> {
+    return this.run(() => this.researchMemoryRepository.list(input));
+  }
+
+  public getResearchContent(
+    input: ResearchContentIdentityInput,
+  ): Promise<ResearchContentItem | null> {
+    return this.run(() => this.researchMemoryRepository.get(input));
+  }
+
+  public createResearchContent(input: CreateResearchContentInput): Promise<ResearchContentItem> {
+    return this.run(() => this.researchMemoryRepository.create(input));
+  }
+
+  public updateResearchContent(input: UpdateResearchContentInput): Promise<ResearchContentItem> {
+    return this.run(() => this.researchMemoryRepository.update(input));
+  }
+
+  public deleteResearchContent(input: ResearchContentIdentityInput): Promise<boolean> {
+    return this.run(() => this.researchMemoryRepository.delete(input));
+  }
+
+  public addResearchReference(input: StoredResearchReferenceInput): Promise<ResearchReference> {
+    return this.run(() => this.researchMemoryRepository.addReference(input));
+  }
+
+  public removeResearchReference(
+    input: Parameters<ResearchMemoryDataGateway['removeResearchReference']>[0],
+  ): Promise<boolean> {
+    return this.run(() => this.researchMemoryRepository.removeReference(input));
+  }
+
+  public getResearchReference(
+    input: Parameters<ResearchMemoryDataGateway['getResearchReference']>[0],
+  ): Promise<ResearchReference | null> {
+    return this.run(() => this.researchMemoryRepository.getReference(input));
+  }
+
+  public createResearchMemoryProposal(
+    input: CreateStoredProposalInput,
+  ): Promise<ResearchMemoryProposal> {
+    return this.run(() => this.researchMemoryRepository.createProposal(input));
+  }
+
+  public listResearchMemoryProposals(
+    workspaceId: string,
+  ): Promise<readonly ResearchMemoryProposal[]> {
+    return this.run(() => this.researchMemoryRepository.listProposals(workspaceId));
+  }
+
+  public getResearchMemoryProposal(
+    workspaceId: string,
+    proposalId: string,
+  ): Promise<ResearchMemoryProposal | null> {
+    return this.run(() => this.researchMemoryRepository.getProposal(workspaceId, proposalId));
+  }
+
+  public confirmResearchMemoryProposal(
+    input: ConfirmStoredProposalInput,
+  ): Promise<ResearchMemoryEntry> {
+    return this.run(() => this.researchMemoryRepository.confirmProposal(input));
+  }
+
+  public rejectResearchMemoryProposal(input: {
+    readonly workspaceId: string;
+    readonly proposalId: string;
+    readonly rowVersion: number;
+  }): Promise<ResearchMemoryProposal> {
+    return this.run(() => this.researchMemoryRepository.rejectProposal(input));
+  }
+
+  public recordResearchExport(input: RecordResearchExportInput): Promise<void> {
+    return this.run(() => this.researchMemoryRepository.recordExport(input));
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -707,6 +806,7 @@ export class LibraryDatabase
         this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
         this.knowledgeRepository = new KnowledgeRepository(this.database);
         this.researchChatRepository = new ResearchChatRepository(this.database);
+        this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -721,6 +821,7 @@ export class LibraryDatabase
         this.paperCodeLinkRepository = new PaperCodeLinkRepository(this.database);
         this.knowledgeRepository = new KnowledgeRepository(this.database);
         this.researchChatRepository = new ResearchChatRepository(this.database);
+        this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
         throw error;
       }
 

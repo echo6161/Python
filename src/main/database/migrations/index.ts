@@ -13,6 +13,7 @@ import { paperCodeLinksMigration } from './0008-paper-code-links';
 import { knowledgeEngineMigration } from './0009-knowledge-engine';
 import { researchChatMigration } from './0010-research-chat';
 import { aiProviderSelectionMigration } from './0011-ai-provider-selection';
+import { notesResearchMemoryMigration } from './0012-notes-research-memory';
 import type { DatabaseMigration } from './types';
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
@@ -27,6 +28,7 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   knowledgeEngineMigration,
   researchChatMigration,
   aiProviderSelectionMigration,
+  notesResearchMemoryMigration,
 ];
 
 interface AppliedMigration {

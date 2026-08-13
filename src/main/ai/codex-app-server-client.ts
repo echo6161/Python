@@ -522,7 +522,27 @@ function resolveCodexExecutable(): string {
       : process.platform === 'darwin'
         ? `${process.arch === 'arm64' ? 'aarch64' : 'x86_64'}-apple-darwin`
         : `${process.arch === 'arm64' ? 'aarch64' : 'x86_64'}-unknown-linux-musl`;
-  return path.join(root, triple, 'bin', process.platform === 'win32' ? 'codex.exe' : 'codex');
+  return mapAsarUnpackedExecutable(
+    path.join(root, triple, 'bin', process.platform === 'win32' ? 'codex.exe' : 'codex'),
+  );
+}
+
+export function mapAsarUnpackedExecutable(
+  executablePath: string,
+  resourcesPath = process.resourcesPath,
+): string {
+  const asarRoot = path.resolve(resourcesPath, 'app.asar');
+  const resolvedExecutable = path.resolve(executablePath);
+  const relativePath = path.relative(asarRoot, resolvedExecutable);
+  if (
+    relativePath === '' ||
+    relativePath.startsWith(`..${path.sep}`) ||
+    relativePath === '..' ||
+    path.isAbsolute(relativePath)
+  ) {
+    return executablePath;
+  }
+  return path.join(resourcesPath, 'app.asar.unpacked', relativePath);
 }
 
 export function sanitizedCodexEnvironment(

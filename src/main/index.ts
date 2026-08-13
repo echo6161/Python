@@ -53,6 +53,10 @@ import { KnowledgeEngineService } from './knowledge/knowledge-engine-service';
 import { WorkspaceKnowledgeSourceProvider } from './knowledge/workspace-knowledge-source-provider';
 import { ResearchChatService } from './research-chat/research-chat-service';
 import { registerResearchChatIpcHandlers } from './ipc/research-chat-ipc';
+import { registerResearchMemoryIpcHandlers } from './ipc/research-memory-ipc';
+import { ResearchMemoryService } from './research-memory/research-memory-service';
+import { AiMemoryProposalGenerator } from './research-memory/memory-proposal-generator';
+import { MemoryExportService } from './research-memory/memory-export-service';
 
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
@@ -238,6 +242,28 @@ async function initializeLibrary(): Promise<void> {
   );
   await researchChat.initialize();
   registerResearchChatIpcHandlers(researchChat);
+  const memoryExports = new MemoryExportService(databaseClient.researchMemory, {
+    chooseVaultDirectory: async () => {
+      const owner = mainWindow;
+      const options: Electron.OpenDialogOptions = {
+        title: 'Select Obsidian Vault',
+        buttonLabel: 'Use this Vault',
+        properties: ['openDirectory'],
+      };
+      const result = owner
+        ? await dialog.showOpenDialog(owner, options)
+        : await dialog.showOpenDialog(options);
+      return result.canceled ? null : (result.filePaths[0] ?? null);
+    },
+  });
+  registerResearchMemoryIpcHandlers(
+    new ResearchMemoryService(
+      databaseClient.researchMemory,
+      knowledge,
+      new AiMemoryProposalGenerator(aiAssistant),
+      memoryExports,
+    ),
+  );
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()

@@ -231,6 +231,26 @@ rows to `openai` and records `openai` or `codex` for new turns without rebuildin
 the parent table or disturbing message/context foreign keys. Credentials and
 account identity remain outside SQLite.
 
+## Notes and Research Memory migration
+
+Migration `0012-notes-research-memory.ts` is forward-only and creates:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Workspace Note | `workspace_notes` | Workspace-bound user-authored Markdown with finite draft/active/archived status, timestamps, and optimistic row version |
+| Research Memory | `research_memory_entries` | Workspace-bound durable Markdown with draft/confirmed/retired status, manual or confirmed-AI provenance, confirmation time, and optimistic row version |
+| AI proposal | `research_memory_proposals` | Separate pending/confirmed/rejected review record with source Note, user reason, provider/model, review time, and confirmed Memory link |
+| Typed reference | `research_memory_references` | Exactly one Note, Memory, or proposal owner; bounded source snapshot copied from a Workspace Knowledge chunk; finite paper/code/question/link type and display order |
+| Export audit | `research_memory_exports` | PaperMind owner, Vault display name, relative generated path, SHA-256 content hash, and export time; no absolute path or Vault content |
+
+Pending proposals are not Memory entries. Confirmation creates the durable Memory,
+copies the reviewed bounded source snapshots, and marks the proposal confirmed in
+one transaction. Rejecting a proposal creates no Memory. Deleting a Note or Memory
+cascades only its PaperMind-owned references; it never deletes a Zotero item/PDF,
+Git repository/file, Question, Evidence, Link, Knowledge source, or exported file.
+The legacy Phase 1-5 `notes` table remains unchanged. See
+[notes-research-memory.md](./notes-research-memory.md).
+
 Conversation text is local plaintext content and may include a user-approved selected excerpt. A per-request opt-out keeps that turn entirely in memory. API keys and encrypted credential blobs are never accepted by this repository and are stored outside the library through the Main-process Secret Store.
 
 ## Import transaction boundary

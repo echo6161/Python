@@ -23,7 +23,7 @@ import { zoteroCreatorNames, zoteroPdfLabel } from '../../workspace/zotero-displ
 import { WorkspaceDetailsEditor } from './WorkspaceDetailsEditor';
 
 export type WorkspaceTab =
-  'chat' | 'code' | 'knowledge' | 'links' | 'overview' | 'papers' | 'questions';
+  'chat' | 'code' | 'knowledge' | 'links' | 'notes' | 'overview' | 'papers' | 'questions';
 
 interface WorkspaceDashboardProps {
   readonly busy: boolean;
@@ -306,7 +306,7 @@ function LinkSummary({ links }: { readonly links: readonly PaperCodeLink[] | nul
 }
 
 function FutureTools() {
-  const items = ['Reading Plan', 'Notes', 'Experiments', 'Graph'] as const;
+  const items = ['Reading Plan', 'Experiments', 'Graph'] as const;
   return (
     <section aria-labelledby="future-tools-heading" className="workspace-panel overflow-hidden">
       <header className="flex h-11 items-center border-b border-zinc-800 px-4">

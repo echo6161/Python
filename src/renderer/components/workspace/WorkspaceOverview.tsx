@@ -29,6 +29,7 @@ import { WorkspacePaperSection } from './WorkspacePaperSection';
 import { WorkspaceQuestionSection } from './question/WorkspaceQuestionSection';
 import { WorkspaceKnowledgePage } from './knowledge/WorkspaceKnowledgePage';
 import { WorkspaceResearchChatPage } from './research-chat/WorkspaceResearchChatPage';
+import { WorkspaceResearchMemoryPage } from './research-memory/WorkspaceResearchMemoryPage';
 
 interface WorkspaceOverviewProps {
   readonly busy: boolean;
@@ -46,10 +47,10 @@ const activeTabs = [
   { id: 'links', icon: Link2, label: 'Links' },
   { id: 'knowledge', icon: Search, label: 'Knowledge' },
   { id: 'chat', icon: MessageSquareText, label: 'Chat' },
+  { id: 'notes', icon: NotebookPen, label: 'Notes' },
 ] as const;
 
 const futureTabs = [
-  { icon: NotebookPen, label: 'Notes' },
   { icon: TestTube2, label: 'Experiments' },
   { icon: Network, label: 'Graph' },
 ] as const;
@@ -174,7 +175,7 @@ export function WorkspaceOverview({
         ) : (
           <div
             className={
-              activeTab === 'knowledge' || activeTab === 'chat'
+              activeTab === 'knowledge' || activeTab === 'chat' || activeTab === 'notes'
                 ? 'h-full'
                 : 'mx-auto w-full max-w-[1600px] p-4 xl:p-5'
             }
@@ -187,6 +188,9 @@ export function WorkspaceOverview({
               <WorkspaceKnowledgePage workspace={workspace} onNavigate={setActiveTab} />
             ) : null}
             {activeTab === 'chat' ? <WorkspaceResearchChatPage workspace={workspace} /> : null}
+            {activeTab === 'notes' ? (
+              <WorkspaceResearchMemoryPage workspace={workspace} onNavigate={setActiveTab} />
+            ) : null}
           </div>
         )}
       </section>

@@ -660,3 +660,46 @@ button:not(:disabled) {
     margin-left: 2rem;
   }
 }
+
+.research-memory-grid {
+  min-width: 0;
+}
+
+@media (max-width: 1535px) {
+  .research-memory-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .research-memory-list,
+  .research-memory-sources {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 35;
+    width: min(21rem, calc(100vw - 4rem));
+    box-shadow: 0 0 40px rgb(0 0 0 / 55%);
+    transition: transform 160ms ease;
+  }
+
+  .research-memory-list {
+    left: 0;
+    transform: translateX(-105%);
+  }
+
+  .research-memory-sources {
+    right: 0;
+    transform: translateX(105%);
+  }
+
+  .research-memory-list.research-memory-drawer-open,
+  .research-memory-sources.research-memory-drawer-open {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 1099px) {
+  .research-memory-page textarea[aria-label='Markdown body'] {
+    padding: 0.75rem;
+    font-size: 0.8125rem;
+  }
+}

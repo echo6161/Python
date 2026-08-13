@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CodexAppServerClient,
+  mapAsarUnpackedExecutable,
   sanitizedCodexEnvironment,
   type CodexAppServerTransport,
   type CodexRpcMessage,
@@ -61,6 +62,36 @@ function respondConnected(message: CodexRpcMessage, emit: (value: CodexRpcMessag
 }
 
 describe('CodexAppServerClient', () => {
+  it('maps a bundled Codex executable from app.asar to the unpacked runtime', () => {
+    const resourcesPath = path.resolve('release', 'win-unpacked', 'resources');
+    const bundledPath = path.join(
+      resourcesPath,
+      'app.asar',
+      'node_modules',
+      '@openai',
+      'codex-win32-x64',
+      'vendor',
+      'x86_64-pc-windows-msvc',
+      'bin',
+      'codex.exe',
+    );
+    expect(mapAsarUnpackedExecutable(bundledPath, resourcesPath)).toBe(
+      path.join(
+        resourcesPath,
+        'app.asar.unpacked',
+        'node_modules',
+        '@openai',
+        'codex-win32-x64',
+        'vendor',
+        'x86_64-pc-windows-msvc',
+        'bin',
+        'codex.exe',
+      ),
+    );
+    const developmentPath = path.resolve('node_modules', '@openai', 'codex.exe');
+    expect(mapAsarUnpackedExecutable(developmentPath, resourcesPath)).toBe(developmentPath);
+  });
+
   it('accepts only credential-free loopback HTTP proxy URLs', () => {
     expect(normalizeCodexProxyUrl(' http://127.0.0.1:7897/ ')).toBe('http://127.0.0.1:7897');
     expect(normalizeCodexProxyUrl('http://[::1]:7897')).toBe('http://[::1]:7897');

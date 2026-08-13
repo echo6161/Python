@@ -146,6 +146,26 @@ import type {
   RetryResearchChatTurnInput,
   StartResearchChatTurnInput,
 } from '../shared/contracts/research-chat';
+import type {
+  AddResearchReferenceInput,
+  ConfirmResearchMemoryExportInput,
+  CreateResearchContentInput,
+  CreateResearchMemoryProposalInput,
+  DeleteResearchContentInput,
+  ListResearchContentInput,
+  RejectResearchMemoryProposalInput,
+  ResearchContentIdentityInput,
+  ResearchContentItem,
+  ResearchContentSummary,
+  ResearchMemoryEntry,
+  ResearchMemoryExportPreview,
+  ResearchMemoryExportResult,
+  ResearchMemoryIpcChannels,
+  ResearchMemoryProposal,
+  ResearchReferenceIdentityInput,
+  ReviewResearchMemoryProposalInput,
+  UpdateResearchContentInput,
+} from '../shared/contracts/research-memory';
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
@@ -279,8 +299,95 @@ const RESEARCH_CHAT_CHANNELS = {
   openCitation: 'research-chat:open-citation',
   streamEvent: 'research-chat:stream-event',
 } satisfies ResearchChatIpcChannels;
+const RESEARCH_MEMORY_CHANNELS = {
+  list: 'research-memory:list',
+  get: 'research-memory:get',
+  create: 'research-memory:create',
+  update: 'research-memory:update',
+  delete: 'research-memory:delete',
+  searchSources: 'research-memory:search-sources',
+  addReference: 'research-memory:add-reference',
+  removeReference: 'research-memory:remove-reference',
+  openReference: 'research-memory:open-reference',
+  createProposal: 'research-memory:create-proposal',
+  listProposals: 'research-memory:list-proposals',
+  confirmProposal: 'research-memory:confirm-proposal',
+  rejectProposal: 'research-memory:reject-proposal',
+  prepareExport: 'research-memory:prepare-export',
+  confirmExport: 'research-memory:confirm-export',
+} satisfies ResearchMemoryIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
+  researchMemory: Object.freeze({
+    list: (input: ListResearchContentInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.list, input) as Promise<
+        ApiResult<readonly ResearchContentSummary[]>
+      >,
+    get: (input: ResearchContentIdentityInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.get, input) as Promise<
+        ApiResult<ResearchContentItem>
+      >,
+    create: (input: CreateResearchContentInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.create, input) as Promise<
+        ApiResult<ResearchContentItem>
+      >,
+    update: (input: UpdateResearchContentInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.update, input) as Promise<
+        ApiResult<ResearchContentItem>
+      >,
+    delete: (input: DeleteResearchContentInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.delete, input) as Promise<
+        ApiResult<{ readonly id: string }>
+      >,
+    searchSources: (input: { readonly workspaceId: string; readonly query: string }) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.searchSources, input) as Promise<
+        ApiResult<
+          readonly {
+            readonly chunkId: string;
+            readonly sourceType: 'code' | 'link' | 'paper' | 'question';
+            readonly title: string;
+            readonly citation: string;
+            readonly snippet: string;
+          }[]
+        >
+      >,
+    addReference: (input: AddResearchReferenceInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.addReference, input) as Promise<
+        ApiResult<ResearchContentItem>
+      >,
+    removeReference: (input: ResearchReferenceIdentityInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.removeReference, input) as Promise<
+        ApiResult<ResearchContentItem>
+      >,
+    openReference: (input: ResearchReferenceIdentityInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.openReference, input) as Promise<
+        ApiResult<OpenKnowledgeResult>
+      >,
+    createProposal: (input: CreateResearchMemoryProposalInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.createProposal, input) as Promise<
+        ApiResult<ResearchMemoryProposal>
+      >,
+    listProposals: (workspaceId: string) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.listProposals, workspaceId) as Promise<
+        ApiResult<readonly ResearchMemoryProposal[]>
+      >,
+    confirmProposal: (input: ReviewResearchMemoryProposalInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.confirmProposal, input) as Promise<
+        ApiResult<ResearchMemoryEntry>
+      >,
+    rejectProposal: (input: RejectResearchMemoryProposalInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.rejectProposal, input) as Promise<
+        ApiResult<ResearchMemoryProposal>
+      >,
+    prepareExport: (input: ResearchContentIdentityInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.prepareExport, input) as Promise<
+        ApiResult<ResearchMemoryExportPreview | null>
+      >,
+    confirmExport: (input: ConfirmResearchMemoryExportInput) =>
+      ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.confirmExport, input) as Promise<
+        ApiResult<ResearchMemoryExportResult>
+      >,
+  }),
   researchChat: Object.freeze({
     getLatestConversation: (workspaceId: string, questionId: string | null) =>
       ipcRenderer.invoke(RESEARCH_CHAT_CHANNELS.getLatestConversation, {

@@ -119,6 +119,24 @@ import type {
   ResearchChatConversation,
   ResearchChatMessage,
 } from '../../shared/contracts/research-chat';
+import type {
+  CreateResearchContentInput,
+  ListResearchContentInput,
+  ResearchContentIdentityInput,
+  ResearchContentItem,
+  ResearchContentSummary,
+  ResearchMemoryEntry,
+  ResearchMemoryProposal,
+  ResearchReference,
+  UpdateResearchContentInput,
+} from '../../shared/contracts/research-memory';
+import type {
+  ConfirmStoredProposalInput,
+  CreateStoredProposalInput,
+  RecordResearchExportInput,
+  ResearchMemoryDataGateway,
+  StoredResearchReferenceInput,
+} from '../research-memory/research-memory-data-gateway';
 
 interface PendingCall {
   readonly resolve: (value: unknown) => void;
@@ -133,6 +151,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly paperCodeLink: PaperCodeLinkDataGateway;
   public readonly knowledge: KnowledgeDataGateway;
   public readonly researchChat: ResearchChatDataGateway;
+  public readonly researchMemory: ResearchMemoryDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -150,6 +169,9 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
     );
     this.knowledge = new KnowledgeWorkerGateway((method, payload) => this.call(method, payload));
     this.researchChat = new ResearchChatWorkerGateway((method, payload) =>
+      this.call(method, payload),
+    );
+    this.researchMemory = new ResearchMemoryWorkerGateway((method, payload) =>
       this.call(method, payload),
     );
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
@@ -771,5 +793,91 @@ class ResearchChatWorkerGateway implements ResearchChatDataGateway {
 
   public markStaleResearchChatMessages(): Promise<number> {
     return this.call('markStaleResearchChatMessages', null);
+  }
+}
+
+class ResearchMemoryWorkerGateway implements ResearchMemoryDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public listResearchContent(
+    input: ListResearchContentInput,
+  ): Promise<readonly ResearchContentSummary[]> {
+    return this.call('listResearchContent', input);
+  }
+
+  public getResearchContent(
+    input: ResearchContentIdentityInput,
+  ): Promise<ResearchContentItem | null> {
+    return this.call('getResearchContent', input);
+  }
+
+  public createResearchContent(input: CreateResearchContentInput): Promise<ResearchContentItem> {
+    return this.call('createResearchContent', input);
+  }
+
+  public updateResearchContent(input: UpdateResearchContentInput): Promise<ResearchContentItem> {
+    return this.call('updateResearchContent', input);
+  }
+
+  public deleteResearchContent(input: ResearchContentIdentityInput): Promise<boolean> {
+    return this.call('deleteResearchContent', input);
+  }
+
+  public addResearchReference(input: StoredResearchReferenceInput): Promise<ResearchReference> {
+    return this.call('addResearchReference', input);
+  }
+
+  public removeResearchReference(
+    input: Parameters<ResearchMemoryDataGateway['removeResearchReference']>[0],
+  ): Promise<boolean> {
+    return this.call('removeResearchReference', input);
+  }
+
+  public getResearchReference(
+    input: Parameters<ResearchMemoryDataGateway['getResearchReference']>[0],
+  ): Promise<ResearchReference | null> {
+    return this.call('getResearchReference', input);
+  }
+
+  public createResearchMemoryProposal(
+    input: CreateStoredProposalInput,
+  ): Promise<ResearchMemoryProposal> {
+    return this.call('createResearchMemoryProposal', input);
+  }
+
+  public listResearchMemoryProposals(
+    workspaceId: string,
+  ): Promise<readonly ResearchMemoryProposal[]> {
+    return this.call('listResearchMemoryProposals', { workspaceId });
+  }
+
+  public getResearchMemoryProposal(
+    workspaceId: string,
+    proposalId: string,
+  ): Promise<ResearchMemoryProposal | null> {
+    return this.call('getResearchMemoryProposal', { workspaceId, proposalId });
+  }
+
+  public confirmResearchMemoryProposal(
+    input: ConfirmStoredProposalInput,
+  ): Promise<ResearchMemoryEntry> {
+    return this.call('confirmResearchMemoryProposal', input);
+  }
+
+  public rejectResearchMemoryProposal(input: {
+    readonly workspaceId: string;
+    readonly proposalId: string;
+    readonly rowVersion: number;
+  }): Promise<ResearchMemoryProposal> {
+    return this.call('rejectResearchMemoryProposal', input);
+  }
+
+  public async recordResearchExport(input: RecordResearchExportInput): Promise<void> {
+    await this.call('recordResearchExport', input);
   }
 }
