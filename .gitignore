@@ -14,6 +14,7 @@ pnpm-debug.log*
 # Build and test output
 dist/
 release/
+release-phase17-fix/
 coverage/
 test-results/
 playwright-report/

@@ -108,7 +108,7 @@ describe('WorkspaceView', () => {
     expect(screen.getByText('Stored PDF')).toBeDefined();
     expect(await screen.findByRole('heading', { name: 'Repositories' })).toBeDefined();
     expect(await screen.findByRole('heading', { name: 'Research Questions' })).toBeDefined();
-    for (const section of ['Reading Plan', 'Experiments']) {
+    for (const section of ['Experiments']) {
       expect(screen.getAllByLabelText(`${section}: Coming later`).length).toBeGreaterThan(0);
     }
     expect(
@@ -278,6 +278,9 @@ function installApi(overrides: Partial<PaperMindApi['workspace']>) {
         delete: vi.fn(),
         openPaper: vi.fn(),
         openCode: vi.fn(),
+      },
+      researchPlan: {
+        getActive: vi.fn().mockResolvedValue({ ok: true, value: null }),
       },
     },
   });

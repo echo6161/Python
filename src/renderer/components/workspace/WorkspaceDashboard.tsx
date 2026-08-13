@@ -8,11 +8,13 @@ import {
   Link2,
   LockKeyhole,
   RefreshCw,
+  ListChecks,
 } from 'lucide-react';
 
 import type { PaperCodeLink } from '../../../shared/contracts/paper-code-link';
 import type { ResearchQuestion } from '../../../shared/contracts/question';
 import type { WorkspaceRepositoryRef } from '../../../shared/contracts/repository';
+import type { ResearchPlan } from '../../../shared/contracts/research-plan';
 import type {
   UpdateWorkspaceInput,
   Workspace,
@@ -23,7 +25,7 @@ import { zoteroCreatorNames, zoteroPdfLabel } from '../../workspace/zotero-displ
 import { WorkspaceDetailsEditor } from './WorkspaceDetailsEditor';
 
 export type WorkspaceTab =
-  'chat' | 'code' | 'knowledge' | 'links' | 'notes' | 'overview' | 'papers' | 'questions';
+  'chat' | 'code' | 'knowledge' | 'links' | 'notes' | 'overview' | 'papers' | 'plan' | 'questions';
 
 interface WorkspaceDashboardProps {
   readonly busy: boolean;
@@ -37,6 +39,7 @@ interface DashboardData {
   readonly papers: readonly WorkspaceZoteroPaper[];
   readonly questions: readonly ResearchQuestion[];
   readonly repositories: readonly WorkspaceRepositoryRef[];
+  readonly plan: ResearchPlan | null;
 }
 
 const emptyData: DashboardData = {
@@ -44,6 +47,7 @@ const emptyData: DashboardData = {
   papers: [],
   questions: [],
   repositories: [],
+  plan: null,
 };
 
 export function WorkspaceDashboard({
@@ -58,24 +62,26 @@ export function WorkspaceDashboard({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [papers, repositories, questions, links] = await Promise.all([
+      const [papers, repositories, questions, links, plan] = await Promise.all([
         window.paperMind.workspace.listPapers(workspace.id),
         window.paperMind.repository.listForWorkspace(workspace.id),
         window.paperMind.question.list(workspace.id),
         window.paperMind.paperCodeLink.listForWorkspace(workspace.id),
+        window.paperMind.researchPlan.getActive(workspace.id),
       ]);
-      const failed = [papers, repositories, questions, links].find((result) => !result.ok);
+      const failed = [papers, repositories, questions, links, plan].find((result) => !result.ok);
       if (failed) {
         setData(emptyData);
         setError(failed.error.message);
         return;
       }
-      if (!papers.ok || !repositories.ok || !questions.ok || !links.ok) return;
+      if (!papers.ok || !repositories.ok || !questions.ok || !links.ok || !plan.ok) return;
       setData({
         links: links.value,
         papers: papers.value,
         questions: questions.value,
         repositories: repositories.value,
+        plan: plan.value,
       });
     } catch (caught) {
       rendererLogger.error('Unable to load Workspace dashboard', caught);
@@ -119,6 +125,14 @@ export function WorkspaceDashboard({
             onAction={() => onNavigate('questions')}
           >
             <QuestionSummary questions={data?.questions ?? null} />
+          </SummaryPanel>
+          <SummaryPanel
+            action="Open Plan"
+            icon={ListChecks}
+            title="Research Plan"
+            onAction={() => onNavigate('plan')}
+          >
+            <PlanSummary plan={data?.plan ?? null} />
           </SummaryPanel>
 
           <SummaryPanel
@@ -214,6 +228,40 @@ function QuestionSummary({
   );
 }
 
+function PlanSummary({ plan }: { readonly plan: ResearchPlan | null }) {
+  if (!plan) return <Empty>No active Research Plan yet.</Empty>;
+  const next = plan.tasks.find(({ id }) => id === plan.progress.nextTaskId);
+  return (
+    <div>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-2xl font-semibold tabular-nums text-zinc-100">
+            {plan.progress.percent}%
+          </p>
+          <p className="text-xs text-zinc-500">
+            {plan.progress.completed}/{plan.progress.eligible} tasks completed
+          </p>
+        </div>
+        <span className="text-xs text-amber-400">{plan.progress.blocked} blocked</span>
+      </div>
+      <div
+        className="mt-3 h-1.5 bg-zinc-800"
+        role="progressbar"
+        aria-valuenow={plan.progress.percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div className="h-full bg-sky-500" style={{ width: `${String(plan.progress.percent)}%` }} />
+      </div>
+      <p className="mt-4 text-xs uppercase text-zinc-500">Next action</p>
+      <p className="mt-1 line-clamp-2 text-sm font-medium text-zinc-200">
+        {next?.title ?? 'No unblocked task is ready.'}
+      </p>
+      <p className="mt-2 text-[11px] text-zinc-600">Task completion only, not research validity.</p>
+    </div>
+  );
+}
+
 function PaperSummary({ papers }: { readonly papers: readonly WorkspaceZoteroPaper[] | null }) {
   if (papers === null) return <Loading label="Loading Zotero papers..." />;
   if (papers.length === 0)
@@ -306,7 +354,7 @@ function LinkSummary({ links }: { readonly links: readonly PaperCodeLink[] | nul
 }
 
 function FutureTools() {
-  const items = ['Reading Plan', 'Experiments', 'Graph'] as const;
+  const items = ['Experiments', 'Graph'] as const;
   return (
     <section aria-labelledby="future-tools-heading" className="workspace-panel overflow-hidden">
       <header className="flex h-11 items-center border-b border-zinc-800 px-4">

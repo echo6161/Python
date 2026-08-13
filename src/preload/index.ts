@@ -166,6 +166,27 @@ import type {
   ReviewResearchMemoryProposalInput,
   UpdateResearchContentInput,
 } from '../shared/contracts/research-memory';
+import type {
+  AddPlanReferenceInput,
+  CompletePlanTaskInput,
+  CreatePlanTaskInput,
+  CreateResearchPlanInput,
+  GenerateResearchPlanProposalInput,
+  PlanReferenceCandidate,
+  PlanTaskIdentityInput,
+  RemovePlanReferenceInput,
+  ReorderPlanTasksInput,
+  ResearchPlan,
+  ResearchPlanHistoryEntry,
+  ResearchPlanIpcChannels,
+  ResearchPlanProposal,
+  ReviewResearchPlanProposalInput,
+  SetPlanDependenciesInput,
+  SetPlanTaskStatusInput,
+  UpdatePlanTaskInput,
+  UpdateResearchPlanInput,
+  UpdateResearchPlanProposalInput,
+} from '../shared/contracts/research-plan';
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
@@ -316,8 +337,114 @@ const RESEARCH_MEMORY_CHANNELS = {
   prepareExport: 'research-memory:prepare-export',
   confirmExport: 'research-memory:confirm-export',
 } satisfies ResearchMemoryIpcChannels;
+const RESEARCH_PLAN_CHANNELS = {
+  getActive: 'research-plan:get-active',
+  create: 'research-plan:create',
+  update: 'research-plan:update',
+  retire: 'research-plan:retire',
+  delete: 'research-plan:delete',
+  createTask: 'research-plan:create-task',
+  updateTask: 'research-plan:update-task',
+  deleteTask: 'research-plan:delete-task',
+  reorderTasks: 'research-plan:reorder-tasks',
+  setTaskStatus: 'research-plan:set-task-status',
+  completeTask: 'research-plan:complete-task',
+  setDependencies: 'research-plan:set-dependencies',
+  listReferenceCandidates: 'research-plan:list-reference-candidates',
+  addReference: 'research-plan:add-reference',
+  removeReference: 'research-plan:remove-reference',
+  listHistory: 'research-plan:list-history',
+  generateProposal: 'research-plan:generate-proposal',
+  updateProposal: 'research-plan:update-proposal',
+  confirmProposal: 'research-plan:confirm-proposal',
+  rejectProposal: 'research-plan:reject-proposal',
+} satisfies ResearchPlanIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
+  researchPlan: Object.freeze({
+    getActive: (workspaceId: string) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.getActive, workspaceId) as Promise<
+        ApiResult<ResearchPlan | null>
+      >,
+    create: (input: CreateResearchPlanInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.create, input) as Promise<ApiResult<ResearchPlan>>,
+    update: (input: UpdateResearchPlanInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.update, input) as Promise<ApiResult<ResearchPlan>>,
+    retire: (input: {
+      readonly workspaceId: string;
+      readonly planId: string;
+      readonly rowVersion: number;
+    }) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.retire, input) as Promise<ApiResult<ResearchPlan>>,
+    delete: (input: {
+      readonly workspaceId: string;
+      readonly planId: string;
+      readonly confirmation: 'DELETE_RESEARCH_PLAN';
+    }) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.delete, input) as Promise<
+        ApiResult<{ readonly id: string }>
+      >,
+    createTask: (input: CreatePlanTaskInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.createTask, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    updateTask: (input: UpdatePlanTaskInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.updateTask, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    deleteTask: (input: PlanTaskIdentityInput & { readonly confirmation: 'DELETE_PLAN_TASK' }) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.deleteTask, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    reorderTasks: (input: ReorderPlanTasksInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.reorderTasks, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    setTaskStatus: (input: SetPlanTaskStatusInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.setTaskStatus, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    completeTask: (input: CompletePlanTaskInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.completeTask, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    setDependencies: (input: SetPlanDependenciesInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.setDependencies, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    listReferenceCandidates: (workspaceId: string) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.listReferenceCandidates, workspaceId) as Promise<
+        ApiResult<readonly PlanReferenceCandidate[]>
+      >,
+    addReference: (input: AddPlanReferenceInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.addReference, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    removeReference: (input: RemovePlanReferenceInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.removeReference, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    listHistory: (input: { readonly workspaceId: string; readonly planId: string }) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.listHistory, input) as Promise<
+        ApiResult<readonly ResearchPlanHistoryEntry[]>
+      >,
+    generateProposal: (input: GenerateResearchPlanProposalInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.generateProposal, input) as Promise<
+        ApiResult<ResearchPlanProposal>
+      >,
+    updateProposal: (input: UpdateResearchPlanProposalInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.updateProposal, input) as Promise<
+        ApiResult<ResearchPlanProposal>
+      >,
+    confirmProposal: (input: ReviewResearchPlanProposalInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.confirmProposal, input) as Promise<
+        ApiResult<ResearchPlan>
+      >,
+    rejectProposal: (input: ReviewResearchPlanProposalInput) =>
+      ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.rejectProposal, input) as Promise<
+        ApiResult<ResearchPlanProposal>
+      >,
+  }),
   researchMemory: Object.freeze({
     list: (input: ListResearchContentInput) =>
       ipcRenderer.invoke(RESEARCH_MEMORY_CHANNELS.list, input) as Promise<

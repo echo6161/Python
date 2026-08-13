@@ -14,6 +14,7 @@ import { knowledgeEngineMigration } from './0009-knowledge-engine';
 import { researchChatMigration } from './0010-research-chat';
 import { aiProviderSelectionMigration } from './0011-ai-provider-selection';
 import { notesResearchMemoryMigration } from './0012-notes-research-memory';
+import { adaptiveResearchPlanMigration } from './0013-adaptive-research-plan';
 import type { DatabaseMigration } from './types';
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
@@ -29,6 +30,7 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   researchChatMigration,
   aiProviderSelectionMigration,
   notesResearchMemoryMigration,
+  adaptiveResearchPlanMigration,
 ];
 
 interface AppliedMigration {

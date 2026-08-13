@@ -57,6 +57,9 @@ import { registerResearchMemoryIpcHandlers } from './ipc/research-memory-ipc';
 import { ResearchMemoryService } from './research-memory/research-memory-service';
 import { AiMemoryProposalGenerator } from './research-memory/memory-proposal-generator';
 import { MemoryExportService } from './research-memory/memory-export-service';
+import { registerResearchPlanIpcHandlers } from './ipc/research-plan-ipc';
+import { ResearchPlanService } from './research-plan/research-plan-service';
+import { AiPlanProposalGenerator } from './research-plan/plan-proposal-generator';
 
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
@@ -262,6 +265,17 @@ async function initializeLibrary(): Promise<void> {
       knowledge,
       new AiMemoryProposalGenerator(aiAssistant),
       memoryExports,
+    ),
+  );
+  registerResearchPlanIpcHandlers(
+    new ResearchPlanService(
+      databaseClient.researchPlan,
+      databaseClient.workspace,
+      databaseClient.question,
+      databaseClient.repository,
+      databaseClient.researchMemory,
+      zoteroBridge,
+      new AiPlanProposalGenerator(aiAssistant),
     ),
   );
   registerPdfProtocol(session.defaultSession, reader);

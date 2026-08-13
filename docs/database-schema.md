@@ -268,3 +268,21 @@ Removing a paper uses separate `record-only` and `record-and-managed-file` opera
 ## Backup and restore
 
 The database Worker exposes internal `backupTo` and `restoreFrom` methods. Backups use the SQLite backup API. Restore first copies and validates a candidate database, verifies integrity and foreign keys, retains a rollback copy of the active database, then swaps files and reopens the connection. These interfaces are intentionally not exposed to Renderer in Phase 2.
+# Phase 17 Adaptive Research Plan
+
+Migration `0013-adaptive-research-plan` adds:
+
+- `research_plans`: Workspace plan goal, active/retired state, optimistic row
+  version, and canonical history version.
+- `plan_tasks`: ordered todo/in-progress/blocked/done/retired actions.
+- `plan_task_dependencies`: bounded many-to-many task dependencies.
+- `plan_references`: typed paper/repository/question/memory references with an
+  observed snapshot identity; external records are not foreign-key deleted.
+- `plan_completion_evidence`: immutable reference snapshots and the user's
+  completion note.
+- `research_plan_history`: versioned full snapshots and user/AI-confirmed actor.
+- `research_plan_proposals`: pending/confirmed/rejected Generate or Adapt output;
+  pending proposal data is separate from canonical Plan tasks.
+
+One active Plan is allowed per Workspace through a partial unique index. Retired
+Plans remain queryable until the user explicitly confirms deletion.

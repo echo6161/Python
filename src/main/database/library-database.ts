@@ -146,6 +146,17 @@ import type {
   StoredResearchReferenceInput,
 } from '../research-memory/research-memory-data-gateway';
 import { ResearchMemoryRepository } from './research-memory-repository';
+import type {
+  ResearchPlan,
+  ResearchPlanHistoryEntry,
+  ResearchPlanProposal,
+} from '../../shared/contracts/research-plan';
+import type {
+  ResearchPlanDataGateway,
+  StoredPlanProposalInput,
+  StoredPlanReferenceInput,
+} from '../research-plan/research-plan-data-gateway';
+import { ResearchPlanRepository } from './research-plan-repository';
 
 export class LibraryDatabase
   implements
@@ -158,7 +169,8 @@ export class LibraryDatabase
     PaperCodeLinkDataGateway,
     KnowledgeDataGateway,
     ResearchChatDataGateway,
-    ResearchMemoryDataGateway
+    ResearchMemoryDataGateway,
+    ResearchPlanDataGateway
 {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
@@ -172,6 +184,7 @@ export class LibraryDatabase
   private knowledgeRepository: KnowledgeRepository;
   private researchChatRepository: ResearchChatRepository;
   private researchMemoryRepository: ResearchMemoryRepository;
+  private researchPlanRepository: ResearchPlanRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -186,6 +199,7 @@ export class LibraryDatabase
     this.knowledgeRepository = new KnowledgeRepository(this.database);
     this.researchChatRepository = new ResearchChatRepository(this.database);
     this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
+    this.researchPlanRepository = new ResearchPlanRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -760,6 +774,128 @@ export class LibraryDatabase
     return this.run(() => this.researchMemoryRepository.recordExport(input));
   }
 
+  public getActiveResearchPlan(workspaceId: string): Promise<ResearchPlan | null> {
+    return this.run(() => this.researchPlanRepository.getActive(workspaceId));
+  }
+
+  public getResearchPlan(workspaceId: string, planId: string): Promise<ResearchPlan | null> {
+    return this.run(() => this.researchPlanRepository.get(workspaceId, planId));
+  }
+
+  public createResearchPlan(
+    input: Parameters<ResearchPlanDataGateway['createResearchPlan']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.create(input));
+  }
+
+  public updateResearchPlan(
+    input: Parameters<ResearchPlanDataGateway['updateResearchPlan']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.update(input));
+  }
+
+  public retireResearchPlan(
+    input: Parameters<ResearchPlanDataGateway['retireResearchPlan']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.retire(input));
+  }
+
+  public deleteResearchPlan(workspaceId: string, planId: string): Promise<boolean> {
+    return this.run(() => this.researchPlanRepository.delete(workspaceId, planId));
+  }
+
+  public createPlanTask(
+    input: Parameters<ResearchPlanDataGateway['createPlanTask']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.createTask(input));
+  }
+
+  public updatePlanTask(
+    input: Parameters<ResearchPlanDataGateway['updatePlanTask']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.updateTask(input));
+  }
+
+  public deletePlanTask(
+    input: Parameters<ResearchPlanDataGateway['deletePlanTask']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.deleteTask(input));
+  }
+
+  public reorderPlanTasks(
+    input: Parameters<ResearchPlanDataGateway['reorderPlanTasks']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.reorderTasks(input));
+  }
+
+  public setPlanTaskStatus(
+    input: Parameters<ResearchPlanDataGateway['setPlanTaskStatus']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.setTaskStatus(input));
+  }
+
+  public completePlanTask(
+    input: Parameters<ResearchPlanDataGateway['completePlanTask']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.completeTask(input));
+  }
+
+  public setPlanDependencies(
+    input: Parameters<ResearchPlanDataGateway['setPlanDependencies']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.setDependencies(input));
+  }
+
+  public addPlanReference(input: StoredPlanReferenceInput): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.addReference(input));
+  }
+
+  public removePlanReference(
+    input: Parameters<ResearchPlanDataGateway['removePlanReference']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.removeReference(input));
+  }
+
+  public listResearchPlanHistory(
+    workspaceId: string,
+    planId: string,
+  ): Promise<readonly ResearchPlanHistoryEntry[]> {
+    return this.run(() => this.researchPlanRepository.listHistory(workspaceId, planId));
+  }
+
+  public createResearchPlanProposal(input: StoredPlanProposalInput): Promise<ResearchPlanProposal> {
+    return this.run(() => this.researchPlanRepository.createProposal(input));
+  }
+
+  public getResearchPlanProposal(
+    workspaceId: string,
+    proposalId: string,
+  ): Promise<ResearchPlanProposal | null> {
+    return this.run(() => this.researchPlanRepository.getProposal(workspaceId, proposalId));
+  }
+
+  public updateResearchPlanProposal(
+    input: Parameters<ResearchPlanDataGateway['updateResearchPlanProposal']>[0],
+  ): Promise<ResearchPlanProposal> {
+    return this.run(() => this.researchPlanRepository.updateProposal(input));
+  }
+
+  public confirmResearchPlanProposal(
+    input: Parameters<ResearchPlanDataGateway['confirmResearchPlanProposal']>[0],
+  ): Promise<ResearchPlan> {
+    return this.run(() => this.researchPlanRepository.confirmProposal(input));
+  }
+
+  public rejectResearchPlanProposal(
+    input: Parameters<ResearchPlanDataGateway['rejectResearchPlanProposal']>[0],
+  ): Promise<ResearchPlanProposal> {
+    return this.run(() => this.researchPlanRepository.rejectProposal(input));
+  }
+
+  public listPlanReferences(workspaceId: string, planId: string) {
+    return this.run(() => this.researchPlanRepository.listReferences(workspaceId, planId));
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -807,6 +943,7 @@ export class LibraryDatabase
         this.knowledgeRepository = new KnowledgeRepository(this.database);
         this.researchChatRepository = new ResearchChatRepository(this.database);
         this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
+        this.researchPlanRepository = new ResearchPlanRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -822,6 +959,7 @@ export class LibraryDatabase
         this.knowledgeRepository = new KnowledgeRepository(this.database);
         this.researchChatRepository = new ResearchChatRepository(this.database);
         this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
+        this.researchPlanRepository = new ResearchPlanRepository(this.database);
         throw error;
       }
 

@@ -67,6 +67,18 @@ import type {
   ResearchContentIdentityInput,
   UpdateResearchContentInput,
 } from '../../shared/contracts/research-memory';
+import type {
+  CreatePlanTaskInput,
+  CreateResearchPlanInput,
+  PlanTaskIdentityInput,
+  SetPlanDependenciesInput,
+  UpdatePlanTaskInput,
+  UpdateResearchPlanInput,
+} from '../../shared/contracts/research-plan';
+import type {
+  StoredPlanProposalInput,
+  StoredPlanReferenceInput,
+} from '../research-plan/research-plan-data-gateway';
 
 export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'listPapers'; readonly payload: PaperListQuery }
@@ -637,6 +649,138 @@ export type DatabaseWorkerRequest =
       readonly id: number;
       readonly method: 'recordResearchExport';
       readonly payload: RecordResearchExportInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getActiveResearchPlan';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getResearchPlan';
+      readonly payload: { readonly workspaceId: string; readonly planId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createResearchPlan';
+      readonly payload: CreateResearchPlanInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateResearchPlan';
+      readonly payload: UpdateResearchPlanInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'retireResearchPlan';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly planId: string;
+        readonly rowVersion: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'deleteResearchPlan';
+      readonly payload: { readonly workspaceId: string; readonly planId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createPlanTask';
+      readonly payload: CreatePlanTaskInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updatePlanTask';
+      readonly payload: UpdatePlanTaskInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'deletePlanTask';
+      readonly payload: PlanTaskIdentityInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'reorderPlanTasks';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly planId: string;
+        readonly taskIds: readonly string[];
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'setPlanTaskStatus';
+      readonly payload: PlanTaskIdentityInput & {
+        readonly status: string;
+        readonly blockedReason: string | null;
+        readonly rowVersion: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'completePlanTask';
+      readonly payload: PlanTaskIdentityInput & {
+        readonly completionNote: string;
+        readonly evidenceReferenceIds: readonly string[];
+        readonly rowVersion: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'setPlanDependencies';
+      readonly payload: SetPlanDependenciesInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'addPlanReference';
+      readonly payload: StoredPlanReferenceInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'removePlanReference';
+      readonly payload: PlanTaskIdentityInput & { readonly referenceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listResearchPlanHistory';
+      readonly payload: { readonly workspaceId: string; readonly planId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createResearchPlanProposal';
+      readonly payload: StoredPlanProposalInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getResearchPlanProposal';
+      readonly payload: { readonly workspaceId: string; readonly proposalId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateResearchPlanProposal';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly proposalId: string;
+        readonly goal: string;
+        readonly rationale: string;
+        readonly changesJson: string;
+        readonly rowVersion: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'confirmResearchPlanProposal' | 'rejectResearchPlanProposal';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly proposalId: string;
+        readonly rowVersion: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listPlanReferences';
+      readonly payload: { readonly workspaceId: string; readonly planId: string };
     }
   | {
       readonly id: number;

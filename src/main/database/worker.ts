@@ -302,6 +302,53 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.rejectResearchMemoryProposal(request.payload);
     case 'recordResearchExport':
       return database.recordResearchExport(request.payload);
+    case 'getActiveResearchPlan':
+      return database.getActiveResearchPlan(request.payload.workspaceId);
+    case 'getResearchPlan':
+      return database.getResearchPlan(request.payload.workspaceId, request.payload.planId);
+    case 'createResearchPlan':
+      return database.createResearchPlan(request.payload);
+    case 'updateResearchPlan':
+      return database.updateResearchPlan(request.payload);
+    case 'retireResearchPlan':
+      return database.retireResearchPlan(request.payload);
+    case 'deleteResearchPlan':
+      return database.deleteResearchPlan(request.payload.workspaceId, request.payload.planId);
+    case 'createPlanTask':
+      return database.createPlanTask(request.payload);
+    case 'updatePlanTask':
+      return database.updatePlanTask(request.payload);
+    case 'deletePlanTask':
+      return database.deletePlanTask(request.payload);
+    case 'reorderPlanTasks':
+      return database.reorderPlanTasks(request.payload);
+    case 'setPlanTaskStatus':
+      return database.setPlanTaskStatus(request.payload);
+    case 'completePlanTask':
+      return database.completePlanTask(request.payload);
+    case 'setPlanDependencies':
+      return database.setPlanDependencies(request.payload);
+    case 'addPlanReference':
+      return database.addPlanReference(request.payload);
+    case 'removePlanReference':
+      return database.removePlanReference(request.payload);
+    case 'listResearchPlanHistory':
+      return database.listResearchPlanHistory(request.payload.workspaceId, request.payload.planId);
+    case 'createResearchPlanProposal':
+      return database.createResearchPlanProposal(request.payload);
+    case 'getResearchPlanProposal':
+      return database.getResearchPlanProposal(
+        request.payload.workspaceId,
+        request.payload.proposalId,
+      );
+    case 'updateResearchPlanProposal':
+      return database.updateResearchPlanProposal(request.payload);
+    case 'confirmResearchPlanProposal':
+      return database.confirmResearchPlanProposal(request.payload);
+    case 'rejectResearchPlanProposal':
+      return database.rejectResearchPlanProposal(request.payload);
+    case 'listPlanReferences':
+      return database.listPlanReferences(request.payload.workspaceId, request.payload.planId);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

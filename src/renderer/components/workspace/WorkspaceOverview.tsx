@@ -14,6 +14,7 @@ import {
   TestTube2,
   Trash2,
   MessageSquareText,
+  ListChecks,
 } from 'lucide-react';
 
 import type {
@@ -30,6 +31,7 @@ import { WorkspaceQuestionSection } from './question/WorkspaceQuestionSection';
 import { WorkspaceKnowledgePage } from './knowledge/WorkspaceKnowledgePage';
 import { WorkspaceResearchChatPage } from './research-chat/WorkspaceResearchChatPage';
 import { WorkspaceResearchMemoryPage } from './research-memory/WorkspaceResearchMemoryPage';
+import { WorkspaceResearchPlanPage } from './research-plan/WorkspaceResearchPlanPage';
 
 interface WorkspaceOverviewProps {
   readonly busy: boolean;
@@ -48,6 +50,7 @@ const activeTabs = [
   { id: 'knowledge', icon: Search, label: 'Knowledge' },
   { id: 'chat', icon: MessageSquareText, label: 'Chat' },
   { id: 'notes', icon: NotebookPen, label: 'Notes' },
+  { id: 'plan', icon: ListChecks, label: 'Plan' },
 ] as const;
 
 const futureTabs = [
@@ -175,7 +178,10 @@ export function WorkspaceOverview({
         ) : (
           <div
             className={
-              activeTab === 'knowledge' || activeTab === 'chat' || activeTab === 'notes'
+              activeTab === 'knowledge' ||
+              activeTab === 'chat' ||
+              activeTab === 'notes' ||
+              activeTab === 'plan'
                 ? 'h-full'
                 : 'mx-auto w-full max-w-[1600px] p-4 xl:p-5'
             }
@@ -191,6 +197,7 @@ export function WorkspaceOverview({
             {activeTab === 'notes' ? (
               <WorkspaceResearchMemoryPage workspace={workspace} onNavigate={setActiveTab} />
             ) : null}
+            {activeTab === 'plan' ? <WorkspaceResearchPlanPage workspace={workspace} /> : null}
           </div>
         )}
       </section>

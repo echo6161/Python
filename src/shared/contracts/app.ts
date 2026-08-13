@@ -10,6 +10,7 @@ import type { PaperCodeLinkApi } from './paper-code-link';
 import type { KnowledgeApi } from './knowledge';
 import type { ResearchChatApi } from './research-chat';
 import type { ResearchMemoryApi } from './research-memory';
+import type { ResearchPlanApi } from './research-plan';
 
 export const IPC_CHANNELS = Object.freeze({
   appGetInfo: 'app:get-info',
@@ -40,4 +41,5 @@ export interface PaperMindApi {
   readonly knowledge: KnowledgeApi;
   readonly researchChat: ResearchChatApi;
   readonly researchMemory: ResearchMemoryApi;
+  readonly researchPlan: ResearchPlanApi;
 }

@@ -137,6 +137,17 @@ import type {
   ResearchMemoryDataGateway,
   StoredResearchReferenceInput,
 } from '../research-memory/research-memory-data-gateway';
+import type {
+  PlanReference,
+  ResearchPlan,
+  ResearchPlanHistoryEntry,
+  ResearchPlanProposal,
+} from '../../shared/contracts/research-plan';
+import type {
+  ResearchPlanDataGateway,
+  StoredPlanProposalInput,
+  StoredPlanReferenceInput,
+} from '../research-plan/research-plan-data-gateway';
 
 interface PendingCall {
   readonly resolve: (value: unknown) => void;
@@ -152,6 +163,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly knowledge: KnowledgeDataGateway;
   public readonly researchChat: ResearchChatDataGateway;
   public readonly researchMemory: ResearchMemoryDataGateway;
+  public readonly researchPlan: ResearchPlanDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -172,6 +184,9 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
       this.call(method, payload),
     );
     this.researchMemory = new ResearchMemoryWorkerGateway((method, payload) =>
+      this.call(method, payload),
+    );
+    this.researchPlan = new ResearchPlanWorkerGateway((method, payload) =>
       this.call(method, payload),
     );
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
@@ -879,5 +894,118 @@ class ResearchMemoryWorkerGateway implements ResearchMemoryDataGateway {
 
   public async recordResearchExport(input: RecordResearchExportInput): Promise<void> {
     await this.call('recordResearchExport', input);
+  }
+}
+
+class ResearchPlanWorkerGateway implements ResearchPlanDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public getActiveResearchPlan(workspaceId: string): Promise<ResearchPlan | null> {
+    return this.call('getActiveResearchPlan', { workspaceId });
+  }
+  public getResearchPlan(workspaceId: string, planId: string): Promise<ResearchPlan | null> {
+    return this.call('getResearchPlan', { workspaceId, planId });
+  }
+  public createResearchPlan(
+    input: Parameters<ResearchPlanDataGateway['createResearchPlan']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('createResearchPlan', input);
+  }
+  public updateResearchPlan(
+    input: Parameters<ResearchPlanDataGateway['updateResearchPlan']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('updateResearchPlan', input);
+  }
+  public retireResearchPlan(
+    input: Parameters<ResearchPlanDataGateway['retireResearchPlan']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('retireResearchPlan', input);
+  }
+  public deleteResearchPlan(workspaceId: string, planId: string): Promise<boolean> {
+    return this.call('deleteResearchPlan', { workspaceId, planId });
+  }
+  public createPlanTask(
+    input: Parameters<ResearchPlanDataGateway['createPlanTask']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('createPlanTask', input);
+  }
+  public updatePlanTask(
+    input: Parameters<ResearchPlanDataGateway['updatePlanTask']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('updatePlanTask', input);
+  }
+  public deletePlanTask(
+    input: Parameters<ResearchPlanDataGateway['deletePlanTask']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('deletePlanTask', input);
+  }
+  public reorderPlanTasks(
+    input: Parameters<ResearchPlanDataGateway['reorderPlanTasks']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('reorderPlanTasks', input);
+  }
+  public setPlanTaskStatus(
+    input: Parameters<ResearchPlanDataGateway['setPlanTaskStatus']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('setPlanTaskStatus', input);
+  }
+  public completePlanTask(
+    input: Parameters<ResearchPlanDataGateway['completePlanTask']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('completePlanTask', input);
+  }
+  public setPlanDependencies(
+    input: Parameters<ResearchPlanDataGateway['setPlanDependencies']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('setPlanDependencies', input);
+  }
+  public addPlanReference(input: StoredPlanReferenceInput): Promise<ResearchPlan> {
+    return this.call('addPlanReference', input);
+  }
+  public removePlanReference(
+    input: Parameters<ResearchPlanDataGateway['removePlanReference']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('removePlanReference', input);
+  }
+  public listResearchPlanHistory(
+    workspaceId: string,
+    planId: string,
+  ): Promise<readonly ResearchPlanHistoryEntry[]> {
+    return this.call('listResearchPlanHistory', { workspaceId, planId });
+  }
+  public createResearchPlanProposal(input: StoredPlanProposalInput): Promise<ResearchPlanProposal> {
+    return this.call('createResearchPlanProposal', input);
+  }
+  public getResearchPlanProposal(
+    workspaceId: string,
+    proposalId: string,
+  ): Promise<ResearchPlanProposal | null> {
+    return this.call('getResearchPlanProposal', { workspaceId, proposalId });
+  }
+  public updateResearchPlanProposal(
+    input: Parameters<ResearchPlanDataGateway['updateResearchPlanProposal']>[0],
+  ): Promise<ResearchPlanProposal> {
+    return this.call('updateResearchPlanProposal', input);
+  }
+  public confirmResearchPlanProposal(
+    input: Parameters<ResearchPlanDataGateway['confirmResearchPlanProposal']>[0],
+  ): Promise<ResearchPlan> {
+    return this.call('confirmResearchPlanProposal', input);
+  }
+  public rejectResearchPlanProposal(
+    input: Parameters<ResearchPlanDataGateway['rejectResearchPlanProposal']>[0],
+  ): Promise<ResearchPlanProposal> {
+    return this.call('rejectResearchPlanProposal', input);
+  }
+  public listPlanReferences(
+    workspaceId: string,
+    planId: string,
+  ): Promise<readonly PlanReference[]> {
+    return this.call('listPlanReferences', { workspaceId, planId });
   }
 }
