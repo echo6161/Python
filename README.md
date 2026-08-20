@@ -2,9 +2,11 @@
 
 PaperMind is an AI-native Research Workspace and Research Control Plane. It coordinates research goals, papers, questions, code, experiments, evidence, conclusions, and durable memory while leaving authoritative data in the tools that own it: Zotero for bibliography/PDFs, Git for code history, VS Code for editing and execution, and Obsidian for long-term knowledge.
 
-The implemented application includes a secure local Paper/PDF compatibility library, reader, annotation system, selected-text AI assistant, the Phase 6 read-only Zotero Bridge, the Phase 7-8 Workspace core and application shell, and the Phase 9 read-only Repository Bridge. Workspaces persist local goals and lifecycle state, restore the last active Workspace, and may share stable Zotero and authorized local repository references without copying external metadata, PDFs, or source trees. Users can browse a bounded ignored source tree, inspect text, refresh observed Git state, and explicitly open an authorized location in VS Code. The existing reader remains available under **Legacy Library**; it is not deleted or silently migrated. PaperMind exposes no generic filesystem, shell, Git, URL, or localhost capability to Renderer. Phase 5 also includes OS-backed OpenAI credentials and a manual ChatGPT handoff for Plus users. Full PDFs are never uploaded by default.
+The implemented application includes the secure legacy Paper/PDF reader, a Workspace-first Zotero and Repository bridge, Code Intelligence, Questions/Evidence, Paper-Code Links, rebuildable Knowledge search, bounded Research Chat, Notes/Memory, adaptive Plans, a read-only Research Agent, Experiment metadata, a rebuildable Research Graph, and controlled external handoffs. Workspaces retain provenance while Zotero, Git, VS Code, and Obsidian remain authoritative. PaperMind exposes no generic filesystem, shell, SQL, URL, or localhost capability to Renderer, never executes experiments, and never promotes unconfirmed AI output into canonical research data. Full PDFs are never uploaded by default.
 
 Architecture authority: [product vision](docs/product-vision.md), [data ownership](docs/data-ownership.md), [Phase 5.5 audit](docs/phase-5.5-architecture-audit.md), and [development roadmap](docs/development-roadmap.md).
+
+V1 release status and platform limitations are recorded in [V1 release readiness](docs/v1-release-readiness.md) and the [acceptance matrix](docs/v1-acceptance-matrix.md).
 
 ## Prerequisites
 
@@ -67,6 +69,20 @@ npm run dist
 ```
 
 Production Windows and macOS releases require code-signing credentials supplied by CI. Credentials must never be stored in this repository.
+
+### GitHub test builds
+
+The **V1 downloadable test builds** workflow runs for the dedicated
+`codex/phase-20-v1-artifacts` branch and can be triggered manually after it reaches
+the default branch. It builds Windows x64, macOS Apple Silicon, and macOS Intel
+artifacts, runs a packaged-application smoke test, and keeps the downloads in the
+workflow run for 90 days. It does not create a GitHub Release. GitHub requires a
+signed-in account with repository read access to download Actions artifacts.
+
+The macOS artifacts are unsigned test builds. After downloading, macOS may block
+the first launch; use **System Settings > Privacy & Security > Open Anyway** only
+after verifying `SHA256SUMS.txt`. These artifacts are for user acceptance, not
+trusted public distribution.
 
 ## Process Boundaries
 

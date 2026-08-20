@@ -7,6 +7,8 @@ import {
   type PDFDocumentProxy,
 } from 'pdfjs-dist';
 import workerSource from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+const STANDARD_FONT_DATA_URL = new URL('./standard_fonts/', document.baseURI).toString();
 import {
   Highlighter,
   Languages,
@@ -122,7 +124,11 @@ export function PDFReader({
         const readingState = unwrap<{ readonly pageNumber: number; readonly scale: number } | null>(
           stateResult,
         );
-        task = getDocument({ url: access.url, rangeChunkSize: 65_536 });
+        task = getDocument({
+          url: access.url,
+          rangeChunkSize: 65_536,
+          standardFontDataUrl: STANDARD_FONT_DATA_URL,
+        });
         const loaded = await task.promise;
         const firstPage = await loaded.getPage(1);
         const viewport = firstPage.getViewport({ scale: 1 });

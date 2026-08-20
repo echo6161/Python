@@ -13,7 +13,7 @@ import type { Workspace } from '../../../shared/contracts/workspace';
 import type { AppView } from '../Sidebar';
 
 interface WorkspaceNavigatorProps {
-  readonly appVersion: string;
+  readonly appVersion: string | undefined;
   readonly currentId: string | null;
   readonly loading: boolean;
   readonly workspaces: readonly Workspace[];
@@ -85,7 +85,7 @@ export function WorkspaceNavigator({
         <div className="flex items-center gap-2 text-zinc-500">
           <span aria-hidden="true" className="size-2 rounded-full bg-emerald-400" /> Local first
         </div>
-        <p className="mt-1">v{appVersion}</p>
+        <p className="mt-1">{appVersion ? `v${appVersion}` : 'Version unavailable'}</p>
       </footer>
     </aside>
   );

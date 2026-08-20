@@ -1,4 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
+import path from 'node:path';
 
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 
@@ -106,6 +107,14 @@ const PRODUCER_TITLE_PATTERN =
   /^(?:microsoft (?:word|powerpoint)|libreoffice(?: writer)?|adobe acrobat|acrobat distiller|pdftex|latex)(?:\s*[-:]\s*.*)?$/iu;
 const AUTHOR_PLACEHOLDER_PATTERN =
   /^(?:user|admin(?:istrator)?|root|owner|unknown|anonymous|microsoft office user)$/iu;
+const STANDARD_FONT_DATA_URL = `${path
+  .resolve(
+    path.dirname(require.resolve('pdfjs-dist/legacy/build/pdf.mjs')),
+    '..',
+    '..',
+    'standard_fonts',
+  )
+  .replaceAll(path.sep, '/')}/`;
 
 export const DEFAULT_PDF_METADATA_EXTRACTION_LIMITS: PdfMetadataExtractionLimits = Object.freeze({
   maxInputBytes: 256 * 1024 * 1024,
@@ -567,6 +576,7 @@ export class PdfMetadataExtractor {
       loadingTask = pdfjs.getDocument({
         data,
         stopAtErrors: false,
+        standardFontDataUrl: STANDARD_FONT_DATA_URL,
         useWorkerFetch: false,
       });
       document = await loadingTask.promise;

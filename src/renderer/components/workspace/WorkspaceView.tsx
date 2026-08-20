@@ -8,12 +8,12 @@ import { WorkspaceNavigator } from './WorkspaceNavigator';
 import { WorkspaceOverview } from './WorkspaceOverview';
 
 interface WorkspaceViewProps {
-  readonly appVersion?: string;
+  readonly appVersion?: string | undefined;
   readonly onNavigateApp?: (view: AppView) => void;
 }
 
 export function WorkspaceView({
-  appVersion = '0.12.0',
+  appVersion,
   onNavigateApp = () => undefined,
 }: WorkspaceViewProps = {}) {
   const controller = useWorkspaceController();

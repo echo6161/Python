@@ -4,7 +4,7 @@ export type AppView = 'library' | 'settings' | 'workspace' | 'zotero';
 
 interface SidebarProps {
   readonly activeView: AppView;
-  readonly appVersion: string;
+  readonly appVersion: string | null;
   readonly onNavigate: (view: AppView) => void;
 }
 
@@ -57,7 +57,7 @@ export function Sidebar({ activeView, appVersion, onNavigate }: SidebarProps) {
           <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
           Local first
         </div>
-        <p className="mt-2">v{appVersion}</p>
+        <p className="mt-2">{appVersion ? `v${appVersion}` : 'Version unavailable'}</p>
       </div>
     </aside>
   );

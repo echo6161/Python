@@ -9,7 +9,7 @@ import { rendererLogger } from './logger';
 
 export function App() {
   const [activeView, setActiveView] = useState<AppView>('workspace');
-  const [appVersion, setAppVersion] = useState('0.1.0');
+  const [appVersion, setAppVersion] = useState<string | null>(null);
   const [hasUnsavedPaperDetails, setHasUnsavedPaperDetails] = useState(false);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export function App() {
   };
 
   if (activeView === 'workspace') {
-    return <WorkspaceView appVersion={appVersion} onNavigateApp={navigate} />;
+    return <WorkspaceView appVersion={appVersion ?? undefined} onNavigateApp={navigate} />;
   }
 
   return (
