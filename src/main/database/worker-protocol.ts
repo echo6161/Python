@@ -85,6 +85,7 @@ import type {
   CreateStoredAgentRunInput,
   ResearchAgentDataGateway,
 } from '../research-agent/research-agent-data-gateway';
+import type { ExperimentDataGateway } from '../experiment/experiment-data-gateway';
 
 export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'listPapers'; readonly payload: PaperListQuery }
@@ -658,6 +659,15 @@ export type DatabaseWorkerRequest =
     }
   | {
       readonly id: number;
+      readonly method: 'getLatestResearchExport';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly ownerType: 'memory' | 'note';
+        readonly ownerId: string;
+      };
+    }
+  | {
+      readonly id: number;
       readonly method: 'getActiveResearchPlan';
       readonly payload: { readonly workspaceId: string };
     }
@@ -831,6 +841,103 @@ export type DatabaseWorkerRequest =
       readonly id: number;
       readonly method: 'reviewAgentProposal';
       readonly payload: Parameters<ResearchAgentDataGateway['reviewAgentProposal']>[0];
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listExperiments';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getExperiment' | 'deleteExperiment';
+      readonly payload: { readonly workspaceId: string; readonly id: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createExperiment';
+      readonly payload: Parameters<ExperimentDataGateway['createExperiment']>[0];
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateExperiment';
+      readonly payload: Parameters<ExperimentDataGateway['updateExperiment']>[0];
+    }
+  | {
+      readonly id: number;
+      readonly method: 'setExperimentStatus';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly id: string;
+        readonly status: Parameters<ExperimentDataGateway['setExperimentStatus']>[2];
+        readonly rowVersion: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'addExperimentRun';
+      readonly payload: Parameters<ExperimentDataGateway['addExperimentRun']>[0];
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateExperimentRun';
+      readonly payload: Parameters<ExperimentDataGateway['updateExperimentRun']>[0];
+    }
+  | {
+      readonly id: number;
+      readonly method: 'deleteExperimentRun';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly experimentId: string;
+        readonly runId: string;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'recordExperimentResult';
+      readonly payload: Parameters<ExperimentDataGateway['recordExperimentResult']>[0];
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createExperimentConclusion';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly experimentId: string;
+        readonly resultId: string | null;
+        readonly statement: string;
+        readonly provenance: 'manual' | 'ai-proposed-confirmed';
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateExperimentConclusion';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly experimentId: string;
+        readonly conclusionId: string;
+        readonly statement: string;
+        readonly status: Parameters<ExperimentDataGateway['updateExperimentConclusion']>[4];
+        readonly rowVersion: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createExperimentConclusionProposal';
+      readonly payload: Parameters<ExperimentDataGateway['createExperimentConclusionProposal']>[0];
+    }
+  | {
+      readonly id: number;
+      readonly method: 'confirmExperimentConclusionProposal';
+      readonly payload: Parameters<ExperimentDataGateway['confirmExperimentConclusionProposal']>[0];
+    }
+  | {
+      readonly id: number;
+      readonly method: 'rejectExperimentConclusionProposal';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly experimentId: string;
+        readonly proposalId: string;
+        readonly rowVersion: number;
+      };
     }
   | {
       readonly id: number;

@@ -196,6 +196,28 @@ import type {
   ResearchAgentRunSummary,
   StartResearchAgentRunInput,
 } from '../shared/contracts/research-agent';
+import type {
+  Experiment,
+  ExperimentConclusionProposal,
+  ExperimentIpcChannels,
+  CreateExperimentInput,
+  UpdateExperimentInput,
+  ExperimentIdentityInput,
+  ExperimentStatus,
+  CreateExperimentRunInput,
+  UpdateExperimentRunInput,
+  RecordExperimentResultInput,
+  ConclusionStatus,
+} from '../shared/contracts/experiment';
+import type {
+  ResearchGraphIpcChannels,
+  ResearchGraphProjection,
+} from '../shared/contracts/research-graph';
+import type {
+  CrossToolIpcChannels,
+  CrossToolOpenInput,
+  CrossToolOpenResult,
+} from '../shared/contracts/cross-tool';
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
@@ -378,8 +400,115 @@ const RESEARCH_AGENT_CHANNELS = {
   rejectProposal: 'research-agent:reject-proposal',
   runEvent: 'research-agent:run-event',
 } satisfies ResearchAgentIpcChannels;
+const EXPERIMENT_CHANNELS = {
+  list: 'experiments:list',
+  get: 'experiments:get',
+  create: 'experiments:create',
+  update: 'experiments:update',
+  setStatus: 'experiments:set-status',
+  delete: 'experiments:delete',
+  addRun: 'experiments:add-run',
+  updateRun: 'experiments:update-run',
+  deleteRun: 'experiments:delete-run',
+  recordResult: 'experiments:record-result',
+  createConclusion: 'experiments:create-conclusion',
+  updateConclusion: 'experiments:update-conclusion',
+  generateProposal: 'experiments:generate-conclusion-proposal',
+  confirmProposal: 'experiments:confirm-conclusion-proposal',
+  rejectProposal: 'experiments:reject-conclusion-proposal',
+} satisfies ExperimentIpcChannels;
+const RESEARCH_GRAPH_CHANNELS = {
+  getProjection: 'research-graph:get-projection',
+} satisfies ResearchGraphIpcChannels;
+const CROSS_TOOL_CHANNELS = { open: 'cross-tool:open' } satisfies CrossToolIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
+  crossTool: Object.freeze({
+    open: (input: CrossToolOpenInput) =>
+      ipcRenderer.invoke(CROSS_TOOL_CHANNELS.open, input) as Promise<
+        ApiResult<CrossToolOpenResult>
+      >,
+  }),
+  researchGraph: Object.freeze({
+    getProjection: (workspaceId: string) =>
+      ipcRenderer.invoke(RESEARCH_GRAPH_CHANNELS.getProjection, workspaceId) as Promise<
+        ApiResult<ResearchGraphProjection>
+      >,
+  }),
+  experiment: Object.freeze({
+    list: (workspaceId: string) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.list, workspaceId) as Promise<
+        ApiResult<readonly Experiment[]>
+      >,
+    get: (input: ExperimentIdentityInput) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.get, input) as Promise<ApiResult<Experiment>>,
+    create: (input: CreateExperimentInput) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.create, input) as Promise<ApiResult<Experiment>>,
+    update: (input: UpdateExperimentInput) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.update, input) as Promise<ApiResult<Experiment>>,
+    setStatus: (
+      input: ExperimentIdentityInput & {
+        readonly status: ExperimentStatus;
+        readonly rowVersion: number;
+      },
+    ) => ipcRenderer.invoke(EXPERIMENT_CHANNELS.setStatus, input) as Promise<ApiResult<Experiment>>,
+    delete: (input: ExperimentIdentityInput & { readonly confirmation: 'DELETE_EXPERIMENT' }) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.delete, input) as Promise<
+        ApiResult<{ readonly id: string }>
+      >,
+    addRun: (input: CreateExperimentRunInput) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.addRun, input) as Promise<ApiResult<Experiment>>,
+    updateRun: (input: UpdateExperimentRunInput) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.updateRun, input) as Promise<ApiResult<Experiment>>,
+    deleteRun: (
+      input: ExperimentIdentityInput & {
+        readonly runId: string;
+        readonly confirmation: 'DELETE_EXPERIMENT_RUN';
+      },
+    ) => ipcRenderer.invoke(EXPERIMENT_CHANNELS.deleteRun, input) as Promise<ApiResult<Experiment>>,
+    recordResult: (input: RecordExperimentResultInput) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.recordResult, input) as Promise<ApiResult<Experiment>>,
+    createConclusion: (
+      input: ExperimentIdentityInput & {
+        readonly resultId: string | null;
+        readonly statement: string;
+      },
+    ) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.createConclusion, input) as Promise<
+        ApiResult<Experiment>
+      >,
+    updateConclusion: (
+      input: ExperimentIdentityInput & {
+        readonly conclusionId: string;
+        readonly statement: string;
+        readonly status: ConclusionStatus;
+        readonly rowVersion: number;
+      },
+    ) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.updateConclusion, input) as Promise<
+        ApiResult<Experiment>
+      >,
+    generateProposal: (input: ExperimentIdentityInput & { readonly instruction: string }) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.generateProposal, input) as Promise<
+        ApiResult<ExperimentConclusionProposal>
+      >,
+    confirmProposal: (
+      input: ExperimentIdentityInput & {
+        readonly proposalId: string;
+        readonly statement: string;
+        readonly rowVersion: number;
+      },
+    ) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.confirmProposal, input) as Promise<
+        ApiResult<Experiment>
+      >,
+    rejectProposal: (
+      input: ExperimentIdentityInput & { readonly proposalId: string; readonly rowVersion: number },
+    ) =>
+      ipcRenderer.invoke(EXPERIMENT_CHANNELS.rejectProposal, input) as Promise<
+        ApiResult<ExperimentConclusionProposal>
+      >,
+  }),
   researchAgent: Object.freeze({
     listRuns: (workspaceId: string) =>
       ipcRenderer.invoke(RESEARCH_AGENT_CHANNELS.listRuns, workspaceId) as Promise<

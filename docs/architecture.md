@@ -64,6 +64,13 @@ Agent write intent can create only an Agent proposal; explicit forwarding create
 an existing pending Memory proposal, never canonical Memory. See
 [research-agent.md](./research-agent.md).
 
+## Phase 19 Experiments and Graph
+
+Experiments follow Renderer -> typed preload -> validated IPC ->
+ExperimentService -> database Worker. ResearchGraphService is a read-only
+projection over canonical gateways with no graph table. Cross-tool actions accept
+only Workspace/node/action identifiers and derive fixed external targets in Main.
+
 The existing managed Paper/PDF library is retained as a compatibility and
 fallback-import subsystem. It is not used as the canonical backing store for
 Zotero resources. The current `AiProvider` boundary remains reusable, while the

@@ -136,6 +136,7 @@ import type {
   RecordResearchExportInput,
   ResearchMemoryDataGateway,
   StoredResearchReferenceInput,
+  StoredResearchExport,
 } from '../research-memory/research-memory-data-gateway';
 import type {
   PlanReference,
@@ -159,6 +160,8 @@ import type {
   ResearchAgentRun,
   ResearchAgentRunSummary,
 } from '../../shared/contracts/research-agent';
+import type { ExperimentDataGateway } from '../experiment/experiment-data-gateway';
+import type { Experiment, ExperimentConclusionProposal } from '../../shared/contracts/experiment';
 
 interface PendingCall {
   readonly resolve: (value: unknown) => void;
@@ -176,6 +179,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly researchMemory: ResearchMemoryDataGateway;
   public readonly researchPlan: ResearchPlanDataGateway;
   public readonly researchAgent: ResearchAgentDataGateway;
+  public readonly experiment: ExperimentDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -204,6 +208,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
     this.researchAgent = new ResearchAgentWorkerGateway((method, payload) =>
       this.call(method, payload),
     );
+    this.experiment = new ExperimentWorkerGateway((method, payload) => this.call(method, payload));
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
       const call = this.pending.get(response.id);
       if (!call) {
@@ -910,8 +915,121 @@ class ResearchMemoryWorkerGateway implements ResearchMemoryDataGateway {
   public async recordResearchExport(input: RecordResearchExportInput): Promise<void> {
     await this.call('recordResearchExport', input);
   }
+  public getLatestResearchExport(
+    workspaceId: string,
+    ownerType: 'memory' | 'note',
+    ownerId: string,
+  ) {
+    return this.call<StoredResearchExport | null>('getLatestResearchExport', {
+      workspaceId,
+      ownerType,
+      ownerId,
+    });
+  }
 }
 
+class ExperimentWorkerGateway implements ExperimentDataGateway {
+  constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+  listExperiments(w: string): Promise<readonly Experiment[]> {
+    return this.call('listExperiments', { workspaceId: w });
+  }
+  getExperiment(w: string, id: string): Promise<Experiment | null> {
+    return this.call('getExperiment', { workspaceId: w, id });
+  }
+  createExperiment(i: Parameters<ExperimentDataGateway['createExperiment']>[0]) {
+    return this.call<Experiment>('createExperiment', i);
+  }
+  updateExperiment(i: Parameters<ExperimentDataGateway['updateExperiment']>[0]) {
+    return this.call<Experiment>('updateExperiment', i);
+  }
+  setExperimentStatus(
+    w: string,
+    id: string,
+    s: Parameters<ExperimentDataGateway['setExperimentStatus']>[2],
+    v: number,
+  ) {
+    return this.call<Experiment>('setExperimentStatus', {
+      workspaceId: w,
+      id,
+      status: s,
+      rowVersion: v,
+    });
+  }
+  deleteExperiment(w: string, id: string) {
+    return this.call<boolean>('deleteExperiment', { workspaceId: w, id });
+  }
+  addExperimentRun(i: Parameters<ExperimentDataGateway['addExperimentRun']>[0]) {
+    return this.call<Experiment>('addExperimentRun', i);
+  }
+  updateExperimentRun(i: Parameters<ExperimentDataGateway['updateExperimentRun']>[0]) {
+    return this.call<Experiment>('updateExperimentRun', i);
+  }
+  deleteExperimentRun(w: string, e: string, r: string) {
+    return this.call<Experiment>('deleteExperimentRun', {
+      workspaceId: w,
+      experimentId: e,
+      runId: r,
+    });
+  }
+  recordExperimentResult(i: Parameters<ExperimentDataGateway['recordExperimentResult']>[0]) {
+    return this.call<Experiment>('recordExperimentResult', i);
+  }
+  createExperimentConclusion(
+    w: string,
+    e: string,
+    r: string | null,
+    s: string,
+    p: 'manual' | 'ai-proposed-confirmed',
+  ) {
+    return this.call<Experiment>('createExperimentConclusion', {
+      workspaceId: w,
+      experimentId: e,
+      resultId: r,
+      statement: s,
+      provenance: p,
+    });
+  }
+  updateExperimentConclusion(
+    w: string,
+    e: string,
+    id: string,
+    s: string,
+    status: Parameters<ExperimentDataGateway['updateExperimentConclusion']>[4],
+    v: number,
+  ) {
+    return this.call<Experiment>('updateExperimentConclusion', {
+      workspaceId: w,
+      experimentId: e,
+      conclusionId: id,
+      statement: s,
+      status,
+      rowVersion: v,
+    });
+  }
+  createExperimentConclusionProposal(
+    i: Parameters<ExperimentDataGateway['createExperimentConclusionProposal']>[0],
+  ): Promise<ExperimentConclusionProposal> {
+    return this.call('createExperimentConclusionProposal', i);
+  }
+  confirmExperimentConclusionProposal(
+    i: Parameters<ExperimentDataGateway['confirmExperimentConclusionProposal']>[0],
+  ) {
+    return this.call<Experiment>('confirmExperimentConclusionProposal', i);
+  }
+  rejectExperimentConclusionProposal(w: string, e: string, p: string, v: number) {
+    return this.call<ExperimentConclusionProposal>('rejectExperimentConclusionProposal', {
+      workspaceId: w,
+      experimentId: e,
+      proposalId: p,
+      rowVersion: v,
+    });
+  }
+}
 class ResearchAgentWorkerGateway implements ResearchAgentDataGateway {
   public constructor(
     private readonly call: <T>(

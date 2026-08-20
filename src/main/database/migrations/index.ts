@@ -16,6 +16,7 @@ import { aiProviderSelectionMigration } from './0011-ai-provider-selection';
 import { notesResearchMemoryMigration } from './0012-notes-research-memory';
 import { adaptiveResearchPlanMigration } from './0013-adaptive-research-plan';
 import { researchAgentMigration } from './0014-research-agent';
+import { experimentsMigration } from './0015-experiments';
 import type { DatabaseMigration } from './types';
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
@@ -33,6 +34,7 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   notesResearchMemoryMigration,
   adaptiveResearchPlanMigration,
   researchAgentMigration,
+  experimentsMigration,
 ];
 
 interface AppliedMigration {

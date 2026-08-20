@@ -34,6 +34,8 @@ import { WorkspaceResearchChatPage } from './research-chat/WorkspaceResearchChat
 import { WorkspaceResearchMemoryPage } from './research-memory/WorkspaceResearchMemoryPage';
 import { WorkspaceResearchPlanPage } from './research-plan/WorkspaceResearchPlanPage';
 import { WorkspaceResearchAgentPage } from './research-agent/WorkspaceResearchAgentPage';
+import { WorkspaceExperimentPage } from './experiment/WorkspaceExperimentPage';
+import { WorkspaceResearchGraphPage } from './research-graph/WorkspaceResearchGraphPage';
 
 interface WorkspaceOverviewProps {
   readonly busy: boolean;
@@ -54,12 +56,11 @@ const activeTabs = [
   { id: 'notes', icon: NotebookPen, label: 'Notes' },
   { id: 'plan', icon: ListChecks, label: 'Plan' },
   { id: 'agent', icon: Bot, label: 'Agent' },
+  { id: 'experiments', icon: TestTube2, label: 'Experiments' },
+  { id: 'graph', icon: Network, label: 'Graph' },
 ] as const;
 
-const futureTabs = [
-  { icon: TestTube2, label: 'Experiments' },
-  { icon: Network, label: 'Graph' },
-] as const;
+const futureTabs: readonly { readonly icon: typeof Network; readonly label: string }[] = [];
 
 export function WorkspaceOverview({
   busy,
@@ -185,7 +186,9 @@ export function WorkspaceOverview({
               activeTab === 'chat' ||
               activeTab === 'notes' ||
               activeTab === 'plan' ||
-              activeTab === 'agent'
+              activeTab === 'agent' ||
+              activeTab === 'experiments' ||
+              activeTab === 'graph'
                 ? 'h-full'
                 : 'mx-auto w-full max-w-[1600px] p-4 xl:p-5'
             }
@@ -203,6 +206,8 @@ export function WorkspaceOverview({
             ) : null}
             {activeTab === 'plan' ? <WorkspaceResearchPlanPage workspace={workspace} /> : null}
             {activeTab === 'agent' ? <WorkspaceResearchAgentPage workspace={workspace} /> : null}
+            {activeTab === 'experiments' ? <WorkspaceExperimentPage workspace={workspace} /> : null}
+            {activeTab === 'graph' ? <WorkspaceResearchGraphPage workspace={workspace} /> : null}
           </div>
         )}
       </section>

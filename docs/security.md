@@ -49,6 +49,15 @@
   It creates a pending Phase 16 Memory proposal only; confirmed Memory still
   requires a separate user action in Notes.
 
+## Phase 19 Experiment, Graph, and outbound controls
+
+- Experiment IPC has no command, script, environment, artifact path, URL, or
+  executable field. External run IDs and scalar metrics are metadata only.
+- Graph is rebuilt from same-Workspace canonical gateways; pending AI proposals
+  are excluded and cannot become graph facts.
+- Outbound IPC accepts no URL/path/scheme. GitHub is limited to credential-free
+  `github.com` remotes and Obsidian requires a recorded export.
+
 ## Phase 6 Zotero Controls
 
 - Zotero Local API origin is compiled into Main as `http://127.0.0.1:23119/api/`.

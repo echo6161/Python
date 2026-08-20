@@ -301,3 +301,10 @@ Migration `0014-research-agent.ts` adds:
 Workspace deletion cascades only PaperMind-owned Agent audit rows. No credential,
 token, absolute path, complete PDF page, repository file, external write, or
 canonical Memory is stored. See [research-agent.md](./research-agent.md).
+
+## Phase 19 Experiments
+
+Migration `0015-experiments.ts` adds `experiments`, `experiment_runs`,
+`experiment_results`, `experiment_conclusions`, and
+`experiment_conclusion_proposals`. Only bounded metadata and scalar metrics are
+stored. The Research Graph adds no fact table and is rebuilt from canonical rows.

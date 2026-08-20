@@ -169,6 +169,9 @@ import type {
   ResearchAgentRunSummary,
 } from '../../shared/contracts/research-agent';
 import { ResearchAgentRepository } from './research-agent-repository';
+import type { ExperimentDataGateway } from '../experiment/experiment-data-gateway';
+import type { Experiment, ExperimentConclusionProposal } from '../../shared/contracts/experiment';
+import { ExperimentRepository } from './experiment-repository';
 
 export class LibraryDatabase
   implements
@@ -183,7 +186,8 @@ export class LibraryDatabase
     ResearchChatDataGateway,
     ResearchMemoryDataGateway,
     ResearchPlanDataGateway,
-    ResearchAgentDataGateway
+    ResearchAgentDataGateway,
+    ExperimentDataGateway
 {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
@@ -199,6 +203,7 @@ export class LibraryDatabase
   private researchMemoryRepository: ResearchMemoryRepository;
   private researchPlanRepository: ResearchPlanRepository;
   private researchAgentRepository: ResearchAgentRepository;
+  private experimentRepository: ExperimentRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -215,6 +220,7 @@ export class LibraryDatabase
     this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
     this.researchPlanRepository = new ResearchPlanRepository(this.database);
     this.researchAgentRepository = new ResearchAgentRepository(this.database);
+    this.experimentRepository = new ExperimentRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -788,6 +794,27 @@ export class LibraryDatabase
   public recordResearchExport(input: RecordResearchExportInput): Promise<void> {
     return this.run(() => this.researchMemoryRepository.recordExport(input));
   }
+  public getLatestResearchExport(
+    workspaceId: string,
+    ownerType: 'memory' | 'note',
+    ownerId: string,
+  ) {
+    return this.run(() => {
+      const r = this.researchMemoryRepository.getLatestExport(workspaceId, ownerType, ownerId);
+      return r
+        ? {
+            id: r.id,
+            workspaceId: r.workspace_id,
+            ownerType: r.owner_type,
+            ownerId: r.owner_id,
+            vaultName: r.vault_name,
+            relativePath: r.relative_path,
+            contentHash: r.content_hash,
+            exportedAt: r.exported_at,
+          }
+        : null;
+    });
+  }
 
   public getActiveResearchPlan(workspaceId: string): Promise<ResearchPlan | null> {
     return this.run(() => this.researchPlanRepository.getActive(workspaceId));
@@ -950,6 +977,73 @@ export class LibraryDatabase
   ): Promise<ResearchAgentProposal> {
     return this.run(() => this.researchAgentRepository.reviewProposal(input));
   }
+  public listExperiments(workspaceId: string): Promise<readonly Experiment[]> {
+    return this.run(() => this.experimentRepository.list(workspaceId));
+  }
+  public getExperiment(workspaceId: string, id: string): Promise<Experiment | null> {
+    return this.run(() => this.experimentRepository.get(workspaceId, id));
+  }
+  public createExperiment(input: Parameters<ExperimentDataGateway['createExperiment']>[0]) {
+    return this.run(() => this.experimentRepository.create(input));
+  }
+  public updateExperiment(input: Parameters<ExperimentDataGateway['updateExperiment']>[0]) {
+    return this.run(() => this.experimentRepository.update(input));
+  }
+  public setExperimentStatus(
+    w: string,
+    id: string,
+    s: Parameters<ExperimentDataGateway['setExperimentStatus']>[2],
+    v: number,
+  ) {
+    return this.run(() => this.experimentRepository.status(w, id, s, v));
+  }
+  public deleteExperiment(w: string, id: string) {
+    return this.run(() => this.experimentRepository.delete(w, id));
+  }
+  public addExperimentRun(i: Parameters<ExperimentDataGateway['addExperimentRun']>[0]) {
+    return this.run(() => this.experimentRepository.addRun(i));
+  }
+  public updateExperimentRun(i: Parameters<ExperimentDataGateway['updateExperimentRun']>[0]) {
+    return this.run(() => this.experimentRepository.updateRun(i));
+  }
+  public deleteExperimentRun(w: string, e: string, r: string) {
+    return this.run(() => this.experimentRepository.deleteRun(w, e, r));
+  }
+  public recordExperimentResult(i: Parameters<ExperimentDataGateway['recordExperimentResult']>[0]) {
+    return this.run(() => this.experimentRepository.result(i));
+  }
+  public createExperimentConclusion(
+    w: string,
+    e: string,
+    r: string | null,
+    s: string,
+    p: 'manual' | 'ai-proposed-confirmed',
+  ) {
+    return this.run(() => this.experimentRepository.conclusion(w, e, r, s, p));
+  }
+  public updateExperimentConclusion(
+    w: string,
+    e: string,
+    id: string,
+    s: string,
+    status: Parameters<ExperimentDataGateway['updateExperimentConclusion']>[4],
+    v: number,
+  ) {
+    return this.run(() => this.experimentRepository.updateConclusion(w, e, id, s, status, v));
+  }
+  public createExperimentConclusionProposal(
+    i: Parameters<ExperimentDataGateway['createExperimentConclusionProposal']>[0],
+  ): Promise<ExperimentConclusionProposal> {
+    return this.run(() => this.experimentRepository.createProposal(i));
+  }
+  public confirmExperimentConclusionProposal(
+    i: Parameters<ExperimentDataGateway['confirmExperimentConclusionProposal']>[0],
+  ) {
+    return this.run(() => this.experimentRepository.confirmProposal(i));
+  }
+  public rejectExperimentConclusionProposal(w: string, e: string, p: string, v: number) {
+    return this.run(() => this.experimentRepository.rejectProposal(w, e, p, v));
+  }
 
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
@@ -1000,6 +1094,7 @@ export class LibraryDatabase
         this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
         this.researchPlanRepository = new ResearchPlanRepository(this.database);
         this.researchAgentRepository = new ResearchAgentRepository(this.database);
+        this.experimentRepository = new ExperimentRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -1017,6 +1112,7 @@ export class LibraryDatabase
         this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
         this.researchPlanRepository = new ResearchPlanRepository(this.database);
         this.researchAgentRepository = new ResearchAgentRepository(this.database);
+        this.experimentRepository = new ExperimentRepository(this.database);
         throw error;
       }
 

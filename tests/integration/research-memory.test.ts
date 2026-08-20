@@ -248,8 +248,8 @@ describe('Notes and Research Memory persistence', () => {
     await fixture.database.close();
     const reopened = new LibraryDatabase(fixture.databasePath);
     const versions = await reopened.getMigrationVersions();
-    expect(versions.at(-1)).toBe(14);
-    expect(versions.filter((version) => version === 14)).toHaveLength(1);
+    expect(versions.at(-1)).toBe(15);
+    expect(versions.filter((version) => version === 15)).toHaveLength(1);
     await reopened.close();
     const check = new BetterSqlite3(fixture.databasePath, { readonly: true });
     expect(

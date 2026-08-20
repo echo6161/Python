@@ -101,19 +101,15 @@ describe('WorkspaceView', () => {
     });
   });
 
-  it('restores the last active Workspace, edits its goal, and shows honest future states', async () => {
+  it('restores the last active Workspace, edits its goal, and exposes implemented research tools', async () => {
     render(<WorkspaceView />);
     expect(await screen.findByRole('heading', { name: 'Evidence review' })).toBeDefined();
     expect(await screen.findByText('Workspace-specific paper')).toBeDefined();
     expect(screen.getByText('Stored PDF')).toBeDefined();
     expect(await screen.findByRole('heading', { name: 'Repositories' })).toBeDefined();
     expect(await screen.findByRole('heading', { name: 'Research Questions' })).toBeDefined();
-    for (const section of ['Experiments']) {
-      expect(screen.getAllByLabelText(`${section}: Coming later`).length).toBeGreaterThan(0);
-    }
-    expect(
-      screen.getByRole('button', { name: 'Experiments: Coming later' }).hasAttribute('disabled'),
-    ).toBe(true);
+    expect(screen.getByRole('tab', { name: 'Experiments' }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('tab', { name: 'Graph' }).hasAttribute('disabled')).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.change(screen.getByLabelText('Research Goal'), {

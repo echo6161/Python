@@ -54,6 +54,16 @@ export interface RecordResearchExportInput {
   readonly contentHash: string;
   readonly exportedAt: string;
 }
+export interface StoredResearchExport {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly ownerType: 'memory' | 'note';
+  readonly ownerId: string;
+  readonly vaultName: string;
+  readonly relativePath: string;
+  readonly contentHash: string;
+  readonly exportedAt: string;
+}
 
 export interface ResearchMemoryDataGateway {
   listResearchContent(input: ListResearchContentInput): Promise<readonly ResearchContentSummary[]>;
@@ -87,4 +97,9 @@ export interface ResearchMemoryDataGateway {
     readonly rowVersion: number;
   }): Promise<ResearchMemoryProposal>;
   recordResearchExport(input: RecordResearchExportInput): Promise<void>;
+  getLatestResearchExport(
+    workspaceId: string,
+    ownerType: 'memory' | 'note',
+    ownerId: string,
+  ): Promise<StoredResearchExport | null>;
 }

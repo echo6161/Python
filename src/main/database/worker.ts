@@ -302,6 +302,12 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.rejectResearchMemoryProposal(request.payload);
     case 'recordResearchExport':
       return database.recordResearchExport(request.payload);
+    case 'getLatestResearchExport':
+      return database.getLatestResearchExport(
+        request.payload.workspaceId,
+        request.payload.ownerType,
+        request.payload.ownerId,
+      );
     case 'getActiveResearchPlan':
       return database.getActiveResearchPlan(request.payload.workspaceId);
     case 'getResearchPlan':
@@ -369,6 +375,63 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.listAgentRuns(request.payload.workspaceId);
     case 'reviewAgentProposal':
       return database.reviewAgentProposal(request.payload);
+    case 'listExperiments':
+      return database.listExperiments(request.payload.workspaceId);
+    case 'getExperiment':
+      return database.getExperiment(request.payload.workspaceId, request.payload.id);
+    case 'createExperiment':
+      return database.createExperiment(request.payload);
+    case 'updateExperiment':
+      return database.updateExperiment(request.payload);
+    case 'setExperimentStatus':
+      return database.setExperimentStatus(
+        request.payload.workspaceId,
+        request.payload.id,
+        request.payload.status,
+        request.payload.rowVersion,
+      );
+    case 'deleteExperiment':
+      return database.deleteExperiment(request.payload.workspaceId, request.payload.id);
+    case 'addExperimentRun':
+      return database.addExperimentRun(request.payload);
+    case 'updateExperimentRun':
+      return database.updateExperimentRun(request.payload);
+    case 'deleteExperimentRun':
+      return database.deleteExperimentRun(
+        request.payload.workspaceId,
+        request.payload.experimentId,
+        request.payload.runId,
+      );
+    case 'recordExperimentResult':
+      return database.recordExperimentResult(request.payload);
+    case 'createExperimentConclusion':
+      return database.createExperimentConclusion(
+        request.payload.workspaceId,
+        request.payload.experimentId,
+        request.payload.resultId,
+        request.payload.statement,
+        request.payload.provenance,
+      );
+    case 'updateExperimentConclusion':
+      return database.updateExperimentConclusion(
+        request.payload.workspaceId,
+        request.payload.experimentId,
+        request.payload.conclusionId,
+        request.payload.statement,
+        request.payload.status,
+        request.payload.rowVersion,
+      );
+    case 'createExperimentConclusionProposal':
+      return database.createExperimentConclusionProposal(request.payload);
+    case 'confirmExperimentConclusionProposal':
+      return database.confirmExperimentConclusionProposal(request.payload);
+    case 'rejectExperimentConclusionProposal':
+      return database.rejectExperimentConclusionProposal(
+        request.payload.workspaceId,
+        request.payload.experimentId,
+        request.payload.proposalId,
+        request.payload.rowVersion,
+      );
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

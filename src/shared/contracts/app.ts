@@ -12,6 +12,9 @@ import type { ResearchChatApi } from './research-chat';
 import type { ResearchMemoryApi } from './research-memory';
 import type { ResearchPlanApi } from './research-plan';
 import type { ResearchAgentApi } from './research-agent';
+import type { ExperimentApi } from './experiment';
+import type { ResearchGraphApi } from './research-graph';
+import type { CrossToolApi } from './cross-tool';
 
 export const IPC_CHANNELS = Object.freeze({
   appGetInfo: 'app:get-info',
@@ -44,4 +47,7 @@ export interface PaperMindApi {
   readonly researchMemory: ResearchMemoryApi;
   readonly researchPlan: ResearchPlanApi;
   readonly researchAgent: ResearchAgentApi;
+  readonly experiment: ExperimentApi;
+  readonly researchGraph: ResearchGraphApi;
+  readonly crossTool: CrossToolApi;
 }

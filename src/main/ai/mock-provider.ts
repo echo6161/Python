@@ -51,45 +51,52 @@ export class MockAiProvider implements AiProvider {
       latest.includes('"referenceCandidates"') && latest.includes('"currentPlan"');
     const planInput = isPlanProposal ? parsePlanInput(latest) : null;
     const isResearchAgent = latest.includes('PAPERMIND_RESEARCH_AGENT_V1');
-    const output = isResearchAgent
+    const isExperimentConclusion = latest.includes('PAPERMIND_EXPERIMENT_CONCLUSION_V1');
+    const output = isExperimentConclusion
       ? JSON.stringify({
-          answer: `## Audited synthesis\n\nThe bounded Workspace evidence supports a traceable next-step assessment${paper ? ` [${paper.alias}]` : ''}${code ? ` and an implementation comparison [${code.alias}]` : ''}.\n\nNo external system or canonical domain record was modified.`,
-          uncertainty:
-            'The result is limited to the indexed excerpts and current Workspace snapshots.',
-          citations: [paper?.alias, code?.alias].filter(Boolean),
-          proposal: {
-            kind: 'memory',
-            title: 'Candidate research synthesis',
-            bodyMarkdown:
-              'Review the bounded paper and code evidence before preserving this synthesis as confirmed Memory.',
-            reason:
-              'The run found a potentially durable conclusion that still requires user review.',
-          },
+          statement:
+            'The recorded result supports the bounded hypothesis under the documented configuration.',
+          rationale: 'The conclusion is limited to the recorded run metadata and metrics.',
         })
-      : planInput
+      : isResearchAgent
         ? JSON.stringify({
-            goal: planInput.workspace.researchGoal || 'Establish a verifiable research result',
-            rationale: 'Sequence the next bounded actions from the current Workspace evidence.',
-            changes: [
-              {
-                kind: 'add',
-                taskId: null,
-                title: 'Review the primary evidence',
-                description:
-                  'Inspect the highest-priority paper and code sources before drawing conclusions.',
-                rationale: 'A bounded evidence review is the next reproducible action.',
-                dependencyTaskIds: [],
-                referenceCandidateIds: planInput.referenceCandidates
-                  .slice(0, 2)
-                  .map(({ id }) => id),
-              },
-            ],
+            answer: `## Audited synthesis\n\nThe bounded Workspace evidence supports a traceable next-step assessment${paper ? ` [${paper.alias}]` : ''}${code ? ` and an implementation comparison [${code.alias}]` : ''}.\n\nNo external system or canonical domain record was modified.`,
+            uncertainty:
+              'The result is limited to the indexed excerpts and current Workspace snapshots.',
+            citations: [paper?.alias, code?.alias].filter(Boolean),
+            proposal: {
+              kind: 'memory',
+              title: 'Candidate research synthesis',
+              bodyMarkdown:
+                'Review the bounded paper and code evidence before preserving this synthesis as confirmed Memory.',
+              reason:
+                'The run found a potentially durable conclusion that still requires user review.',
+            },
           })
-        : sources.length
-          ? `## Evidence summary\n\nThe selected evidence supports a bounded comparison across the Workspace.${paper ? ` The paper excerpt states the research mechanism [${paper.alias}].` : ''}${code ? ` The code excerpt shows the corresponding implementation surface [${code.alias}].` : ''}\n\n## Synthesis\n\nRead together, the sources connect the conceptual claim to an inspectable implementation without extending beyond the supplied excerpts${first ? ` [${first.alias}]` : ''}.\n\n## Limits\n\nThis answer uses only the selected bounded context and does not infer access to the full paper or repository.`
-          : selected
-            ? `## Mock response\n\nSelection: ${selected}`
-            : 'No selected sources were available, so the bounded context is insufficient.';
+        : planInput
+          ? JSON.stringify({
+              goal: planInput.workspace.researchGoal || 'Establish a verifiable research result',
+              rationale: 'Sequence the next bounded actions from the current Workspace evidence.',
+              changes: [
+                {
+                  kind: 'add',
+                  taskId: null,
+                  title: 'Review the primary evidence',
+                  description:
+                    'Inspect the highest-priority paper and code sources before drawing conclusions.',
+                  rationale: 'A bounded evidence review is the next reproducible action.',
+                  dependencyTaskIds: [],
+                  referenceCandidateIds: planInput.referenceCandidates
+                    .slice(0, 2)
+                    .map(({ id }) => id),
+                },
+              ],
+            })
+          : sources.length
+            ? `## Evidence summary\n\nThe selected evidence supports a bounded comparison across the Workspace.${paper ? ` The paper excerpt states the research mechanism [${paper.alias}].` : ''}${code ? ` The code excerpt shows the corresponding implementation surface [${code.alias}].` : ''}\n\n## Synthesis\n\nRead together, the sources connect the conceptual claim to an inspectable implementation without extending beyond the supplied excerpts${first ? ` [${first.alias}]` : ''}.\n\n## Limits\n\nThis answer uses only the selected bounded context and does not infer access to the full paper or repository.`
+            : selected
+              ? `## Mock response\n\nSelection: ${selected}`
+              : 'No selected sources were available, so the bounded context is insufficient.';
     for (const chunk of output.match(/[\s\S]{1,16}/gu) ?? []) {
       await wait(this.options.delayMs ?? 2, signal);
       yield { type: 'delta', delta: chunk };

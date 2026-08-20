@@ -63,6 +63,13 @@ import { AiPlanProposalGenerator } from './research-plan/plan-proposal-generator
 import { registerResearchAgentIpcHandlers } from './ipc/research-agent-ipc';
 import { createDomainToolRegistry } from './research-agent/domain-tool-registry';
 import { ResearchAgentService } from './research-agent/research-agent-service';
+import { registerExperimentIpcHandlers } from './ipc/experiment-ipc';
+import { ExperimentService } from './experiment/experiment-service';
+import { AiConclusionProposalGenerator } from './experiment/conclusion-proposal-generator';
+import { registerResearchGraphIpcHandlers } from './ipc/research-graph-ipc';
+import { ResearchGraphService } from './research-graph/research-graph-service';
+import { registerCrossToolIpcHandlers } from './ipc/cross-tool-ipc';
+import { CrossToolLinkService } from './cross-tool/cross-tool-link-service';
 
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
@@ -298,6 +305,34 @@ async function initializeLibrary(): Promise<void> {
   );
   await researchAgent.initialize();
   registerResearchAgentIpcHandlers(researchAgent);
+  const experimentService = new ExperimentService(
+    databaseClient.experiment,
+    databaseClient.question,
+    databaseClient.repository,
+    new AiConclusionProposalGenerator(aiAssistant),
+  );
+  registerExperimentIpcHandlers(experimentService);
+  const researchGraphService = new ResearchGraphService(
+    databaseClient.workspace,
+    databaseClient.question,
+    databaseClient.repository,
+    databaseClient.paperCodeLink,
+    databaseClient.researchMemory,
+    databaseClient.researchPlan,
+    experimentService,
+  );
+  registerResearchGraphIpcHandlers(researchGraphService);
+  registerCrossToolIpcHandlers(
+    new CrossToolLinkService(
+      researchGraphService,
+      databaseClient.workspace,
+      databaseClient.repository,
+      repositoryService,
+      databaseClient.researchMemory,
+      zoteroEvidenceLauncher,
+      shell,
+    ),
+  );
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()

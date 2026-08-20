@@ -6,7 +6,6 @@ import {
   FileText,
   GitBranch,
   Link2,
-  LockKeyhole,
   RefreshCw,
   ListChecks,
 } from 'lucide-react';
@@ -34,7 +33,9 @@ export type WorkspaceTab =
   | 'overview'
   | 'papers'
   | 'plan'
-  | 'questions';
+  | 'questions'
+  | 'experiments'
+  | 'graph';
 
 interface WorkspaceDashboardProps {
   readonly busy: boolean;
@@ -171,7 +172,7 @@ export function WorkspaceDashboard({
           >
             <LinkSummary links={data?.links ?? null} />
           </SummaryPanel>
-          <FutureTools />
+          <ResearchTools onNavigate={onNavigate} />
         </aside>
       </div>
     </div>
@@ -362,8 +363,11 @@ function LinkSummary({ links }: { readonly links: readonly PaperCodeLink[] | nul
   );
 }
 
-function FutureTools() {
-  const items = ['Experiments', 'Graph'] as const;
+function ResearchTools({ onNavigate }: { readonly onNavigate: (tab: WorkspaceTab) => void }) {
+  const items = [
+    { label: 'Experiments', tab: 'experiments' },
+    { label: 'Research Graph', tab: 'graph' },
+  ] as const;
   return (
     <section aria-labelledby="future-tools-heading" className="workspace-panel overflow-hidden">
       <header className="flex h-11 items-center border-b border-zinc-800 px-4">
@@ -374,16 +378,13 @@ function FutureTools() {
       <ul className="divide-y divide-zinc-800">
         {items.map((item) => (
           <li
-            className="flex h-10 items-center justify-between px-4 text-sm text-zinc-500"
-            key={item}
+            className="flex h-10 items-center justify-between px-4 text-sm text-zinc-300"
+            key={item.tab}
           >
-            <span>{item}</span>
-            <span
-              aria-label={`${item}: Coming later`}
-              className="inline-flex items-center gap-1 text-xs"
-            >
-              <LockKeyhole aria-hidden="true" className="size-3" /> Coming later
-            </span>
+            <span>{item.label}</span>
+            <button className="text-button text-xs" onClick={() => onNavigate(item.tab)}>
+              Open
+            </button>
           </li>
         ))}
       </ul>

@@ -143,13 +143,13 @@ describe('local paper library integration', () => {
   it('applies migrations repeatedly and creates every current entity table', async () => {
     const harness = await createHarness();
     expect(await harness.database.getMigrationVersions()).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
     ]);
     await harness.database.close();
 
     const reopened = new LibraryDatabase(harness.paths.database);
     expect(await reopened.getMigrationVersions()).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
     ]);
     await reopened.close();
 
@@ -215,6 +215,11 @@ describe('local paper library integration', () => {
         'research_agent_trace_steps',
         'research_agent_citations',
         'research_agent_proposals',
+        'experiments',
+        'experiment_runs',
+        'experiment_results',
+        'experiment_conclusions',
+        'experiment_conclusion_proposals',
       ]),
     );
   });
@@ -333,7 +338,7 @@ describe('local paper library integration', () => {
 
     const upgraded = new LibraryDatabase(databasePath);
     expect(await upgraded.getMigrationVersions()).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
     ]);
     const upgradedLegacy = await upgraded.getPaper(legacyPaperId);
     expect(upgradedLegacy).toMatchObject({

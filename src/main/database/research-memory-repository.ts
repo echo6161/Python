@@ -461,6 +461,24 @@ export class ResearchMemoryRepository {
         input.exportedAt,
       );
   }
+  public getLatestExport(workspaceId: string, ownerType: 'memory' | 'note', ownerId: string) {
+    return this.database
+      .prepare(
+        `SELECT id,workspace_id,owner_type,owner_id,vault_name,relative_path,content_hash,exported_at FROM research_memory_exports WHERE workspace_id=? AND owner_type=? AND owner_id=? ORDER BY exported_at DESC,id DESC LIMIT 1`,
+      )
+      .get(workspaceId, ownerType, ownerId) as
+      | {
+          id: string;
+          workspace_id: string;
+          owner_type: 'memory' | 'note';
+          owner_id: string;
+          vault_name: string;
+          relative_path: string;
+          content_hash: string;
+          exported_at: string;
+        }
+      | undefined;
+  }
 
   private require(workspaceId: string, type: ResearchContentType, id: string): ResearchContentItem {
     const item = this.get({ workspaceId, type, id });
