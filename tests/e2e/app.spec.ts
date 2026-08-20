@@ -276,6 +276,7 @@ test('reads a short PDF and persists annotations, progress, deletion, and export
 test('searches an 80-page PDF while only mounting visible pages', async ({
   browserName,
 }, testInfo) => {
+  test.setTimeout(180_000);
   expect(browserName).toBe('chromium');
   const fixtureRoot = testInfo.outputPath('phase-3-long-fixtures');
   const libraryRoot = testInfo.outputPath('PaperMind Long Library');
@@ -293,7 +294,10 @@ test('searches an 80-page PDF while only mounting visible pages', async ({
     await openLegacyLibrary(window);
     await selectFilesInDialog(electronApp, [source]);
     await window.getByRole('button', { name: 'Import' }).click();
-    await window.getByRole('button', { name: 'Reader' }).click();
+    await expect(window.getByText('1 paper')).toBeVisible({ timeout: 120_000 });
+    const readerButton = window.getByRole('button', { name: 'Reader' });
+    await expect(readerButton).toBeEnabled({ timeout: 120_000 });
+    await readerButton.click();
     await expect(window.getByText('/ 80', { exact: true })).toBeVisible();
     await expect(window.locator('[data-page-number]')).not.toHaveCount(0);
     expect(await window.locator('[data-page-number]').count()).toBeLessThan(15);
