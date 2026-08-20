@@ -25,6 +25,8 @@ jobs:
           node-version-file: .node-version
           package-manager-cache: false
       - run: npm ci
+      - name: Ensure Electron runtime is installed
+        run: node node_modules/electron/install.js
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
@@ -43,6 +45,8 @@ jobs:
           node-version-file: .node-version
           package-manager-cache: false
       - run: npm ci
+      - name: Ensure Electron runtime is installed
+        run: node node_modules/electron/install.js
       - run: npm run dist -- --win --x64 --publish never
       - run: npm run test:package
       - name: Create checksums
@@ -84,8 +88,10 @@ jobs:
           node-version-file: .node-version
           package-manager-cache: false
       - run: npm ci
+      - name: Ensure Electron runtime is installed
+        run: node node_modules/electron/install.js
       - run: npm run typecheck
-      - run: npm run test
+      - run: npm run test -- --maxWorkers=2
       - run: npm run build
       - name: Build unsigned macOS test package
         run: >-
