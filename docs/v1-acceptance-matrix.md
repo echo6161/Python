@@ -24,15 +24,16 @@ Status vocabulary: `PASSED`, `FAILED`, `UNVERIFIED`. Checked on Windows 11,
 | Actual Windows packaged application | PASSED | `npm run package`, `npm run dist`, isolated packaged smoke with migrations 1-15 |
 | Windows installer signature / publisher identity | FAILED | `Get-AuthenticodeSignature` reports `NotSigned`; accepted only for the revised test-artifact scope |
 | Windows release identity and metadata | FAILED | default Electron icon and missing author; non-blocking for local user acceptance only |
-| GitHub Actions downloadable artifacts | UNVERIFIED | manual, read-only workflow added; it has not been pushed or executed remotely |
-| macOS Apple Silicon and Intel package smoke | UNVERIFIED | `macos-15` / `macos-15-intel` jobs defined; real runner results are required |
+| GitHub Actions downloadable artifacts | PASSED | run `32364480272` uploaded Windows x64 and both macOS artifacts with SHA-256 digests |
+| macOS Apple Silicon and Intel package smoke | PASSED | real `macos-15` arm64 and `macos-15-intel` x64 jobs launched `v0.20.0`, verified fonts and migrations 1-15 |
 | macOS downloaded first launch | UNVERIFIED | unsigned test package requires checksum verification and Gatekeeper approval |
 | Linux AppImage build and smoke | UNVERIFIED | not included in the user-revised Windows/macOS test-artifact target |
 | Real Zotero/VS Code/GitHub/Obsidian user workflow | UNVERIFIED | deterministic adapters/fallback tested; user apps not exercised here |
 | Real paid/provider AI request | UNVERIFIED | not authorized; deterministic provider tests passed |
-| CI reproducibility | UNVERIFIED | workflow is locally parsed and formatted but has no completed GitHub run |
+| CI reproducibility | PASSED | branch-scoped run `32364480272` completed all four jobs successfully |
 
 The revised target is downloadable Windows/macOS user-acceptance artifacts, not a
-public signed release. Windows local acceptance may proceed. Overall readiness
-remains blocked until both macOS architectures build and pass packaged smoke on
-real GitHub runners and a downloaded macOS artifact completes first-launch smoke.
+public signed release. Windows x64 and macOS arm64/x64 build, packaged smoke, and
+artifact upload are verified. The result is **READY FOR USER ACCEPTANCE**; opening
+a downloaded unsigned package on a real user Mac remains the acceptance action,
+not a completed automated claim.

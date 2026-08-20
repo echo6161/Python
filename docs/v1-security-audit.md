@@ -30,6 +30,8 @@ not by a known runtime privilege escalation.
   manual dispatch, has `contents: read`, uses no secrets, does not run on pull
   requests, and only uploads fixed release globs plus a checksum manifest. It
   cannot create a GitHub Release.
+- GitHub run `32364480272` confirmed that all four jobs completed with read-only
+  permissions and uploaded only the three expected platform artifacts.
 
 ## Residual risks
 

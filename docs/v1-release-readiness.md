@@ -2,19 +2,40 @@
 
 ## Conclusion
 
-**BLOCKED**
+**READY FOR USER ACCEPTANCE**
 
-The local Windows `0.20.0` RC is suitable for user acceptance testing. The revised
-delivery target is manually generated GitHub Actions test artifacts for Windows
-and macOS, not a signed public release. That target is not yet verified.
+The revised Windows/macOS GitHub Actions test-artifact target is verified. This is
+not approval for a signed public release.
 
-## Blocking items
+## Verified GitHub run
 
-1. `.github/workflows/v1-downloadable-builds.yml` has not been committed, pushed,
-   or executed by GitHub Actions.
-2. macOS Apple Silicon and Intel packages have not yet passed the real-runner
-   packaged smoke.
-3. A downloaded macOS artifact has not completed first-launch user acceptance.
+- Run: https://github.com/echo6161/Python/actions/runs/32364480272
+- Validated commit: `ddd57615d91a1a79d739d6ee4793496f85b6f05e`
+- Quality gates: passed.
+- Windows x64 package/smoke/upload: passed.
+- macOS Apple Silicon package/smoke/upload: passed.
+- macOS Intel package/smoke/upload: passed.
+
+Each packaged smoke opened PaperMind `0.20.0`, verified 17 renderer standard-font
+files, applied fresh migrations 1-15, and rejected forbidden ASAR content.
+
+| Artifact | ID | Size | GitHub artifact digest | Expires |
+| --- | ---: | ---: | --- | --- |
+| `papermind-windows-x64-ddd5761...` | `9405106885` | 212,928,315 bytes | `sha256:c15ce4e5cf24175b54122850713a63225b9e31813e908b44a25e24b5885e4370` | 2026-11-18 |
+| `papermind-macos-arm64-ddd5761...` | `9405031255` | 529,982,228 bytes | `sha256:e995ac6d31ab48aabfa3865b2fe6529a1a0acddc1c957a26cfab890b3ee5d3f7` | 2026-11-18 |
+| `papermind-macos-x64-ddd5761...` | `9405089723` | 554,847,125 bytes | `sha256:5d873e4ddc7981c3375468e646a1f6448e1afda3855e54724d9e7b8b2f52f50b` | 2026-11-18 |
+
+The artifact digest covers GitHub's downloadable archive. Each artifact also
+contains `SHA256SUMS.txt` for its packaged DMG/ZIP/EXE files.
+
+## User acceptance remaining
+
+1. Download the artifact matching the Mac architecture from the run page.
+2. Verify `SHA256SUMS.txt` before opening the DMG or ZIP.
+3. Complete first launch on the target Mac, using Gatekeeper's explicit approval
+   for the unsigned test build when required.
+4. Exercise the real Zotero, VS Code, GitHub, Obsidian, and selected AI-provider
+   workflows needed by that user.
 
 ## Accepted test-build limitations
 
@@ -52,5 +73,5 @@ electron-builder documents the explicit unsigned macOS test-build configuration:
 - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts
 - https://www.electron.build/docs/features/code-signing/code-signing-mac/
 
-No upload, release publication, telemetry enablement, or Phase 21 work is allowed
-by this conclusion.
+No GitHub Release, signed-public-release claim, telemetry enablement, or Phase 21
+work is implied by this conclusion.
