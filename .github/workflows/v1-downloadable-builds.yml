@@ -43,7 +43,7 @@ jobs:
           node-version-file: .node-version
           package-manager-cache: false
       - run: npm ci
-      - run: npm run dist -- --win --x64
+      - run: npm run dist -- --win --x64 --publish never
       - run: npm run test:package
       - name: Create checksums
         shell: pwsh
@@ -90,7 +90,7 @@ jobs:
       - name: Build unsigned macOS test package
         run: >-
           npx electron-builder --mac --${{ matrix.arch }}
-          -c.mac.identity=null -c.mac.hardenedRuntime=false
+          -c.mac.identity=null -c.mac.hardenedRuntime=false --publish never
       - run: npm run test:package
       - name: Create checksums
         run: shasum -a 256 release/*.dmg release/*-mac.zip > release/SHA256SUMS.txt
