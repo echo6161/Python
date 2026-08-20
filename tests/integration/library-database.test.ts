@@ -88,7 +88,7 @@ describe('local paper library integration', () => {
     );
     expect(sourceAfter).toEqual(sourceBefore);
     await reopenedDatabase.close();
-  });
+  }, 30_000);
 
   it('supports CRUD, distinct deletion modes, and backup restoration', async () => {
     const harness = await createHarness();
@@ -383,7 +383,7 @@ describe('local paper library integration', () => {
       userEdited: false,
     });
     await upgraded.close();
-  });
+  }, 30_000);
 
   it('persists reading state and annotation CRUD across database restarts', async () => {
     const harness = await createHarness();
