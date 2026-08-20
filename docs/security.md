@@ -30,6 +30,25 @@
   owning tool. They never enter Renderer, SQLite plaintext, logs, exports,
   prompts, or agent tool results.
 
+## Phase 18 Research Agent Controls
+
+- Every registered tool has a strict input schema, fixed Workspace scope, bounded
+  output, safe summary, and finite name. Renderer and provider cannot select a
+  tool, argument, path, URL, host, port, budget, or provider setting.
+- Tool and source content is escaped before being placed in explicit untrusted
+  blocks. Embedded closing tags cannot alter prompt structure or add capabilities.
+- The 16,000-character context limit counts both tool results and the exact
+  citation excerpts sent to the provider. Only those sent citation snapshots can
+  be persisted or navigated.
+- Abort-aware races stop orchestration even when an underlying read Promise hangs;
+  late results are discarded. Owner destruction also cancels provider
+  initialization, active tools, provider streaming, and shutdown waits.
+- A per-owner starting lock rejects concurrent starts before provider setup can
+  create duplicate runs.
+- Proposal forwarding is idempotent and reconciles missing bounded references.
+  It creates a pending Phase 16 Memory proposal only; confirmed Memory still
+  requires a separate user action in Notes.
+
 ## Phase 6 Zotero Controls
 
 - Zotero Local API origin is compiled into Main as `http://127.0.0.1:23119/api/`.

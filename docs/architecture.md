@@ -44,6 +44,26 @@ privilege boundary. It may invoke only typed, validated, bounded, auditable tool
 with explicit Workspace/resource scope. Generic shell, arbitrary SQL,
 `readAnyFile`, generic IPC, and unrestricted URL/localhost tools are prohibited.
 
+## Phase 18 Implemented Research Agent
+
+Phase 18 fixes the privileged path as:
+
+```text
+Agent UI -> typed preload -> validated research-agent IPC
+  -> ResearchAgentService -> fixed DomainToolRegistry -> existing domain services
+  -> AiAssistantService for bounded synthesis
+  -> database Worker for run/trace/citation/proposal audit
+```
+
+The provider receives no executable tool registry. Main validates and invokes a
+fixed read-only plan and authorizes paper/code reads only for Knowledge chunks
+discovered inside that run. All retained tool results and citation excerpts count
+toward the fixed context budget. Cancellation races every tool Promise and also
+covers provider initialization, Renderer destruction, timeout, and shutdown.
+Agent write intent can create only an Agent proposal; explicit forwarding creates
+an existing pending Memory proposal, never canonical Memory. See
+[research-agent.md](./research-agent.md).
+
 The existing managed Paper/PDF library is retained as a compatibility and
 fallback-import subsystem. It is not used as the canonical backing store for
 Zotero resources. The current `AiProvider` boundary remains reusable, while the

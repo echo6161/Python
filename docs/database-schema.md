@@ -286,3 +286,18 @@ Migration `0013-adaptive-research-plan` adds:
 
 One active Plan is allowed per Workspace through a partial unique index. Retired
 Plans remain queryable until the user explicitly confirms deletion.
+
+## Phase 18 Research Agent
+
+Migration `0014-research-agent.ts` adds:
+
+| Entity | SQLite table | Relationship and integrity notes |
+| --- | --- | --- |
+| Agent run | `research_agent_runs` | Workspace goal, provider/model, fixed budgets, usage, answer, uncertainty, terminal reason, bounded safe error, and timestamps |
+| Audit step | `research_agent_trace_steps` | Ordered finite tool name, terminal status, bounded redacted summaries, safe error, and timing |
+| Citation | `research_agent_citations` | Exact run alias, Workspace Knowledge chunk, bounded snippet/citation, stale state, and provenance snapshot |
+| Agent proposal | `research_agent_proposals` | Separate pending/accepted/rejected typed Memory candidate and downstream pending Memory proposal ID |
+
+Workspace deletion cascades only PaperMind-owned Agent audit rows. No credential,
+token, absolute path, complete PDF page, repository file, external write, or
+canonical Memory is stored. See [research-agent.md](./research-agent.md).

@@ -15,6 +15,7 @@ import {
   Trash2,
   MessageSquareText,
   ListChecks,
+  Bot,
 } from 'lucide-react';
 
 import type {
@@ -32,6 +33,7 @@ import { WorkspaceKnowledgePage } from './knowledge/WorkspaceKnowledgePage';
 import { WorkspaceResearchChatPage } from './research-chat/WorkspaceResearchChatPage';
 import { WorkspaceResearchMemoryPage } from './research-memory/WorkspaceResearchMemoryPage';
 import { WorkspaceResearchPlanPage } from './research-plan/WorkspaceResearchPlanPage';
+import { WorkspaceResearchAgentPage } from './research-agent/WorkspaceResearchAgentPage';
 
 interface WorkspaceOverviewProps {
   readonly busy: boolean;
@@ -51,6 +53,7 @@ const activeTabs = [
   { id: 'chat', icon: MessageSquareText, label: 'Chat' },
   { id: 'notes', icon: NotebookPen, label: 'Notes' },
   { id: 'plan', icon: ListChecks, label: 'Plan' },
+  { id: 'agent', icon: Bot, label: 'Agent' },
 ] as const;
 
 const futureTabs = [
@@ -181,7 +184,8 @@ export function WorkspaceOverview({
               activeTab === 'knowledge' ||
               activeTab === 'chat' ||
               activeTab === 'notes' ||
-              activeTab === 'plan'
+              activeTab === 'plan' ||
+              activeTab === 'agent'
                 ? 'h-full'
                 : 'mx-auto w-full max-w-[1600px] p-4 xl:p-5'
             }
@@ -198,6 +202,7 @@ export function WorkspaceOverview({
               <WorkspaceResearchMemoryPage workspace={workspace} onNavigate={setActiveTab} />
             ) : null}
             {activeTab === 'plan' ? <WorkspaceResearchPlanPage workspace={workspace} /> : null}
+            {activeTab === 'agent' ? <WorkspaceResearchAgentPage workspace={workspace} /> : null}
           </div>
         )}
       </section>

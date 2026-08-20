@@ -27,7 +27,7 @@ export interface StoredResearchReferenceInput {
 export interface CreateStoredProposalInput {
   readonly id: string;
   readonly workspaceId: string;
-  readonly sourceNoteId: string;
+  readonly sourceNoteId: string | null;
   readonly title: string;
   readonly bodyMarkdown: string;
   readonly reason: string;

@@ -79,6 +79,12 @@ import type {
   StoredPlanProposalInput,
   StoredPlanReferenceInput,
 } from '../research-plan/research-plan-data-gateway';
+import type {
+  AppendStoredAgentStepInput,
+  CompleteStoredAgentRunInput,
+  CreateStoredAgentRunInput,
+  ResearchAgentDataGateway,
+} from '../research-agent/research-agent-data-gateway';
 
 export type DatabaseWorkerRequest =
   | { readonly id: number; readonly method: 'listPapers'; readonly payload: PaperListQuery }
@@ -781,6 +787,50 @@ export type DatabaseWorkerRequest =
       readonly id: number;
       readonly method: 'listPlanReferences';
       readonly payload: { readonly workspaceId: string; readonly planId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'markInterruptedAgentRuns';
+      readonly payload: { readonly completedAt: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'createAgentRun';
+      readonly payload: CreateStoredAgentRunInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'appendAgentStep';
+      readonly payload: AppendStoredAgentStepInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'updateAgentContextUsage';
+      readonly payload: {
+        readonly workspaceId: string;
+        readonly runId: string;
+        readonly contextCharacters: number;
+      };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'completeAgentRun';
+      readonly payload: CompleteStoredAgentRunInput;
+    }
+  | {
+      readonly id: number;
+      readonly method: 'getAgentRun';
+      readonly payload: { readonly workspaceId: string; readonly runId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'listAgentRuns';
+      readonly payload: { readonly workspaceId: string };
+    }
+  | {
+      readonly id: number;
+      readonly method: 'reviewAgentProposal';
+      readonly payload: Parameters<ResearchAgentDataGateway['reviewAgentProposal']>[0];
     }
   | {
       readonly id: number;

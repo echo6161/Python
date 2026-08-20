@@ -187,6 +187,15 @@ import type {
   UpdateResearchPlanInput,
   UpdateResearchPlanProposalInput,
 } from '../shared/contracts/research-plan';
+import type {
+  ResearchAgentIpcChannels,
+  ResearchAgentProposal,
+  ResearchAgentRun,
+  ResearchAgentRunAccepted,
+  ResearchAgentRunEvent,
+  ResearchAgentRunSummary,
+  StartResearchAgentRunInput,
+} from '../shared/contracts/research-agent';
 
 // Sandboxed preloads cannot load arbitrary local modules at runtime.
 const APP_GET_INFO_CHANNEL: AppGetInfoChannel = 'app:get-info';
@@ -359,8 +368,68 @@ const RESEARCH_PLAN_CHANNELS = {
   confirmProposal: 'research-plan:confirm-proposal',
   rejectProposal: 'research-plan:reject-proposal',
 } satisfies ResearchPlanIpcChannels;
+const RESEARCH_AGENT_CHANNELS = {
+  listRuns: 'research-agent:list-runs',
+  getRun: 'research-agent:get-run',
+  startRun: 'research-agent:start-run',
+  cancelRun: 'research-agent:cancel-run',
+  openCitation: 'research-agent:open-citation',
+  acceptProposal: 'research-agent:accept-proposal',
+  rejectProposal: 'research-agent:reject-proposal',
+  runEvent: 'research-agent:run-event',
+} satisfies ResearchAgentIpcChannels;
 
 const api: PaperMindApi = Object.freeze({
+  researchAgent: Object.freeze({
+    listRuns: (workspaceId: string) =>
+      ipcRenderer.invoke(RESEARCH_AGENT_CHANNELS.listRuns, workspaceId) as Promise<
+        ApiResult<readonly ResearchAgentRunSummary[]>
+      >,
+    getRun: (workspaceId: string, runId: string) =>
+      ipcRenderer.invoke(RESEARCH_AGENT_CHANNELS.getRun, { workspaceId, runId }) as Promise<
+        ApiResult<ResearchAgentRun>
+      >,
+    startRun: (input: StartResearchAgentRunInput) =>
+      ipcRenderer.invoke(RESEARCH_AGENT_CHANNELS.startRun, input) as Promise<
+        ApiResult<ResearchAgentRunAccepted>
+      >,
+    cancelRun: (requestId: string) =>
+      ipcRenderer.invoke(RESEARCH_AGENT_CHANNELS.cancelRun, requestId) as Promise<
+        ApiResult<{ readonly requestId: string }>
+      >,
+    openCitation: (input: {
+      readonly workspaceId: string;
+      readonly runId: string;
+      readonly alias: string;
+    }) =>
+      ipcRenderer.invoke(RESEARCH_AGENT_CHANNELS.openCitation, input) as Promise<
+        ApiResult<OpenKnowledgeResult>
+      >,
+    acceptProposal: (input: {
+      readonly workspaceId: string;
+      readonly runId: string;
+      readonly proposalId: string;
+      readonly rowVersion: number;
+    }) =>
+      ipcRenderer.invoke(RESEARCH_AGENT_CHANNELS.acceptProposal, input) as Promise<
+        ApiResult<ResearchAgentProposal>
+      >,
+    rejectProposal: (input: {
+      readonly workspaceId: string;
+      readonly runId: string;
+      readonly proposalId: string;
+      readonly rowVersion: number;
+    }) =>
+      ipcRenderer.invoke(RESEARCH_AGENT_CHANNELS.rejectProposal, input) as Promise<
+        ApiResult<ResearchAgentProposal>
+      >,
+    onRunEvent: (listener: (event: ResearchAgentRunEvent) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, value: ResearchAgentRunEvent) =>
+        listener(value);
+      ipcRenderer.on(RESEARCH_AGENT_CHANNELS.runEvent, handler);
+      return () => ipcRenderer.removeListener(RESEARCH_AGENT_CHANNELS.runEvent, handler);
+    },
+  }),
   researchPlan: Object.freeze({
     getActive: (workspaceId: string) =>
       ipcRenderer.invoke(RESEARCH_PLAN_CHANNELS.getActive, workspaceId) as Promise<

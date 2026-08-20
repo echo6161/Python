@@ -148,6 +148,17 @@ import type {
   StoredPlanProposalInput,
   StoredPlanReferenceInput,
 } from '../research-plan/research-plan-data-gateway';
+import type {
+  AppendStoredAgentStepInput,
+  CompleteStoredAgentRunInput,
+  CreateStoredAgentRunInput,
+  ResearchAgentDataGateway,
+} from '../research-agent/research-agent-data-gateway';
+import type {
+  ResearchAgentProposal,
+  ResearchAgentRun,
+  ResearchAgentRunSummary,
+} from '../../shared/contracts/research-agent';
 
 interface PendingCall {
   readonly resolve: (value: unknown) => void;
@@ -164,6 +175,7 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
   public readonly researchChat: ResearchChatDataGateway;
   public readonly researchMemory: ResearchMemoryDataGateway;
   public readonly researchPlan: ResearchPlanDataGateway;
+  public readonly researchAgent: ResearchAgentDataGateway;
   private readonly worker: Worker;
   private readonly pending = new Map<number, PendingCall>();
   private nextId = 1;
@@ -187,6 +199,9 @@ export class DatabaseWorkerClient implements PaperDataGateway, AiDataGateway {
       this.call(method, payload),
     );
     this.researchPlan = new ResearchPlanWorkerGateway((method, payload) =>
+      this.call(method, payload),
+    );
+    this.researchAgent = new ResearchAgentWorkerGateway((method, payload) =>
       this.call(method, payload),
     );
     this.worker.on('message', (response: DatabaseWorkerResponse) => {
@@ -894,6 +909,46 @@ class ResearchMemoryWorkerGateway implements ResearchMemoryDataGateway {
 
   public async recordResearchExport(input: RecordResearchExportInput): Promise<void> {
     await this.call('recordResearchExport', input);
+  }
+}
+
+class ResearchAgentWorkerGateway implements ResearchAgentDataGateway {
+  public constructor(
+    private readonly call: <T>(
+      method: DatabaseWorkerRequest['method'],
+      payload: unknown,
+    ) => Promise<T>,
+  ) {}
+
+  public markInterruptedAgentRuns(completedAt: string): Promise<number> {
+    return this.call('markInterruptedAgentRuns', { completedAt });
+  }
+  public createAgentRun(input: CreateStoredAgentRunInput): Promise<ResearchAgentRun> {
+    return this.call('createAgentRun', input);
+  }
+  public appendAgentStep(input: AppendStoredAgentStepInput): Promise<ResearchAgentRun> {
+    return this.call('appendAgentStep', input);
+  }
+  public updateAgentContextUsage(
+    workspaceId: string,
+    runId: string,
+    contextCharacters: number,
+  ): Promise<ResearchAgentRun> {
+    return this.call('updateAgentContextUsage', { workspaceId, runId, contextCharacters });
+  }
+  public completeAgentRun(input: CompleteStoredAgentRunInput): Promise<ResearchAgentRun> {
+    return this.call('completeAgentRun', input);
+  }
+  public getAgentRun(workspaceId: string, runId: string): Promise<ResearchAgentRun | null> {
+    return this.call('getAgentRun', { workspaceId, runId });
+  }
+  public listAgentRuns(workspaceId: string): Promise<readonly ResearchAgentRunSummary[]> {
+    return this.call('listAgentRuns', { workspaceId });
+  }
+  public reviewAgentProposal(
+    input: Parameters<ResearchAgentDataGateway['reviewAgentProposal']>[0],
+  ): Promise<ResearchAgentProposal> {
+    return this.call('reviewAgentProposal', input);
   }
 }
 

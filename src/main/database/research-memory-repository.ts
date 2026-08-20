@@ -323,7 +323,9 @@ export class ResearchMemoryRepository {
 
   public createProposal(input: CreateStoredProposalInput): ResearchMemoryProposal {
     return this.database.transaction(() => {
-      const note = this.require(input.workspaceId, 'note', input.sourceNoteId);
+      const note = input.sourceNoteId
+        ? this.require(input.workspaceId, 'note', input.sourceNoteId)
+        : null;
       this.requireMutableWorkspace(input.workspaceId);
       this.database
         .prepare(
@@ -335,7 +337,7 @@ export class ResearchMemoryRepository {
         .run(
           input.id,
           input.workspaceId,
-          note.id,
+          note?.id ?? null,
           input.title,
           input.bodyMarkdown,
           input.reason,
@@ -343,7 +345,7 @@ export class ResearchMemoryRepository {
           input.model,
           input.createdAt,
         );
-      for (const reference of note.references) {
+      for (const reference of note?.references ?? []) {
         this.addReference({
           id: randomUUID(),
           workspaceId: input.workspaceId,

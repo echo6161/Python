@@ -25,7 +25,16 @@ import { zoteroCreatorNames, zoteroPdfLabel } from '../../workspace/zotero-displ
 import { WorkspaceDetailsEditor } from './WorkspaceDetailsEditor';
 
 export type WorkspaceTab =
-  'chat' | 'code' | 'knowledge' | 'links' | 'notes' | 'overview' | 'papers' | 'plan' | 'questions';
+  | 'agent'
+  | 'chat'
+  | 'code'
+  | 'knowledge'
+  | 'links'
+  | 'notes'
+  | 'overview'
+  | 'papers'
+  | 'plan'
+  | 'questions';
 
 interface WorkspaceDashboardProps {
   readonly busy: boolean;

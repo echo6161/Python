@@ -157,6 +157,18 @@ import type {
   StoredPlanReferenceInput,
 } from '../research-plan/research-plan-data-gateway';
 import { ResearchPlanRepository } from './research-plan-repository';
+import type {
+  AppendStoredAgentStepInput,
+  CompleteStoredAgentRunInput,
+  CreateStoredAgentRunInput,
+  ResearchAgentDataGateway,
+} from '../research-agent/research-agent-data-gateway';
+import type {
+  ResearchAgentProposal,
+  ResearchAgentRun,
+  ResearchAgentRunSummary,
+} from '../../shared/contracts/research-agent';
+import { ResearchAgentRepository } from './research-agent-repository';
 
 export class LibraryDatabase
   implements
@@ -170,7 +182,8 @@ export class LibraryDatabase
     KnowledgeDataGateway,
     ResearchChatDataGateway,
     ResearchMemoryDataGateway,
-    ResearchPlanDataGateway
+    ResearchPlanDataGateway,
+    ResearchAgentDataGateway
 {
   private database: BetterSqlite3.Database;
   private repository: PaperRepository;
@@ -185,6 +198,7 @@ export class LibraryDatabase
   private researchChatRepository: ResearchChatRepository;
   private researchMemoryRepository: ResearchMemoryRepository;
   private researchPlanRepository: ResearchPlanRepository;
+  private researchAgentRepository: ResearchAgentRepository;
 
   public constructor(private readonly databasePath: string) {
     this.database = this.openDatabase(databasePath);
@@ -200,6 +214,7 @@ export class LibraryDatabase
     this.researchChatRepository = new ResearchChatRepository(this.database);
     this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
     this.researchPlanRepository = new ResearchPlanRepository(this.database);
+    this.researchAgentRepository = new ResearchAgentRepository(this.database);
   }
 
   public listPapers(query?: PaperListQuery): Promise<PaperListResult> {
@@ -896,6 +911,46 @@ export class LibraryDatabase
     return this.run(() => this.researchPlanRepository.listReferences(workspaceId, planId));
   }
 
+  public markInterruptedAgentRuns(completedAt: string): Promise<number> {
+    return this.run(() => this.researchAgentRepository.markInterrupted(completedAt));
+  }
+
+  public createAgentRun(input: CreateStoredAgentRunInput): Promise<ResearchAgentRun> {
+    return this.run(() => this.researchAgentRepository.create(input));
+  }
+
+  public appendAgentStep(input: AppendStoredAgentStepInput): Promise<ResearchAgentRun> {
+    return this.run(() => this.researchAgentRepository.appendStep(input));
+  }
+
+  public updateAgentContextUsage(
+    workspaceId: string,
+    runId: string,
+    contextCharacters: number,
+  ): Promise<ResearchAgentRun> {
+    return this.run(() =>
+      this.researchAgentRepository.updateContextUsage(workspaceId, runId, contextCharacters),
+    );
+  }
+
+  public completeAgentRun(input: CompleteStoredAgentRunInput): Promise<ResearchAgentRun> {
+    return this.run(() => this.researchAgentRepository.complete(input));
+  }
+
+  public getAgentRun(workspaceId: string, runId: string): Promise<ResearchAgentRun | null> {
+    return this.run(() => this.researchAgentRepository.get(workspaceId, runId));
+  }
+
+  public listAgentRuns(workspaceId: string): Promise<readonly ResearchAgentRunSummary[]> {
+    return this.run(() => this.researchAgentRepository.list(workspaceId));
+  }
+
+  public reviewAgentProposal(
+    input: Parameters<ResearchAgentDataGateway['reviewAgentProposal']>[0],
+  ): Promise<ResearchAgentProposal> {
+    return this.run(() => this.researchAgentRepository.reviewProposal(input));
+  }
+
   public async backupTo(destinationPath: string): Promise<void> {
     await this.database.backup(destinationPath);
   }
@@ -944,6 +999,7 @@ export class LibraryDatabase
         this.researchChatRepository = new ResearchChatRepository(this.database);
         this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
         this.researchPlanRepository = new ResearchPlanRepository(this.database);
+        this.researchAgentRepository = new ResearchAgentRepository(this.database);
       } catch (error) {
         await rm(this.databasePath, { force: true });
         await rename(previousPath, this.databasePath);
@@ -960,6 +1016,7 @@ export class LibraryDatabase
         this.researchChatRepository = new ResearchChatRepository(this.database);
         this.researchMemoryRepository = new ResearchMemoryRepository(this.database);
         this.researchPlanRepository = new ResearchPlanRepository(this.database);
+        this.researchAgentRepository = new ResearchAgentRepository(this.database);
         throw error;
       }
 

@@ -349,6 +349,26 @@ async function execute(request: DatabaseWorkerRequest): Promise<unknown> {
       return database.rejectResearchPlanProposal(request.payload);
     case 'listPlanReferences':
       return database.listPlanReferences(request.payload.workspaceId, request.payload.planId);
+    case 'markInterruptedAgentRuns':
+      return database.markInterruptedAgentRuns(request.payload.completedAt);
+    case 'createAgentRun':
+      return database.createAgentRun(request.payload);
+    case 'appendAgentStep':
+      return database.appendAgentStep(request.payload);
+    case 'updateAgentContextUsage':
+      return database.updateAgentContextUsage(
+        request.payload.workspaceId,
+        request.payload.runId,
+        request.payload.contextCharacters,
+      );
+    case 'completeAgentRun':
+      return database.completeAgentRun(request.payload);
+    case 'getAgentRun':
+      return database.getAgentRun(request.payload.workspaceId, request.payload.runId);
+    case 'listAgentRuns':
+      return database.listAgentRuns(request.payload.workspaceId);
+    case 'reviewAgentProposal':
+      return database.reviewAgentProposal(request.payload);
     case 'backupTo':
       return database.backupTo(request.payload.destinationPath);
     case 'restoreFrom':

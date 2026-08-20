@@ -60,6 +60,9 @@ import { MemoryExportService } from './research-memory/memory-export-service';
 import { registerResearchPlanIpcHandlers } from './ipc/research-plan-ipc';
 import { ResearchPlanService } from './research-plan/research-plan-service';
 import { AiPlanProposalGenerator } from './research-plan/plan-proposal-generator';
+import { registerResearchAgentIpcHandlers } from './ipc/research-agent-ipc';
+import { createDomainToolRegistry } from './research-agent/domain-tool-registry';
+import { ResearchAgentService } from './research-agent/research-agent-service';
 
 const logger = createConsoleLogger('main');
 let mainWindow: BrowserWindow | null = null;
@@ -68,6 +71,7 @@ let metadataExtractionClient: PdfMetadataExtractionClient | null = null;
 let metadataBackfillPromise: Promise<void> | null = null;
 let aiAssistant: AiAssistantService | null = null;
 let researchChat: ResearchChatService | null = null;
+let researchAgent: ResearchAgentService | null = null;
 let shutdownPromise: Promise<void> | null = null;
 
 protocol.registerSchemesAsPrivileged([
@@ -278,6 +282,22 @@ async function initializeLibrary(): Promise<void> {
       new AiPlanProposalGenerator(aiAssistant),
     ),
   );
+  researchAgent = new ResearchAgentService(
+    databaseClient.researchAgent,
+    createDomainToolRegistry({
+      workspace: databaseClient.workspace,
+      knowledge,
+      questions: databaseClient.question,
+      memory: databaseClient.researchMemory,
+      plan: databaseClient.researchPlan,
+      links: databaseClient.paperCodeLink,
+    }),
+    knowledge,
+    aiAssistant,
+    databaseClient.researchMemory,
+  );
+  await researchAgent.initialize();
+  registerResearchAgentIpcHandlers(researchAgent);
   registerPdfProtocol(session.defaultSession, reader);
   metadataBackfillPromise = library
     .backfillPendingPaperTextExtractions()
@@ -308,6 +328,7 @@ async function createMainWindow(): Promise<void> {
   window.webContents.once('destroyed', () => {
     aiAssistant?.cancelOwnerRequests(windowOwnerId);
     researchChat?.cancelOwnerRequests(windowOwnerId);
+    researchAgent?.cancelOwnerRequests(windowOwnerId);
   });
   window.once('ready-to-show', () => window.show());
   window.on('closed', () => {
@@ -370,7 +391,13 @@ app.on('second-instance', () => {
 });
 
 app.on('before-quit', (event) => {
-  if (!databaseClient && !metadataExtractionClient && !aiAssistant && !researchChat) {
+  if (
+    !databaseClient &&
+    !metadataExtractionClient &&
+    !aiAssistant &&
+    !researchChat &&
+    !researchAgent
+  ) {
     return;
   }
 
@@ -384,6 +411,7 @@ app.on('before-quit', (event) => {
         await metadata?.close();
         await backfill;
         await researchChat?.shutdown();
+        await researchAgent?.shutdown();
         await aiAssistant?.shutdown();
         await database?.close();
       })
@@ -396,6 +424,7 @@ app.on('before-quit', (event) => {
         metadataBackfillPromise = null;
         aiAssistant = null;
         researchChat = null;
+        researchAgent = null;
         app.quit();
       });
   }
