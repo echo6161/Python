@@ -78,9 +78,7 @@ export function WorkspaceOverview({
   const paused = workspace.status === 'paused';
 
   return (
-    <div
-      className={`workspace-shell flex h-full min-w-0 flex-col ${activeTab === 'overview' ? 'workspace-shell-overview' : ''}`}
-    >
+    <div className="workspace-shell workspace-shell-overview flex h-full min-w-0 flex-col">
       <header className="workspace-chrome-header">
         <div className="workspace-title-block">
           <div className="workspace-title-line">

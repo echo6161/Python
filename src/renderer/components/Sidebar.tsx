@@ -21,12 +21,12 @@ const navigationItems: readonly {
 
 export function Sidebar({ activeView, appVersion, onNavigate }: SidebarProps) {
   return (
-    <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 text-zinc-200">
+    <aside className="app-sidebar flex h-screen w-56 shrink-0 flex-col border-r">
       <div className="flex h-16 items-center gap-3 border-b border-zinc-800 px-5">
-        <span className="flex size-8 items-center justify-center rounded-md bg-emerald-500 text-zinc-950">
+        <span className="app-sidebar-brand-mark flex size-8 items-center justify-center rounded-md">
           <BookOpen aria-hidden="true" className="size-5" />
         </span>
-        <span className="text-base font-semibold text-white">PaperMind</span>
+        <span className="app-sidebar-brand-name text-base font-semibold">PaperMind</span>
       </div>
 
       <nav aria-label="Primary" className="flex-1 space-y-1 px-3 py-4">
@@ -36,11 +36,7 @@ export function Sidebar({ activeView, appVersion, onNavigate }: SidebarProps) {
             <button
               key={view}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${
-                isActive
-                  ? 'bg-zinc-800 text-white'
-                  : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'
-              }`}
+              className={`app-sidebar-link flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium transition-colors ${isActive ? 'is-active' : ''}`}
               title={label}
               type="button"
               onClick={() => onNavigate(view)}

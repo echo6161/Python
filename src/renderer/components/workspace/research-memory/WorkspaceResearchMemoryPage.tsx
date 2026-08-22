@@ -341,7 +341,10 @@ export function WorkspaceResearchMemoryPage({ workspace, onNavigate }: Props) {
             onClose={() => setShowList(false)}
             onQuery={setQuery}
             onTypeFilter={setTypeFilter}
-            onSelect={(item) => void selectItem(item)}
+            onSelect={(item) => {
+              setShowList(false);
+              void selectItem(item);
+            }}
             onReview={(proposal) => {
               setReviewing(proposal);
               setShowList(false);

@@ -641,7 +641,7 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
     await dialog.getByRole('button', { name: 'Create Workspace' }).click();
     await expect(window.getByRole('heading', { name: 'Replication Workspace' })).toBeVisible();
 
-    const workspaceNavigation = window.getByRole('navigation', { name: 'Workspaces' });
+    const workspaceNavigation = window.getByRole('navigation', { name: 'Research resources' });
     await workspaceNavigation.getByRole('button', { name: /Evidence Workspace/ }).click();
     await window.getByRole('button', { name: 'Edit' }).click();
     await window
@@ -651,9 +651,8 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
     await expect(
       window.getByText('Compare reproducible evidence synthesis methods').first(),
     ).toBeVisible();
-    await expect(
-      window.getByText('Define the research goal, then add relevant papers from Zotero.'),
-    ).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Papers', exact: true })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Code', exact: true })).toBeVisible();
     await expect(window.getByRole('heading', { name: 'Research Questions' })).toBeVisible();
     await window.getByRole('tab', { name: 'Questions' }).click();
     await window.getByRole('button', { name: 'New Question' }).click();
@@ -667,7 +666,7 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
       'Does the evidence support the claim?',
     );
     await window.getByRole('tab', { name: 'Overview' }).click();
-    await expect(window.getByText('Does the evidence support the claim?')).toBeVisible();
+    await expect(window.getByText('Does the evidence support the claim?').first()).toBeVisible();
     await window.screenshot({ path: testInfo.outputPath('papermind-workspace-overview.png') });
     await window.setViewportSize({ width: 1100, height: 680 });
     expect(
@@ -715,7 +714,9 @@ test('creates, switches, restores, archives, and deletes Workspaces', async ({
     await confirmation.getByRole('button', { name: 'Delete Workspace' }).click();
     await expect(window.getByRole('heading', { name: 'Replication Workspace' })).toBeVisible();
     await expect(
-      window.getByRole('navigation', { name: 'Workspaces' }).getByText('Evidence Workspace'),
+      window
+        .getByRole('navigation', { name: 'Research resources' })
+        .getByText('Evidence Workspace'),
     ).not.toBeVisible();
   } finally {
     await electronApp.close();
