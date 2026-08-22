@@ -221,7 +221,7 @@ describe('App', () => {
           searchItems: vi.fn(),
           cancelRequest: vi.fn(),
           getItem: vi.fn(),
-          listCollections: vi.fn(),
+          listCollections: vi.fn().mockResolvedValue({ ok: true, value: [] }),
           listCollectionItems: vi.fn(),
           listAttachments: vi.fn(),
           findPrimaryPdf: vi.fn(),

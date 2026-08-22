@@ -6,6 +6,7 @@ import { useWorkspaceController } from '../../workspace/use-workspace-controller
 import { WorkspaceCreateDialog } from './WorkspaceCreateDialog';
 import { WorkspaceNavigator } from './WorkspaceNavigator';
 import { WorkspaceOverview } from './WorkspaceOverview';
+import type { WorkspaceTab } from './WorkspaceDashboard';
 
 interface WorkspaceViewProps {
   readonly appVersion?: string | undefined;
@@ -18,6 +19,15 @@ export function WorkspaceView({
 }: WorkspaceViewProps = {}) {
   const controller = useWorkspaceController();
   const [showCreate, setShowCreate] = useState(false);
+  const [tabState, setTabState] = useState<{
+    readonly tab: WorkspaceTab;
+    readonly workspaceId: string | null;
+  }>({ tab: 'overview', workspaceId: null });
+  const currentWorkspaceId = controller.current?.id ?? null;
+  const activeTab =
+    tabState.workspaceId === currentWorkspaceId ? tabState.tab : ('overview' as const);
+  const navigateWorkspace = (tab: WorkspaceTab) =>
+    setTabState({ tab, workspaceId: currentWorkspaceId });
 
   return (
     <main className="workspace-root flex h-screen min-h-[680px] min-w-[1024px] flex-1 overflow-hidden bg-[#0b1017] text-zinc-200">
@@ -28,6 +38,7 @@ export function WorkspaceView({
         workspaces={controller.workspaces}
         onCreate={() => setShowCreate(true)}
         onNavigateApp={onNavigateApp}
+        onNavigateWorkspace={navigateWorkspace}
         onSelect={(workspace) => void controller.select(workspace)}
       />
 
@@ -52,8 +63,10 @@ export function WorkspaceView({
         ) : controller.current ? (
           <WorkspaceOverview
             key={controller.current.id}
+            activeTab={activeTab}
             busy={controller.busy}
             workspace={controller.current}
+            onActiveTabChange={navigateWorkspace}
             onDelete={controller.deleteCurrent}
             onSetStatus={controller.setStatus}
             onUpdate={controller.update}

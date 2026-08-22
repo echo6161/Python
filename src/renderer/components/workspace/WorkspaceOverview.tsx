@@ -38,9 +38,11 @@ import { WorkspaceExperimentPage } from './experiment/WorkspaceExperimentPage';
 import { WorkspaceResearchGraphPage } from './research-graph/WorkspaceResearchGraphPage';
 
 interface WorkspaceOverviewProps {
+  readonly activeTab: WorkspaceTab;
   readonly busy: boolean;
   readonly workspace: Workspace;
   readonly onDelete: () => Promise<boolean>;
+  readonly onActiveTabChange: (tab: WorkspaceTab) => void;
   readonly onSetStatus: (status: WorkspaceStatus) => Promise<boolean>;
   readonly onUpdate: (input: UpdateWorkspaceInput) => Promise<boolean>;
 }
@@ -63,34 +65,37 @@ const activeTabs = [
 const futureTabs: readonly { readonly icon: typeof Network; readonly label: string }[] = [];
 
 export function WorkspaceOverview({
+  activeTab,
   busy,
   workspace,
+  onActiveTabChange,
   onDelete,
   onSetStatus,
   onUpdate,
 }: WorkspaceOverviewProps) {
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview');
   const [confirmation, setConfirmation] = useState<'archive' | 'delete' | null>(null);
   const archived = workspace.status === 'archived';
   const paused = workspace.status === 'paused';
 
   return (
-    <div className="workspace-shell flex h-full min-w-0 flex-col bg-[#0b1017] text-zinc-200">
-      <header className="flex min-h-16 items-center justify-between gap-5 border-b border-zinc-800 bg-[#0d131c] px-5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <h1 className="truncate text-lg font-semibold text-zinc-50">{workspace.name}</h1>
-            <span
-              className={`rounded px-2 py-0.5 text-xs font-semibold capitalize ${statusClass(workspace.status)}`}
-            >
+    <div
+      className={`workspace-shell flex h-full min-w-0 flex-col ${activeTab === 'overview' ? 'workspace-shell-overview' : ''}`}
+    >
+      <header className="workspace-chrome-header">
+        <div className="workspace-title-block">
+          <div className="workspace-title-line">
+            <h1>{workspace.name}</h1>
+            <span className="workspace-status" data-status={workspace.status}>
               {workspace.status}
             </span>
           </div>
-          <p className="mt-0.5 truncate text-xs text-zinc-500">
-            {workspace.researchGoal || 'Research goal not defined'}
+          <p>
+            {activeTab === 'overview'
+              ? workspace.description || 'Research workspace'
+              : workspace.researchGoal || 'Research goal not defined'}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="workspace-lifecycle-actions">
           {!archived ? (
             <button
               aria-label={paused ? 'Resume Workspace' : 'Pause Workspace'}
@@ -132,11 +137,7 @@ export function WorkspaceOverview({
         </div>
       </header>
 
-      <nav
-        aria-label="Workspace sections"
-        className="workspace-tabs flex h-11 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-zinc-800 bg-[#0d131c] px-4"
-        role="tablist"
-      >
+      <nav aria-label="Workspace sections" className="workspace-tabs" role="tablist">
         {activeTabs.map(({ id, icon: Icon, label }) => (
           <button
             aria-controls={`workspace-panel-${id}`}
@@ -146,12 +147,12 @@ export function WorkspaceOverview({
             key={id}
             role="tab"
             type="button"
-            onClick={() => setActiveTab(id)}
+            onClick={() => onActiveTabChange(id)}
           >
             <Icon aria-hidden="true" className="size-3.5" /> {label}
           </button>
         ))}
-        <span aria-hidden="true" className="my-2 ml-1 w-px shrink-0 bg-zinc-800" />
+        <span aria-hidden="true" className="workspace-tab-separator" />
         {futureTabs.map(({ icon: Icon, label }) => (
           <button
             aria-label={`${label}: Coming later`}
@@ -168,7 +169,7 @@ export function WorkspaceOverview({
 
       <section
         aria-labelledby={`workspace-tab-${activeTab}`}
-        className="min-h-0 flex-1 overflow-y-auto"
+        className="workspace-content min-h-0 flex-1 overflow-y-auto"
         id={`workspace-panel-${activeTab}`}
         role="tabpanel"
       >
@@ -176,7 +177,7 @@ export function WorkspaceOverview({
           <WorkspaceDashboard
             busy={busy}
             workspace={workspace}
-            onNavigate={setActiveTab}
+            onNavigate={onActiveTabChange}
             onUpdate={onUpdate}
           />
         ) : (
@@ -198,11 +199,11 @@ export function WorkspaceOverview({
             {activeTab === 'questions' ? <WorkspaceQuestionSection workspace={workspace} /> : null}
             {activeTab === 'links' ? <PaperCodeLinkSection workspace={workspace} /> : null}
             {activeTab === 'knowledge' ? (
-              <WorkspaceKnowledgePage workspace={workspace} onNavigate={setActiveTab} />
+              <WorkspaceKnowledgePage workspace={workspace} onNavigate={onActiveTabChange} />
             ) : null}
             {activeTab === 'chat' ? <WorkspaceResearchChatPage workspace={workspace} /> : null}
             {activeTab === 'notes' ? (
-              <WorkspaceResearchMemoryPage workspace={workspace} onNavigate={setActiveTab} />
+              <WorkspaceResearchMemoryPage workspace={workspace} onNavigate={onActiveTabChange} />
             ) : null}
             {activeTab === 'plan' ? <WorkspaceResearchPlanPage workspace={workspace} /> : null}
             {activeTab === 'agent' ? <WorkspaceResearchAgentPage workspace={workspace} /> : null}
@@ -227,10 +228,4 @@ export function WorkspaceOverview({
       ) : null}
     </div>
   );
-}
-
-function statusClass(status: WorkspaceStatus): string {
-  if (status === 'active') return 'bg-emerald-950 text-emerald-300';
-  if (status === 'paused') return 'bg-amber-950 text-amber-300';
-  return 'bg-zinc-800 text-zinc-400';
 }

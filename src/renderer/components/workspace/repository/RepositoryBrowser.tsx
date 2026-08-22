@@ -110,7 +110,7 @@ export function RepositoryBrowser({
   };
 
   return (
-    <div className="border-t border-zinc-200">
+    <div className="repository-browser border-t border-zinc-200">
       <header className="flex min-h-12 items-center justify-between gap-4 border-b border-zinc-200 bg-zinc-50 px-4 py-2">
         <p className="truncate font-mono text-xs text-zinc-500" title={repository.canonicalRoot}>
           {repository.canonicalRoot}

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Archive,
   BookOpen,
@@ -9,8 +10,11 @@ import {
   Waypoints,
 } from 'lucide-react';
 
+import type { WorkspaceRepositoryRef } from '../../../shared/contracts/repository';
 import type { Workspace } from '../../../shared/contracts/workspace';
+import type { ZoteroCollection } from '../../../shared/contracts/zotero';
 import type { AppView } from '../Sidebar';
+import type { WorkspaceTab } from './WorkspaceDashboard';
 
 interface WorkspaceNavigatorProps {
   readonly appVersion: string | undefined;
@@ -19,6 +23,7 @@ interface WorkspaceNavigatorProps {
   readonly workspaces: readonly Workspace[];
   readonly onCreate: () => void;
   readonly onNavigateApp: (view: AppView) => void;
+  readonly onNavigateWorkspace: (tab: WorkspaceTab) => void;
   readonly onSelect: (workspace: Workspace) => void;
 }
 
@@ -29,47 +34,154 @@ export function WorkspaceNavigator({
   workspaces,
   onCreate,
   onNavigateApp,
+  onNavigateWorkspace,
   onSelect,
 }: WorkspaceNavigatorProps) {
   const current = workspaces.filter(({ status }) => status !== 'archived');
   const archived = workspaces.filter(({ status }) => status === 'archived');
+  const [collections, setCollections] = useState<readonly ZoteroCollection[] | null>(null);
+  const [repositoryState, setRepositoryState] = useState<{
+    readonly workspaceId: string;
+    readonly items: readonly WorkspaceRepositoryRef[];
+  } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void window.paperMind.zotero
+      .listCollections()
+      .then((result) => {
+        if (active) setCollections(result.ok ? result.value : []);
+      })
+      .catch(() => {
+        if (active) setCollections([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!currentId) {
+      return () => {
+        active = false;
+      };
+    }
+    void window.paperMind.repository
+      .listForWorkspace(currentId)
+      .then((result) => {
+        if (active) {
+          setRepositoryState({
+            workspaceId: currentId,
+            items: result.ok ? result.value : [],
+          });
+        }
+      })
+      .catch(() => {
+        if (active) setRepositoryState({ workspaceId: currentId, items: [] });
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentId]);
+
+  const repositories = currentId
+    ? repositoryState?.workspaceId === currentId
+      ? repositoryState.items
+      : null
+    : [];
 
   return (
-    <aside className="flex w-[248px] shrink-0 flex-col border-r border-zinc-800 bg-[#0d131c] text-zinc-300">
-      <header className="flex h-16 items-center gap-3 border-b border-zinc-800 px-4">
-        <span className="flex size-8 items-center justify-center rounded bg-emerald-400 text-zinc-950">
+    <aside className="workspace-navigator flex w-[248px] shrink-0 flex-col border-r border-zinc-800 bg-[#0d131c] text-zinc-300">
+      <header className="workspace-navigator-brand flex h-16 items-center gap-3 border-b border-zinc-800 px-4">
+        <span className="workspace-brand-mark flex size-8 items-center justify-center rounded bg-emerald-400 text-zinc-950">
           <BookOpen aria-hidden="true" className="size-5" />
         </span>
-        <span className="text-base font-semibold text-zinc-50">PaperMind</span>
+        <span className="workspace-brand-name text-base font-semibold text-zinc-50">PaperMind</span>
       </header>
 
-      <div className="border-b border-zinc-800 p-3">
+      <div className="workspace-create-area border-b border-zinc-800 p-3">
         <button className="workspace-new-button" type="button" onClick={onCreate}>
           <Plus aria-hidden="true" className="size-4" /> New Workspace
         </button>
       </div>
 
-      <nav aria-label="Workspaces" className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
-        <p className="px-3 pb-2 text-[11px] font-semibold uppercase text-zinc-500">Workspaces</p>
-        {loading ? <p className="px-3 py-3 text-xs text-zinc-500">Loading...</p> : null}
-        {!loading && workspaces.length === 0 ? (
-          <p className="px-3 py-3 text-xs leading-5 text-zinc-500">No Workspaces yet.</p>
-        ) : null}
-        <WorkspaceGroup currentId={currentId} items={current} onSelect={onSelect} />
-        {archived.length > 0 ? (
-          <div className="mt-5">
-            <p className="px-3 pb-1 text-xs font-semibold uppercase text-zinc-400">Archived</p>
-            <WorkspaceGroup currentId={currentId} items={archived} onSelect={onSelect} />
-          </div>
-        ) : null}
-      </nav>
+      <nav
+        aria-label="Research resources"
+        className="workspace-list min-h-0 flex-1 overflow-y-auto px-2 py-3"
+      >
+        <details className="workspace-resource-group" open>
+          <summary>
+            <span>Workspaces</span>
+            <small>{current.length}</small>
+          </summary>
+          {loading ? <p className="workspace-nav-message">Loading...</p> : null}
+          {!loading && workspaces.length === 0 ? (
+            <p className="workspace-nav-message">No Workspaces yet.</p>
+          ) : null}
+          <WorkspaceGroup currentId={currentId} items={current} onSelect={onSelect} />
+          {archived.length > 0 ? (
+            <div className="mt-3">
+              <p className="workspace-nav-label">Archived</p>
+              <WorkspaceGroup currentId={currentId} items={archived} onSelect={onSelect} />
+            </div>
+          ) : null}
+        </details>
 
-      <nav aria-label="PaperMind resources" className="border-t border-zinc-800 px-2 py-3">
         <ResourceButton
           icon={Waypoints}
           label="Zotero Library"
           onClick={() => onNavigateApp('zotero')}
         />
+
+        <details className="workspace-resource-group" open>
+          <summary>
+            <span>Collections</span>
+            <small>{collections?.length ?? 0}</small>
+          </summary>
+          {collections === null ? <p className="workspace-nav-message">Loading...</p> : null}
+          {collections?.length === 0 ? (
+            <p className="workspace-nav-message">No Zotero collections available.</p>
+          ) : null}
+          <ul className="workspace-compact-resources">
+            {collections?.slice(0, 6).map((collection) => (
+              <li key={collection.ref.collectionKey}>
+                <button type="button" onClick={() => onNavigateApp('zotero')}>
+                  <BookOpen aria-hidden="true" className="size-3.5" />
+                  <span title={collection.name}>{collection.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+
+        <details className="workspace-resource-group" open>
+          <summary>
+            <span>Repositories</span>
+            <small>{repositories?.length ?? 0}</small>
+          </summary>
+          {repositories === null ? <p className="workspace-nav-message">Loading...</p> : null}
+          {repositories?.length === 0 ? (
+            <p className="workspace-nav-message">No repositories linked.</p>
+          ) : null}
+          <ul className="workspace-compact-resources">
+            {repositories?.slice(0, 6).map((repository) => (
+              <li key={repository.id}>
+                <button type="button" onClick={() => onNavigateWorkspace('code')}>
+                  <FolderKanban aria-hidden="true" className="size-3.5" />
+                  <span title={repository.displayName}>{repository.displayName}</span>
+                  <i data-status={repository.availability} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </nav>
+
+      <nav
+        aria-label="PaperMind resources"
+        className="workspace-resources border-t border-zinc-800 px-2 py-3"
+      >
         <ResourceButton
           icon={Library}
           label="Legacy Library"
@@ -81,9 +193,11 @@ export function WorkspaceNavigator({
           onClick={() => onNavigateApp('settings')}
         />
       </nav>
-      <footer className="border-t border-zinc-800 px-4 py-3 text-xs text-zinc-600">
-        <div className="flex items-center gap-2 text-zinc-500">
-          <span aria-hidden="true" className="size-2 rounded-full bg-emerald-400" /> Local first
+      <footer className="workspace-navigator-footer border-t border-zinc-800 px-4 py-3 text-xs text-zinc-600">
+        <strong>Sync status</strong>
+        <div className="mt-1 flex items-center gap-2 text-zinc-500">
+          <span aria-hidden="true" className="workspace-local-dot size-2 rounded-full" /> Local
+          first
         </div>
         <p className="mt-1">{appVersion ? `v${appVersion}` : 'Version unavailable'}</p>
       </footer>
@@ -114,21 +228,16 @@ function WorkspaceGroup({
           <li key={workspace.id}>
             <button
               aria-current={selected ? 'page' : undefined}
-              className={`flex min-h-10 w-full items-center gap-2 rounded px-3 py-2 text-left focus-visible:outline-2 focus-visible:outline-emerald-400 ${
-                selected
-                  ? 'bg-sky-950/70 text-sky-100'
-                  : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'
-              }`}
+              className={`workspace-nav-item ${selected ? 'is-selected' : ''}`}
               type="button"
               onClick={() => onSelect(workspace)}
             >
-              <StatusIcon
-                aria-hidden="true"
-                className={`size-4 shrink-0 ${selected ? 'text-sky-400' : 'text-zinc-600'}`}
-              />
+              <StatusIcon aria-hidden="true" className="workspace-nav-icon" />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium">{workspace.name}</span>
-                <span className="block text-xs capitalize text-zinc-500">{workspace.status}</span>
+                <span className="workspace-nav-status block text-xs capitalize">
+                  {workspace.status}
+                </span>
               </span>
             </button>
           </li>
@@ -148,11 +257,7 @@ function ResourceButton({
   readonly onClick: () => void;
 }) {
   return (
-    <button
-      className="flex h-9 w-full items-center gap-3 rounded px-3 text-left text-sm text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-emerald-400"
-      type="button"
-      onClick={onClick}
-    >
+    <button className="workspace-resource-button" type="button" onClick={onClick}>
       <Icon aria-hidden="true" className="size-4" /> {label}
     </button>
   );

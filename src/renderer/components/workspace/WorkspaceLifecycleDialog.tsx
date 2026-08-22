@@ -29,7 +29,7 @@ export function WorkspaceLifecycleDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 p-6"
+      className="workspace-lifecycle-overlay fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 p-6"
       role="presentation"
       onKeyDown={(event) => {
         if (event.key === 'Escape' && !busy) onCancel();
@@ -38,10 +38,10 @@ export function WorkspaceLifecycleDialog({
       <section
         aria-labelledby="workspace-lifecycle-title"
         aria-modal="true"
-        className="w-full max-w-md rounded-md border border-zinc-300 bg-white shadow-xl"
+        className="workspace-lifecycle-dialog w-full max-w-md rounded-md border border-zinc-300 bg-white shadow-xl"
         role="alertdialog"
       >
-        <header className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
+        <header className="workspace-lifecycle-header flex items-center justify-between border-b border-zinc-200 px-5 py-4">
           <h2 id="workspace-lifecycle-title" className="text-base font-semibold text-zinc-950">
             {title}
           </h2>
@@ -55,7 +55,7 @@ export function WorkspaceLifecycleDialog({
             <X aria-hidden="true" className="size-4" />
           </button>
         </header>
-        <div className="px-5 py-5 text-sm leading-6 text-zinc-700">
+        <div className="workspace-lifecycle-body px-5 py-5 text-sm leading-6 text-zinc-700">
           {deleting ? (
             <p>
               Delete <strong>{workspaceName}</strong> and its PaperMind-owned links? Zotero items,
@@ -68,10 +68,10 @@ export function WorkspaceLifecycleDialog({
             </p>
           )}
         </div>
-        <footer className="flex justify-end gap-2 border-t border-zinc-200 px-5 py-4">
+        <footer className="workspace-lifecycle-footer flex justify-end gap-2 border-t border-zinc-200 px-5 py-4">
           <button
             ref={cancelRef}
-            className="text-button"
+            className="workspace-lifecycle-cancel text-button"
             disabled={busy}
             type="button"
             onClick={onCancel}
@@ -79,7 +79,7 @@ export function WorkspaceLifecycleDialog({
             Cancel
           </button>
           <button
-            className={`command-button ${deleting ? '!bg-red-700 hover:!bg-red-800' : ''}`}
+            className={`workspace-lifecycle-confirm command-button ${deleting ? 'is-danger' : ''}`}
             disabled={busy}
             type="button"
             onClick={() => void onConfirm()}

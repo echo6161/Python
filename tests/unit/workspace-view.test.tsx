@@ -44,8 +44,14 @@ const firstPaper: WorkspaceZoteroPaper = {
       itemKey: 'PAPERAA2',
     },
     itemType: 'journalArticle',
-    title: 'Workspace-specific paper',
-    creators: [{ creatorType: 'author', name: 'Ada Lovelace' }],
+    title:
+      'Workspace-specific paper with an intentionally long title for responsive truncation checks',
+    creators: [
+      { creatorType: 'author', name: 'Ada Lovelace' },
+      { creatorType: 'author', name: 'Alan Turing' },
+      { creatorType: 'author', name: 'Grace Hopper' },
+      { creatorType: 'author', name: 'Edsger Dijkstra' },
+    ],
     date: '2025',
     year: 2025,
     publication: 'Test Journal',
@@ -104,12 +110,18 @@ describe('WorkspaceView', () => {
   it('restores the last active Workspace, edits its goal, and exposes implemented research tools', async () => {
     render(<WorkspaceView />);
     expect(await screen.findByRole('heading', { name: 'Evidence review' })).toBeDefined();
-    expect(await screen.findByText('Workspace-specific paper')).toBeDefined();
+    expect((await screen.findAllByText(/Workspace-specific paper/)).length).toBeGreaterThan(0);
     expect(screen.getByText('Stored PDF')).toBeDefined();
-    expect(await screen.findByRole('heading', { name: 'Repositories' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Code' })).toBeDefined();
     expect(await screen.findByRole('heading', { name: 'Research Questions' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Paper-Code Links' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Recent Notes' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'AI Assistant' })).toBeDefined();
     expect(screen.getByRole('tab', { name: 'Experiments' }).hasAttribute('disabled')).toBe(false);
     expect(screen.getByRole('tab', { name: 'Graph' }).hasAttribute('disabled')).toBe(false);
+    expect(document.querySelector('.overview-integrated-grid')).not.toBeNull();
+    expect(screen.getByText('Primary context')).toBeDefined();
+    expect(screen.getByRole('button', { name: /Create plan/ })).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.change(screen.getByLabelText('Research Goal'), {
@@ -126,13 +138,14 @@ describe('WorkspaceView', () => {
 
   it('resets Workspace paper UI when switching and does not retain the previous paper', async () => {
     render(<WorkspaceView />);
-    expect(await screen.findByText('Workspace-specific paper')).toBeDefined();
-    const workspaceNav = screen.getByRole('navigation', { name: 'Workspaces' });
+    expect((await screen.findAllByText(/Workspace-specific paper/)).length).toBeGreaterThan(0);
+    const workspaceNav = screen.getByRole('navigation', { name: 'Research resources' });
     fireEvent.click(within(workspaceNav).getByRole('button', { name: /Replication study/ }));
 
     expect(await screen.findByRole('heading', { name: 'Replication study' })).toBeDefined();
-    expect(await screen.findByText('No Zotero papers in this Workspace.')).toBeDefined();
-    expect(screen.queryByText('Workspace-specific paper')).toBeNull();
+    expect(await screen.findByText('No Zotero papers are linked to this Workspace.')).toBeDefined();
+    expect(screen.getByRole('button', { name: /Add from Zotero/ })).toBeDefined();
+    expect(screen.queryByText(/Workspace-specific paper/)).toBeNull();
     expect(setLastActive).toHaveBeenCalledWith({ workspaceId: second.id });
   });
 
@@ -147,7 +160,7 @@ describe('WorkspaceView', () => {
     );
     render(<WorkspaceView />);
     await screen.findByRole('heading', { name: 'Evidence review' });
-    const workspaceNav = screen.getByRole('navigation', { name: 'Workspaces' });
+    const workspaceNav = screen.getByRole('navigation', { name: 'Research resources' });
     fireEvent.click(within(workspaceNav).getByRole('button', { name: /Replication study/ }));
     expect(await screen.findByRole('heading', { name: 'Replication study' })).toBeDefined();
     fireEvent.click(within(workspaceNav).getByRole('button', { name: /Evidence review/ }));
@@ -277,6 +290,73 @@ function installApi(overrides: Partial<PaperMindApi['workspace']>) {
       },
       researchPlan: {
         getActive: vi.fn().mockResolvedValue({ ok: true, value: null }),
+      },
+      zotero: {
+        listCollections: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+      },
+      researchMemory: {
+        list: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+      },
+      experiment: {
+        list: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+      },
+      researchGraph: {
+        getProjection: vi.fn().mockResolvedValue({
+          ok: true,
+          value: {
+            workspaceId: first.id,
+            version: 'research-graph-v1',
+            nodes: [],
+            edges: [],
+          },
+        }),
+      },
+      ai: {
+        getCapabilities: vi.fn().mockResolvedValue({
+          ok: true,
+          value: {
+            providerId: 'openai',
+            settings: {
+              providerId: 'openai',
+              baseUrl: 'https://api.openai.com/v1',
+              model: 'gpt-5.6',
+              temperature: 0.2,
+              maxOutputTokens: 2048,
+              saveHistoryByDefault: true,
+            },
+            credential: { configured: false, persistence: 'none', backend: 'test' },
+            providers: [
+              {
+                id: 'openai',
+                name: 'OpenAI API',
+                status: 'not_connected',
+                available: true,
+                configured: false,
+                version: null,
+                plan: null,
+                models: [],
+                capabilities: [],
+                limitations: [],
+                lastError: null,
+              },
+            ],
+            gate: {
+              verdict: 'supported',
+              checkedAt: '2026-08-12',
+              integration: 'official-codex-app-server',
+            },
+            selectionOnlyByDefault: true,
+          },
+        }),
+      },
+      researchChat: {
+        getLatestConversation: vi.fn().mockResolvedValue({ ok: true, value: null }),
+        prepareContext: vi.fn(),
+        startTurn: vi.fn(),
+        retryTurn: vi.fn(),
+        cancelTurn: vi.fn(),
+        openCitation: vi.fn(),
+        onStreamEvent: vi.fn().mockReturnValue(() => undefined),
       },
     },
   });

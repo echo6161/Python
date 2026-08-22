@@ -29,7 +29,13 @@ const kinds: readonly ResearchGraphNodeKind[] = [
   'plan_task',
   'link',
 ];
-export function WorkspaceResearchGraphPage({ workspace }: { readonly workspace: Workspace }) {
+export function WorkspaceResearchGraphPage({
+  embedded = false,
+  workspace,
+}: {
+  readonly embedded?: boolean;
+  readonly workspace: Workspace;
+}) {
   const [projection, setProjection] = useState<ResearchGraphProjection | null>(null),
     [enabled, setEnabled] = useState<readonly ResearchGraphNodeKind[]>(kinds),
     [selected, setSelected] = useState<ResearchGraphNode | null>(null),
@@ -64,7 +70,7 @@ export function WorkspaceResearchGraphPage({ workspace }: { readonly workspace: 
       );
   };
   return (
-    <div className="research-graph-page">
+    <div className={`research-graph-page ${embedded ? 'is-embedded' : ''}`}>
       <header>
         <div>
           <h2>
@@ -109,7 +115,7 @@ export function WorkspaceResearchGraphPage({ workspace }: { readonly workspace: 
               setDrawer(true);
             }}
           >
-            <Background color="#27272a" gap={22} />
+            <Background color={embedded ? '#d8d5cd' : '#27272a'} gap={22} />
             <Controls />
             <MiniMap pannable zoomable />
           </ReactFlow>
